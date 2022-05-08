@@ -1,11 +1,11 @@
---- Overridden controller file, used for hooking up lifecycle events to the Erectus Mod Loader.
+--- Overridden controller file, used for hooking up lifecycle events to the Hammerstone Mod Loader.
 -- All events will be fired in the main thread, using the eventManager
 -- @author SirLich
 
-local eventManager = mjrequire "erectus/event/eventManager"
-local eventTypes = mjrequire "erectus/event/eventTypes"
-local logger = mjrequire "erectus/logging"
-local inputManager = mjrequire "erectus/input/inputManager"
+local eventManager = mjrequire "hammerstone/event/eventManager"
+local eventTypes = mjrequire "hammerstone/event/eventTypes"
+local logger = mjrequire "hammerstone/logging"
+local inputManager = mjrequire "hammerstone/input/inputManager"
 
 local mod = {
 	loadOrder = 0, -- Load before everything else
@@ -13,9 +13,9 @@ local mod = {
 
 function mod:onload(controller)
 
-	logger:log("Loading Erectus Mod Framework...")
+	logger:log("Loading Hammerstone Mod Framework...")
 
-	-- Setup other Erectus Mod Framework stuff
+	-- Setup other Hammerstone Mod Framework stuff
 	inputManager:init()
 
 	-- Fire off events

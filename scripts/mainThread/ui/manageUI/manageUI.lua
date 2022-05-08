@@ -12,7 +12,7 @@ local uiCommon = mjrequire "mainThread/ui/uiCommon/uiCommon"
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
 local eventManager = mjrequire "mainThread/eventManager"
 
-local logger = mjrequire "erectus/logging"
+local logger = mjrequire "hammerstone/logging"
 
 -- Local state
 local backgroundSize = vec2(1140, 640)

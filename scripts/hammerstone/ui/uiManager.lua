@@ -12,7 +12,7 @@ local uiManager = {
 }
 
 -- Requires
-local logger = mjrequire "erectus/logging"
+local logger = mjrequire "hammerstone/logging"
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2

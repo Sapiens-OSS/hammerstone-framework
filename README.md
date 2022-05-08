@@ -1,25 +1,25 @@
-# Erectus Mod Framework
+# Hammerstone Mod Framework
 
 This framework is a modding API for the upcoming Sapiens video game. It is heavily work-in-progress, so expect many breaking changes.
 
 ## Why use a Framework?
 
-The main reason to use Erectus is that it provides you a layer of insulation from Sapiens codebase. This means that when a breaking change is made to Sapiens, the mod-layer can be updated, and all mods that depend on the framework will work again without any changes (within reason).
+The main reason to use Hammerstone is that it provides you a layer of insulation from Sapiens codebase. This means that when a breaking change is made to Sapiens, the mod-layer can be updated, and all mods that depend on the framework will work again without any changes (within reason).
 
-The secondary reason to use Erectus is that it's *designed as a modding API*, unlike Sapiens. Sapiens is a video game first, and a modding API second. Erectus, on the other hand, can put full focus into topics such as:
+The secondary reason to use Hammerstone is that it's *designed as a modding API*, unlike Sapiens. Sapiens is a video game first, and a modding API second. Hammerstone, on the other hand, can put full focus into topics such as:
  - Clean abstraction layers
  - Data-driven approaches to input handling, UI, etc
  - Reusability and write-once architecture
 
-## How to use Erectus?
+## How to use Hammerstone?
 
-Erectus is a mod for Sapiens, just like any other mod. You should download it and place it into your mods folder directly, as I don't intend on doing steam workshop releases any time soon.
+Hammerstone is a mod for Sapiens, just like any other mod. You should download it and place it into your mods folder directly, as I don't intend on doing steam workshop releases any time soon.
 
-**Warning**: If you build a mod that depends on the Erectus framework, any users of the mod are going to need to install Erectus as well. Depending on the popularity of Erectus, this could be more or less annoying.
+**Warning**: If you build a mod that depends on the Hammerstone framework, any users of the mod are going to need to install Hammerstone as well. Depending on the popularity of Hammerstone, this could be more or less annoying.
 
-# Developing with Erectus
+# Developing with Hammerstone
 
-To get started, download the mod, and place it into your mods folder. Once 'installed', you can simply reference Erectus files in your own mod. An example mod can be found [here](https://github.com/SirLich/sapiens-cheat-menu).
+To get started, download the mod, and place it into your mods folder. Once 'installed', you can simply reference Hammerstone files in your own mod. An example mod can be found [here](https://github.com/SirLich/sapiens-cheat-menu).
 
 For Sapiens-related modding, use the offical wiki [here](https://github.com/Majic-Jungle/sapiens-mod-creation/wiki)
 
@@ -51,7 +51,7 @@ UI in Sapiens is fairly complex. The uiManager doesn't help you *build* UIs, it 
 
 ### Requiring 
 
-The uiManager can be required like this: `local uiManager = mjrequire "erectus/uiManager"`. 
+The uiManager can be required like this: `local uiManager = mjrequire "hammerstone/uiManager"`. 
 
 ### Views
 

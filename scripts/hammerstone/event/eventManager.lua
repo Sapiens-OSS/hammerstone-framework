@@ -1,4 +1,4 @@
---- EventManager for erectus mods.
+--- EventManager for hammerstone mods.
 -- You can bind to the events here and react to them.
 -- @author SirLich
 
@@ -7,7 +7,7 @@ local eventManager = {
 	events = {}
 }
 
-local logger = mjrequire "erectus/logging"
+local logger = mjrequire "hammerstone/logging"
 
 --- Calls the event with the given name and passes the given arguments.
 function eventManager:call(event, ...)
