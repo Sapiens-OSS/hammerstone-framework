@@ -14,21 +14,21 @@ function mod:onload(gameUI)
 	-- Initialize the uiManager
 	local superInit = gameUI.init
 	function gameUI:init(controller, world)
-		superInit(self, controller, world)
-		uiManager:init(self)
+		superInit(gameUI, controller, world)
+		uiManager:initGameElements(gameUI)
 	end
 
 	-- Update the uiManager
 	local superUpdate = gameUI.update
 	function gameUI:update(controller, world)
-		superUpdate(self, controller, world)
-		uiManager:update(self)
+		superUpdate(gameUI, controller, world)
+		uiManager:updateGameElements(gameUI)
 	end
 
 	-- Has panel displayed
 	local superHasUIPanelDisplayed = gameUI.hasUIPanelDisplayed
 	function gameUI:hasUIPanelDisplayed()
-		return superHasUIPanelDisplayed(self) or uiManager:hasUIPanelDisplayed()
+		return superHasUIPanelDisplayed(gameUI) or uiManager:hasUIPanelDisplayed()
 	end
 	
 end
