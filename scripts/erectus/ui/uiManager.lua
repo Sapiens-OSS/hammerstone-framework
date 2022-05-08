@@ -85,7 +85,6 @@ end
 function uiManager:initGameElements(gameUI)
 	logger:log("UI Manager: Initializing Game elements [" .. #self.gameElements .. "]")
 	for _, element in pairs(self.gameElements) do
-		logger:log("GAME ELEMENT INITIALIZED")
 		if element.initGameElement ~= nil then element:initGameElement(gameUI) end
 	end
 end

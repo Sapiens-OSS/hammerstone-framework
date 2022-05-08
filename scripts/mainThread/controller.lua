@@ -5,6 +5,7 @@
 local eventManager = mjrequire "erectus/event/eventManager"
 local eventTypes = mjrequire "erectus/event/eventTypes"
 local logger = mjrequire "erectus/logging"
+local inputManager = mjrequire "erectus/input/inputManager"
 
 local mod = {
 	loadOrder = 0, -- Load before everything else
@@ -13,6 +14,9 @@ local mod = {
 function mod:onload(controller)
 
 	logger:log("Loading Erectus Mod Framework...")
+
+	-- Setup other Erectus Mod Framework stuff
+	inputManager:init()
 
 	-- Fire off events
 	eventManager:call(eventTypes.init)
