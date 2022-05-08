@@ -7,13 +7,15 @@ local eventManager = {
 	events = {}
 }
 
+local logger = mjrequire "erectus/logging"
+
 --- Calls the event with the given name and passes the given arguments.
 function eventManager:call(event, ...)
-	mj:log("Calling event " .. event)
+	logger:log("Calling event " .. event)
 
 	if self.events[event] then
 		for i, f in pairs(self.events[event]) do
-			mj:log("Calling event " .. event .. " with " .. #{...})
+			logger:log("Calling event " .. event .. " with " .. #{...})
 			f(...)
 		end
 	end
@@ -28,7 +30,7 @@ function eventManager:bind(event, callback)
 
 	-- Add binding into the event table
 	table.insert(self.events[event], callback)
-	mj:log("Bound event " .. event .. " to callback " .. tostring(callback))
+	logger:log("Bound event " .. event .. " to callback " .. tostring(callback))
 end
 
 

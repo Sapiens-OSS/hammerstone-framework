@@ -7,7 +7,7 @@ local mod = {
 	loadOrder = 1
 }
 
-local uiManager = mjrequire "erectus/uiManager"
+local uiManager = mjrequire "erectus/ui/uiManager"
 
 function mod:onload(gameUI)
 
