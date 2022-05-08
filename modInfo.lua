@@ -1,7 +1,7 @@
 local modInfo = {
     name = "Erectus",
-    description = "Sapiens Mod Loader.",
-    version = "1.0.0",
+    description = "A Sapiens framework that provides an abstraction layer between your mod and the Sapiens code base.",
+    version = "0.0.1", -- Pre-release
     type = "app",
     developer = "SirLich"
 }

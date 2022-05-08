@@ -7,12 +7,14 @@ local uiManager = {
 	gameViews = {}
 }
 
+local logger = mjrequire "erectus/logging"
+
 -- Game Views are UI elements that are displayed in the game world.
 -- Example: 'manageUI', 'hubUI', 'chatMessageUI'
 -- The view will automatically be initialized on game load.
 -- @param view: The view module you are adding.
 function uiManager.registerGameView(view)	
-	mj:log("New game view registered: " .. view.name)
+	logger:log("New game view registered: " .. view.name)
 	uiManager.gameViews[view.name] = view
 end
 
@@ -20,7 +22,7 @@ end
 -- Calls init on all registered game views, and allows them to attach to the gameUI.
 -- @param gameUI: The gameUI object.
 function uiManager:init(gameUI)
-	mj:log("UI Manager initialized: Creating Game Views:")
+	logger:log("UI Manager initialized: Creating Game Views:")
 	for _, view in pairs(uiManager.gameViews) do
 		if view.init ~= nil then view:init(gameUI) end
 	end
