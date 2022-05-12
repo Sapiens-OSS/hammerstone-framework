@@ -13,25 +13,76 @@ local uiManager = mjrequire "hammerstone/uiManager".
 ### Using
 The uiManager relies on the concept of 'views'. A view is a place where UI can be put. For example, a `GameView` covers (almost) the whole screen and captures the mouse.
 
-#### Views
+#### Elements
 
-##### GameView
-You should build your GameView in it's own module, then register it like this:
-
+##### Action Elements
+Action Elements are rendered beside the radial menu that appears when selecting an object in the world. To register an Action Element, call `registerActionElement` on the `uiManager` like this:
 ```lua
-local exampleGameView = mjrequire "exampleMod/exampleGameView"
-uiManager:registerGameView(exampleGameView);
+local exampleActionElement = mjrequire "exampleMod/exampleActionElement"
+uiManager:registerActionElement(exampleActionElement);
+```
+The Action Element module should look something like this:
+```lua
+-- Module setup
+local exampleActionElement = {
+	-- Required by the UI Manager
+	view = nil,
+
+	--  Required by the UI Manager
+	name = "Example Action Element"
+}
+
+-- Requires
+-- Add requires here
+
+-- This function is called automatically from the UI manager
+function exampleActionElement:initActionElement(viewContainer, gameUI, hubUI, world)
+	-- Create a parent container
+	self.view = View.new(viewContainer)
+
+    -- Add any button/other UI components here
+end
+
+-- Module return
+return exampleActionElement
 ```
 
-After registering as a GameView, your UI will start receiving lifecycle, and automatic integration into Sapiens UI state:
+##### Game Elements
+Game Elements are shown nearly fullscreen to the user. To register a Game Elemenet, call `registerGameElement` on the `uiManager` like this:
 ```lua
---- Called automatically when the UI gets loaded. 
-function exampleGameView:init(gameUI) ... 
+local exampleGameElement = mjrequire "exampleMod/exampleGameElement"
+uiManager:registerActionElement(exampleGameElement);
 ```
-You should build your UI against gameUI like this: 
+The Game Element module should look something like this:
 ```lua
-self.mainView = View.new(gameUI.view)
+local exampleActionElement = {
+    gameUI = nil,
+	name = "exampleActionElement",
+	view = nil,
+}
+
+-- Requires
+local mjm = mjrequire "common/mjm"
+local vec3 = mjm.vec3
+local vec2 = mjm.vec2
+-- Add more requires here
+
+-- Local state
+local backgroundWidth = 1140
+local backgroundHeight = 640
+local backgroundSize = vec2(backgroundWidth, backgroundHeight)
+
+-- Called when the UI needs to be generated
+function exampleActionElement:initGameElement(gameUI)
+    self.view = View.new(gameUI.view)
+	self.view.size = backgroundSize
+	self.view.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
+end
+
+-- Called every frame
+function exampleActionElement:updateGameElement(gameUI)
+	
+end
+
+return exampleActionElement
 ```
-Required properties:
-* name - The name of the UI. Will be used for some things.
-* mainView - The top-level UI View that you add into gameUI (will be used for hiding, etc)
