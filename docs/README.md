@@ -1,4 +1,4 @@
-# Hammerstone Framework
+# Hammerstone Framework Docs
 
 ## Installing
 

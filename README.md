@@ -1,7 +1,13 @@
+[Hammerstone Logo](assets/hammerstone_wide.png)
 # Hammerstone Mod Framework
 
 ## About
-This framework is a modding API for the upcoming Sapiens video game. It is (currently) heavily work-in-progress, so expect many breaking changes. A framework provides a variety of features and additional support for many mods. It provides compability fixes and can protect the mod developer from the constant updates made to Sapiens. 
+This framework is a modding API for the upcoming Sapiens video game. It is (currently) heavily work-in-progress, so expect many breaking changes.
+
+Hammerstone's purpose is to: 
+* Clean abstraction layers
+* Data-driven approaches to input handling, UI, etc
+* Reusability and write-once architecture
 
 ## Docs
 
