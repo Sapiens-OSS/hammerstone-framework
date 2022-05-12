@@ -9,17 +9,91 @@ local uiManager = {
 
 	-- The UI Elements that are displayed in the ActionSlot
 	actionElements = {},
+
+	-- The UI Elements that are displayed in the ManageSlot
+	manageElements = {},
 }
 
+table.insert(uiManager.manageElements, {
+	name = "Test View 1",
+	icon = "icon_random"
+})
+
+table.insert(uiManager.manageElements, {
+	name = "Test View 1",
+	icon = "icon_sapien"
+})
+
+table.insert(uiManager.manageElements, {
+	name = "Test View 1",
+	icon = "icon_wet"
+})
+
 -- Requires
+local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
+local uiToolTip = mjrequire "mainThread/ui/uiCommon/uiToolTip"
 local logger = mjrequire "hammerstone/logging"
+
+
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2
 
+-- ==========================================================================================
+-- Manage Elements
+-- ==========================================================================================
+
+function uiManager:registerManageElement(element)
+	mj:log("Registering manage element:", element.name)
+	table.insert(self.gameElements, element)
+end
+
+-- Function that allows Hammerstone to build out the ManageElements based on everything that
+-- has been registered.
+function uiManager:initManageElements(manageButtonsUI, manageUI)
+	logger:log("Initializing Manage Elements.")
+
+	-- Local state
+	local menuButtonsView = manageButtonsUI.menuButtonsView
+	local menuButtonSize = manageButtonsUI.menuButtonSize
+	local menuButtonPadding = manageButtonsUI.menuButtonSize * manageButtonsUI.menuButtonPaddingRatio
+	local toolTipOffset = manageButtonsUI.toolTipOffset
+
+	local lastButton = manageButtonsUI.menuButtonsByManageUIModeType[#manageButtonsUI.menuButtonsByManageUIModeType]
+
+	-- Loop through all the registered elements and create them.
+	for i, element in ipairs(self.manageElements) do
+
+		logger:log("Adding Manage Button: " .. element.name)
+
+		local button = uiStandardButton:create(menuButtonsView, vec2(menuButtonSize, menuButtonSize), uiStandardButton.types.markerLike)
+		button.relativeView = lastButton
+		button.relativePosition = ViewPosition(MJPositionOuterRight, MJPositionCenter)
+		uiStandardButton:setIconModel(button, element.icon)
+		uiToolTip:add(button.userData.backgroundView, ViewPosition(MJPositionCenter, MJPositionBelow), element.name, nil, toolTipOffset, nil, button)
+		-- uiToolTip:addKeyboardShortcut(testButton.userData.backgroundView, "game", "buildMenu", nil, nil)
+		button.baseOffset = vec3(menuButtonPadding, 0, 0)
+
+		uiStandardButton:setClickFunction(button, function()
+			manageUI:hide()
+		end)
+
+		-- Make sure we pass the new buttons back to the actual UI
+		-- table.insert(manageButtonsUI.menuButtonsByManageUIModeType, button)
+
+		-- Update the last button, so we can continue handling offset.
+		lastButton = button
+
+	end
+
+	-- Shift the entire view left, to compensate for the new buttons
+	local shiftAmmount = #self.manageElements * (menuButtonSize + menuButtonPadding) / 2
+	menuButtonsView.baseOffset = menuButtonsView.baseOffset + vec3(-shiftAmmount, 0, 0)
+end
+
 
 -- ==========================================================================================
--- Action Elements Elements.
+-- Action Elements.
 -- ==========================================================================================
 
 --- Action Elements are rendered alongside the radial menu, in a vertical tray.
@@ -41,7 +115,7 @@ function uiManager:initActionElements(gameUI, hubUI, world)
 
 	-- Create a view container for the views to be rendered in.
 	local actionViewContainer = View.new(gameUI.view)
-    actionViewContainer.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
+	actionViewContainer.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
 	actionViewContainer.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers
 
 	-- Render the Elements into this new container

@@ -1,3 +1,4 @@
+-- Module Setup
 local mod = {
 	loadOrder = 1
 }
@@ -15,58 +16,17 @@ local eventManager = mjrequire "mainThread/eventManager"
 local logger = mjrequire "hammerstone/logging"
 
 -- Local state
-local backgroundSize = vec2(1140, 640)
-local mainView = nil
-local mainContentView = nil
 
--- Custom UI test
-local function customUI(gameUI, controller, hubUI, world)
-	mainView = View.new(gameUI.view)
-	mainView.hidden = false
-	mainView.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
-	mainView.size = backgroundSize
-
-	mainContentView = ModelView.new(mainView)
-
-    mainContentView:setModel(model:modelIndexForName("ui_bg_lg_16x9"))
-
-	-- mainContentView:setModel(model:modelIndexForName("mammoth"))
-    local scaleToUse = backgroundSize.x * 0.5
-    mainContentView.scale3D = vec3(scaleToUse,scaleToUse,scaleToUse)
-    mainContentView.relativePosition = ViewPosition(MJPositionCenter, MJPositionTop)
-    mainContentView.size = backgroundSize
-
-    local closeButton = uiStandardButton:create(mainContentView, vec2(50,50), uiStandardButton.types.markerLike)
-    closeButton.relativePosition = ViewPosition(MJPositionInnerRight, MJPositionAbove)
-    closeButton.baseOffset = vec3(30, -20, 0)
-    uiStandardButton:setIconModel(closeButton, "icon_cross")
-    uiStandardButton:setClickFunction(closeButton, function()
-		mainView.hidden = true
-    end)
-
-	eventManager:showMouse()
-
-	-- timer:addCallbackTimer(5, function()
-	-- 	mainView.hidden = true
-	-- end)
-
-end
-
+-- Shadow
 function mod:onload(manageUI)
+
+	-- Handl initalization
 	local superInit = manageUI.init
-
-
 	function manageUI:init(gameUI, controller, hubUI, world)
 		superInit(self, gameUI, controller, hubUI, world)
-
-		world:setSunset(-0.4)
-		-- customUI(gameUI, controller, hubUI, world)
-
-		-- spawn("mammoth")
-
-		
-		
-		logger:log("Manage UI is loaded and ready")
 	end
 end
+
+
+-- Module Return
 return mod

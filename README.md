@@ -21,4 +21,6 @@ See the docs at [Developing](docs/Developing.md)
 
 ## Credits
 
+See contributors on the right-hand side!
+
 Big thanks to entire Sapiens modding community and majicdave!
