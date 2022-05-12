@@ -18,3 +18,7 @@ See the docs at [Installing](docs/Installing.md)
 ### Developing
 
 See the docs at [Developing](docs/Developing.md)
+
+## Credits
+
+Big thanks to entire Sapiens modding community and majicdave!
