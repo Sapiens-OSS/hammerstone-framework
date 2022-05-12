@@ -1,4 +1,4 @@
-[Hammerstone Logo](assets/hammerstone_wide.png)
+![Hammerstone Logo](assets/hammerstone_wide.png?raw=true)
 # Hammerstone Mod Framework
 
 ## About
