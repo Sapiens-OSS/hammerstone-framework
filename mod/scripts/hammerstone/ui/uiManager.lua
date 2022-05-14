@@ -78,6 +78,8 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 			manageUI:hide()
 		end)
 
+		element.view.hide = true
+
 		-- Make sure we pass the new buttons back to the actual UI
 		-- table.insert(manageButtonsUI.menuButtonsByManageUIModeType, button)
 
@@ -121,6 +123,7 @@ function uiManager:initActionElements(gameUI, hubUI, world)
 	-- Render the Elements into this new container
 	for _, element in pairs(uiManager.actionElements) do
 		element:initActionElement(actionViewContainer, gameUI, hubUI, world)
+		element.view.hidden = true
 	end
 end
 
@@ -159,7 +162,10 @@ end
 function uiManager:initGameElements(gameUI)
 	logger:log("UI Manager: Initializing Game elements [" .. #self.gameElements .. "]")
 	for _, element in pairs(self.gameElements) do
-		if element.initGameElement ~= nil then element:initGameElement(gameUI) end
+		if element.initGameElement ~= nil then
+			element:initGameElement(gameUI)
+			element.view.hidden = true
+		end
 	end
 end
 
