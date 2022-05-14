@@ -46,3 +46,7 @@ return exampleMod
 Get started with logging with [logger](logger.md).
 
 Get started with UI with [uiManager](uiManager.md).
+
+Get started with input with [inputManager](inputManager.md)
+
+Get started with localisation with [localeManager](localeManager.md)
