@@ -7,7 +7,7 @@ UI in Sapiens is fairly complex. The uiManager doesn't help you build UIs, it ju
 
 ### Requiring
 ```lua
-local uiManager = mjrequire "hammerstone/uiManager".
+local uiManager = mjrequire "hammerstone/ui/uiManager"
 ```
 
 ### Using

@@ -3,7 +3,7 @@
 
 local eventTypes = {
 	init = 0,
-	worldLoaded = 1
+	worldLoad = 1
 }
 
 return eventTypes
