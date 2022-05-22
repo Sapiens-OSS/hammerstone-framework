@@ -6,6 +6,7 @@ local eventManager = mjrequire "hammerstone/event/eventManager"
 local eventTypes = mjrequire "hammerstone/event/eventTypes"
 local logger = mjrequire "hammerstone/logging"
 local inputManager = mjrequire "hammerstone/input/inputManager"
+local hammerstone = mjrequire "hammerstone/hammerstone"
 
 local mod = {
 	loadOrder = 0, -- Load before everything else
@@ -20,16 +21,6 @@ function mod:onload(controller)
 
 	-- Fire off events
 	eventManager:call(eventTypes.init)
-
-	-- Save super
-	local superWorldLoaded = controller.worldLoaded
-	controller.worldLoaded = function(self, world)
-		superWorldLoaded(controller, world) -- Shouldn't this be superWorldLoaded(self, world)?
-		
-		-- logger:log("World loaded, triggering event") -- Don't need this due to another log message in the actual function
-		eventManager:call(eventTypes.init)
-	end
-
 end
 
 return mod
