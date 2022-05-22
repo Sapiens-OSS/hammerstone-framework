@@ -24,13 +24,13 @@ end
 --- Binds a function to the event with the given name.
 function eventManager:bind(event, callback)
 	-- Ensure the event is in the table
-	if not self.events[event] then
-		self.events[event] = {}
+	if not eventManager.events[event] then
+		eventManager.events[event] = {}
 	end
 
 	-- Add binding into the event table
-	table.insert(self.events[event], callback)
-	logger:log("Bound event " .. event .. " to callback " .. tostring(callback))
+	table.insert(eventManager.events[event], callback)
+	logger:log("Bound event " .. tostring(event) .. " to callback " .. tostring(callback))
 end
 
 
