@@ -6,7 +6,7 @@ local eventManager = mjrequire "hammerstone/event/eventManager"
 local eventTypes = mjrequire "hammerstone/event/eventTypes"
 local logger = mjrequire "hammerstone/logging"
 local inputManager = mjrequire "hammerstone/input/inputManager"
-local hammerstone = mjrequire "hammerstone/hammerstone"
+-- local gameState = mjrequire "hammerstone/state/gameState"
 
 local mod = {
 	loadOrder = 999, -- Load after everything, so everything has a chance to initialise

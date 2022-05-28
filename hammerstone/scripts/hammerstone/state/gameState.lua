@@ -2,17 +2,21 @@
 -- @author SirLich
 
 -- Module setup
-local hammerstone = {
+local gameState = {
+	-- The current loaded world
 	world = nil,
+
+	-- The C bridge for the world
+	worldBridge = nil,
 }
 
 -- Requires
 local logger = mjrequire "hammerstone/logging"
 
-function hammerstone:OnWorldLoaded(world)
+function gameState:OnWorldLoaded(world)
 	logger:log("World Loaded with Tribe ID " .. world:getTribeID())
-	hammerstone.world = world
+	gameState.world = world
 end
 
 -- Module return
-return hammerstone
+return gameState

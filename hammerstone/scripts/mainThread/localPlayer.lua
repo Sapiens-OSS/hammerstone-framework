@@ -8,14 +8,14 @@ local mod = {
 
 -- Requires
 -- local eventManager = mjrequire "hammerstone/event/eventManager"
-local hammerstone = mjrequire "hammerstone/hammerstone"
+local gameState = mjrequire "hammerstone/state/gameState"
 
 -- Shadow the localPlayer.lua table
 function mod:onload(localPlayer)
 	local superInit = localPlayer.init
 	localPlayer.init = function(self, world, gameUI)
 		superInit(self, world, gameUI)
-		hammerstone:OnWorldLoaded(world)
+		gameState:OnWorldLoaded(world)
 	end
 end
 
