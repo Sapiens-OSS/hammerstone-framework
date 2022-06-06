@@ -6,6 +6,7 @@ local eventManager = mjrequire "hammerstone/event/eventManager"
 local eventTypes = mjrequire "hammerstone/event/eventTypes"
 local logger = mjrequire "hammerstone/logging"
 local inputManager = mjrequire "hammerstone/input/inputManager"
+-- local gameState = mjrequire "hammerstone/state/gameState"
 
 local mod = {
 	loadOrder = 999, -- Load after everything, so everything has a chance to initialise
@@ -28,7 +29,6 @@ function mod:onload(controller)
 		-- logger:log("World loaded, triggering event") -- Don't need this due to another log message in the actual function
 		eventManager:call(eventTypes.worldLoad)
 	end
-
 end
 
 return mod

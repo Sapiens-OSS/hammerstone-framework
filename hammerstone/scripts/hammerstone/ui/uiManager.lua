@@ -14,20 +14,6 @@ local uiManager = {
 	manageElements = {},
 }
 
-table.insert(uiManager.manageElements, {
-	name = "Test View 1",
-	icon = "icon_random"
-})
-
-table.insert(uiManager.manageElements, {
-	name = "Test View 1",
-	icon = "icon_sapien"
-})
-
-table.insert(uiManager.manageElements, {
-	name = "Test View 1",
-	icon = "icon_wet"
-})
 
 -- Requires
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
@@ -43,9 +29,21 @@ local vec2 = mjm.vec2
 -- Manage Elements
 -- ==========================================================================================
 
+-- This is just an example:
+local example_manage_element = {
+	name = "The name of the icon",
+	icon = "The name of the icon such as 'icon_configure' (points to glb file)",
+
+	-- The function that is called when the element is clicked
+	onClick = function(self)
+		logger:log("Clicked on " .. self.name)
+	end,
+}
+
+
 function uiManager:registerManageElement(element)
 	mj:log("Registering manage element:", element.name)
-	table.insert(self.gameElements, element)
+	table.insert(self.manageElements, element)
 end
 
 -- Function that allows Hammerstone to build out the ManageElements based on everything that
@@ -75,10 +73,14 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 		button.baseOffset = vec3(menuButtonPadding, 0, 0)
 
 		uiStandardButton:setClickFunction(button, function()
+			-- Default behavior is to hide the menu.
 			manageUI:hide()
+
+			-- Custom binding from the mod
+			element.onClick()
 		end)
 
-		element.view.hide = true
+		-- element.view.hide = true
 
 		-- Make sure we pass the new buttons back to the actual UI
 		-- table.insert(manageButtonsUI.menuButtonsByManageUIModeType, button)

@@ -8,7 +8,6 @@ local uiManager = mjrequire "hammerstone/ui/uiManager"
 local mj = mjrequire "common/mj"
 
 function mod:onload(manageButtonsUI)
-
 	-- Shadow initialization
 	local superInit = manageButtonsUI.init
 	function manageButtonsUI:init(gameUI, manageUI, hubUI, world)
