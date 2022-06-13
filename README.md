@@ -1,4 +1,4 @@
-![Hammerstone Logo](assets/hammerstone_wide.png?raw=true)
+![Hammerstone Logo](https://sirlich.github.io/sapiens-modding-wiki/assets/hammerstone_wide.cc13ae54.png)
 # Hammerstone Mod Framework
 
 ## About
@@ -13,11 +13,11 @@ Hammerstone's purpose is to:
 
 ### Installing
 
-See the docs at [Installing](docs/Installing.md)
+See the docs at [Installing](https://sirlich.github.io/sapiens-modding-wiki/hammerstone/installing.html)
 
 ### Developing
 
-See the docs at [Developing](docs/Developing.md)
+See the docs at [Developing](https://sirlich.github.io/sapiens-modding-wiki/hammerstone/getting-started.html)
 
 ## Credits
 
