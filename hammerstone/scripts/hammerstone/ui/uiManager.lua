@@ -1,4 +1,7 @@
 --- This file contains a modding interface for creating, displaying, and managing UI elements.
+-- It is not intended to build UI elements directly, but to provide a common interface for
+-- UI elements to be created and displayed, allowing them to flawlessly combine with
+-- base game UI.
 -- @author SirLich
 
 
@@ -15,12 +18,10 @@ local uiManager = {
 }
 
 
--- Requires
+-- Sapiens
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
 local uiToolTip = mjrequire "mainThread/ui/uiCommon/uiToolTip"
 local logger = mjrequire "hammerstone/logging"
-
-
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2
@@ -42,14 +43,21 @@ local example_manage_element = {
 
 
 function uiManager:registerManageElement(element)
+	--- Allows you to register a new manage element.
+	-- Paramaters are passed via table:
+	-- name: The name of the element (eg. "Creative Mode Cheats")
+	-- icon: The name of the icon (eg. "icon_configure")
+	-- ui: The ui managing the view. Should contain .view.
+	-- onClick [Optional]: The function that is called when the element is clicked.
+
 	mj:log("Registering manage element:", element.name)
 	table.insert(self.manageElements, element)
 end
 
--- Function that allows Hammerstone to build out the ManageElements based on everything that
--- has been registered.
 function uiManager:initManageElements(manageButtonsUI, manageUI)
-	logger:log("Initializing Manage Elements.")
+	--- Function that allows Hammerstone to build out the ManageElements based on everything that
+	-- has been registered. This is called automatically.
+	logger:log("Initializing Manage Elements...")
 
 	-- Local state
 	local menuButtonsView = manageButtonsUI.menuButtonsView
@@ -57,6 +65,7 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 	local menuButtonPadding = manageButtonsUI.menuButtonSize * manageButtonsUI.menuButtonPaddingRatio
 	local toolTipOffset = manageButtonsUI.toolTipOffset
 
+	-- Capture the last button in the row, as we will place new buttons offset from it.
 	local lastButton = manageButtonsUI.menuButtonsByManageUIModeType[#manageButtonsUI.menuButtonsByManageUIModeType]
 
 	-- Loop through all the registered elements and create them.
@@ -72,12 +81,33 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 		-- uiToolTip:addKeyboardShortcut(testButton.userData.backgroundView, "game", "buildMenu", nil, nil)
 		button.baseOffset = vec3(menuButtonPadding, 0, 0)
 
-		uiStandardButton:setClickFunction(button, function()
-			-- Default behavior is to hide the menu.
-			manageUI:hide()
+		-- Save the button for the UI into the button itself.
+		element.button = button
 
-			-- Custom binding from the mod
-			element.onClick()
+		mj:log("Outside of lambda: ", element.name)
+
+
+		uiStandardButton:setClickFunction(button, function()
+			mj:log("Inside of lambda ", element.name)
+
+			-- Default behavior is to hide the menu.
+			-- After hiding, we must re-show the buttons.
+			manageUI:hide()
+			manageButtonsUI:setSelectedButton(nil)
+			manageButtonsUI.menuButtonsView.hidden = false
+
+			uiStandardButton:setSelected(element.button, true)
+
+			-- Default behavior is to show the element view.
+			element.ui.view.hidden = false
+
+			-- manageUI:show()
+			-- manageUI.mainView.hidden = true
+
+			-- Custom binding from the mod (optional)
+			if element.onClick then
+				element.onClick()
+			end
 		end)
 
 		-- element.view.hide = true
@@ -93,6 +123,20 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 	-- Shift the entire view left, to compensate for the new buttons
 	local shiftAmmount = #self.manageElements * (menuButtonSize + menuButtonPadding) / 2
 	menuButtonsView.baseOffset = menuButtonsView.baseOffset + vec3(-shiftAmmount, 0, 0)
+end
+
+function uiManager:hideAllManageElements()
+	--- Hides all the manage elements.
+	-- This is usually called when switching to a native manage element, or
+	-- when the manage UI closes.
+
+	logger:log("Hiding all manage elements.")
+
+	for _, element in ipairs(self.manageElements) do
+
+		uiStandardButton:setSelected(element.button, false)
+		element.ui.view.hidden = true
+	end
 end
 
 
