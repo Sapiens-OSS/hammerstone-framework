@@ -1,16 +1,16 @@
--- Module Setup
-local mod = {
-	loadOrder = 1
-}
+--- Shadow of 'manageButtonsUI.lua'
+-- Used to initialize the 'manageElements' in the UI Manager.
 
--- Includes
+-- Module Setup
+local mod = { loadOrder = 1 }
+
+-- Sapiens
 local uiManager = mjrequire "hammerstone/ui/uiManager"
 local mj = mjrequire "common/mj"
 
 function mod:onload(manageButtonsUI)
-	-- Shadow initialization
 	local superInit = manageButtonsUI.init
-	function manageButtonsUI:init(gameUI, manageUI, hubUI, world)
+	manageButtonsUI.init = function(self, gameUI, manageUI, hubUI, world)
 		-- Super
 		superInit(manageButtonsUI, gameUI, manageUI, hubUI, world)
 
