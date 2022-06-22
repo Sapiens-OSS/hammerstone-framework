@@ -1,6 +1,5 @@
--- This is an experiment class
--- It's designed to make building UIs easier
--- See docs
+--- This is an experimental module for building UI in sapiens.
+--- It's designed to make building UIs easier
 
 uiBuilder = {}
 

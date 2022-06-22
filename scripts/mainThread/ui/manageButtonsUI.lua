@@ -15,7 +15,7 @@ function mod:onload(manageButtonsUI)
 		superInit(manageButtonsUI, gameUI, manageUI, hubUI, world)
 
 		-- Interface with the uiManager
-		uiManager:initManageElements(manageButtonsUI, manageUI)
+		uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 	end
 end
 

@@ -54,7 +54,7 @@ function uiManager:registerManageElement(element)
 	table.insert(self.manageElements, element)
 end
 
-function uiManager:initManageElements(manageButtonsUI, manageUI)
+function uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 	--- Function that allows Hammerstone to build out the ManageElements based on everything that
 	-- has been registered. This is called automatically.
 	logger:log("Initializing Manage Elements...")
@@ -70,12 +70,15 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 
 	-- Loop through all the registered elements and create them.
 	for i, element in ipairs(self.manageElements) do
-
 		logger:log("Adding Manage Button: " .. element.name)
+
+		-- Initialize the element itself
+		element:init(gameUI)
 
 		local button = uiStandardButton:create(menuButtonsView, vec2(menuButtonSize, menuButtonSize), uiStandardButton.types.markerLike)
 		button.relativeView = lastButton
 		button.relativePosition = ViewPosition(MJPositionOuterRight, MJPositionCenter)
+
 		uiStandardButton:setIconModel(button, element.icon)
 		uiToolTip:add(button.userData.backgroundView, ViewPosition(MJPositionCenter, MJPositionBelow), element.name, nil, toolTipOffset, nil, button)
 		-- uiToolTip:addKeyboardShortcut(testButton.userData.backgroundView, "game", "buildMenu", nil, nil)
@@ -99,7 +102,7 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 			uiStandardButton:setSelected(element.button, true)
 
 			-- Default behavior is to show the element view.
-			element.ui.view.hidden = false
+			element.view.hidden = false
 
 			-- manageUI:show()
 			-- manageUI.mainView.hidden = true
@@ -110,14 +113,11 @@ function uiManager:initManageElements(manageButtonsUI, manageUI)
 			end
 		end)
 
-		-- element.view.hide = true
-
 		-- Make sure we pass the new buttons back to the actual UI
 		-- table.insert(manageButtonsUI.menuButtonsByManageUIModeType, button)
 
 		-- Update the last button, so we can continue handling offset.
 		lastButton = button
-
 	end
 
 	-- Shift the entire view left, to compensate for the new buttons
@@ -135,7 +135,7 @@ function uiManager:hideAllManageElements()
 	for _, element in ipairs(self.manageElements) do
 
 		uiStandardButton:setSelected(element.button, false)
-		element.ui.view.hidden = true
+		element.view.hidden = true
 	end
 end
 
@@ -223,12 +223,20 @@ function uiManager:updateGameElements(gameUI)
 	end
 end
 
+-- ==========================================================================================
+-- Generic Handling
+-- ==========================================================================================
+
 -- TODO: This needs to be made more generic, so that it can be used for other UI elements.
--- TODO: Or maybe it should be moved to a separate file.
+-- TODO: Or maybe it should be moved to a separate file?
 
 --- Whether or not a custom GameView panel is displayed.
 function uiManager:hasUIPanelDisplayed()
 	for _, element in pairs(self.gameElements) do
+		if not element.view.hidden then return true end
+	end
+
+	for _, element in pairs(self.manageElements) do
 		if not element.view.hidden then return true end
 	end
 	return false
