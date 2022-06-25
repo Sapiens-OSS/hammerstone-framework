@@ -14,7 +14,6 @@ local gameState = {
 local logger = mjrequire "hammerstone/logging"
 
 function gameState:OnWorldLoaded(world)
-	logger:log("World Loaded with Tribe ID " .. world:getTribeID())
 	gameState.world = world
 end
 
