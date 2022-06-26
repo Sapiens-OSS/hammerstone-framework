@@ -9,6 +9,9 @@ Hammerstone's purpose is to:
 * Data-driven approaches to input handling, UI, etc
 * Reusability and write-once architecture
 
+[<img src="https://discord.com/assets/cb48d2a8d4991281d7a6a95d2f58195e.svg" width="300"/>](https://discord.gg/WnN8hj2Fyg)
+
+
 ## Docs
 
 ### Installing
