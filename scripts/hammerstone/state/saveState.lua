@@ -1,7 +1,7 @@
---- This file is a wrapper around Sapiens per-world settings.
--- @author: SirLich
+--- The saveState is a wrapper around all Sapiens save dbs. It also has methods for doing cross-thread saving.
+--- For example, saving a client-world setting via the server.
+-- @author SirLich
 
--- Module setup
 local saveState = {
 	world = nil
 }
@@ -10,9 +10,9 @@ local saveState = {
 local gameState = mjrequire "hammerstone/state/gameState"
 
 function saveState:get(key, --[[optional]] default)
-	--- Saves a key-value pair to the save file.
-	-- @param the key to get
-	-- @param the default value to return if the key is not found
+	--- Gets a key value pair from the save file.
+	-- @param key: The key for the value.
+	-- @param default (optional): The default value to return if the key is not found.
 
 	-- Temporary
 	if not gameState.world then return end
@@ -32,10 +32,9 @@ function saveState:set(key, value)
 	-- @param the value to set
 
 	-- Temporary
-	if not gameState.world then return end
+	if not gameState or not gameState.world then return end
 
 	gameState.world:getClientWorldSettingsDatabase():setDataForKey(value, key) -- Yes, value comes first. Don't question it.
 end
 
--- Module return
 return saveState

@@ -1,7 +1,7 @@
---- Entrypoint script for the Hammerstone Framework
+--- gameState is an experimental file which stores stateful information
+-- about your world.
 -- @author SirLich
 
--- Module setup
 local gameState = {
 	-- The current loaded world
 	world = nil,
@@ -10,12 +10,8 @@ local gameState = {
 	worldBridge = nil,
 }
 
--- Requires
-local logger = mjrequire "hammerstone/logging"
-
 function gameState:OnWorldLoaded(world)
 	gameState.world = world
 end
 
--- Module return
 return gameState
