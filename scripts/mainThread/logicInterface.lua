@@ -8,21 +8,22 @@ local mod = {
 	bridge = nil
 }
 
+-- Hammerstone
+local saveState = mjrequire "hammerstone/state/saveState"
+
 function mod:setBridge(bridge)
 	mod.bridge = bridge
 	mod:registerMainThreadFunctions()
 
 end
 
-function mod:testPrint(message)
-	mj:log("PRINTING FROM SERVER CALL: ", message)
-end
-
 function mod:registerMainThreadFunctions()
 
 	--- Test
-	mod.bridge:registerMainThreadFunction("testPrint", function(message)
-		mod:testPrint(message)
+	mod.bridge:registerMainThreadFunction("getWorldValueFromServer", function(key)
+		local ret = saveState:getWorldValue(key)
+		mj:log("getWorldValueFromServer logicInterface.lua, ", key, ret)
+		return ret
 	end)
 end
 

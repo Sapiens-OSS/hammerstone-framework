@@ -6,11 +6,18 @@ local saveState = {
 	world = nil
 }
 
+-- Base
+local server = mjrequire "server/server"
+
 -- Hammerstone
 local gameState = mjrequire "hammerstone/state/gameState"
 
-function saveState:get(key, --[[optional]] default)
-	--- Gets a key value pair from the save file.
+---------------------------------------------------------------------------------
+-- World settings
+---------------------------------------------------------------------------------
+
+function saveState:getWorldValue(key, --[[optional]] default)
+	--- Gets a key value pair from the world save file.
 	-- @param key: The key for the value.
 	-- @param default (optional): The default value to return if the key is not found.
 
@@ -26,7 +33,22 @@ function saveState:get(key, --[[optional]] default)
 	return returnValue
 end
 
-function saveState:set(key, value)
+
+-- TODO: Consider adding 'default' as a param. Will need to use a table for the RPC.
+function saveState:getWorldValueFromServer(clientID, key)
+	--- Gets a key value pair from the world save file. May only be called from the server.
+	-- @param clientID: The client ID for the world settings you are accessing.
+	-- @param key: The key for the value.
+
+	mj:log("getWorldValueFromServer called ", clientID, key)
+	return server:callClientFunction(
+		"getWorldValueFromServer",
+		clientID,
+		key
+	)
+end
+
+function saveState:setWorldValue(key, value)
 	--- Saves a value into the save file, which can be retrieved via a key.
 	-- @param the key to set
 	-- @param the value to set
@@ -37,4 +59,6 @@ function saveState:set(key, value)
 	gameState.world:getClientWorldSettingsDatabase():setDataForKey(value, key) -- Yes, value comes first. Don't question it.
 end
 
+
 return saveState
+

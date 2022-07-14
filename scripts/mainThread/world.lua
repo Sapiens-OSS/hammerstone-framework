@@ -7,7 +7,6 @@ local mod = {
 
 -- Hammerstone
 local gameState = mjrequire "hammerstone/state/gameState"
-local saveState = mjrequire "hammerstone/state/saveState"
 
 function mod:onload(world)
 
@@ -21,7 +20,6 @@ function mod:onload(world)
 		mj:log("world set bridge.")
 		mj:log(clientWorldSettingsDatabase)
 		gameState.worldBridge = bridge
-		-- saveState:init(clientWorldSettingsDatabase) -- TODO Consider moving this elsewhere
 	end
 end
 

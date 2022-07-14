@@ -6,9 +6,12 @@ local mod = {
 	bridge = nil
 }
 
+
 function mod:registerLogicFunctions()
-    mod.bridge:registerLogicThreadNetFunction("testPrint", function(message)
-        mod.bridge:callMainThreadFunction("testPrint", message)
+    mod.bridge:registerLogicThreadNetFunction("getWorldValueFromServer", function(key)
+		local ret = mod.bridge:callMainThreadFunction("getWorldValueFromServer", key)
+		mj:log("getWorldValueFromServer log.lua, ", key, ret)
+		return ret
     end)
 end
 
