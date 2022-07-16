@@ -1,6 +1,6 @@
 --- Hammerstone shadow: logicInterface.lua
 --- The purpose of this file is to facilitate thread communication between the mainThread 
---- and the server thread. 
+--- and the server thread.
 --- @author SirLich
 
 local mod = {

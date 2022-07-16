@@ -4,8 +4,8 @@
 -- @author SirLich
 
 local saveState = {
-	world = nil,
-	clientState = nil
+	clientState = nil,
+	serverWorld = nil
 }
 
 -- Base
@@ -21,31 +21,37 @@ local gameState = mjrequire "hammerstone/state/gameState"
 ---------------------------------------------------------------------------------
 
 function saveState:setClientState(clientState)
-	--- Needs to be called from both client, and server!
-	--- @param clientState ClientState
+	--- Only called on the client.
+	--- @param clientState string
 	saveState.clientState = clientState
+end
+
+function saveState:setServerWorld(serverWorld)
+	--- Only called on the server.
+	saveState.serverWorld = serverWorld
+end
+
+function saveState:getClientStateFromServer(clientID)
+	return saveState.serverWorld:getClientStates()[clientID]
 end
 
 ---------------------------------------------------------------------------------
 -- Private Shared Settings
 ---------------------------------------------------------------------------------
 
-function saveState:getValue(key)
-	--- Gets a value from privateShared. Can be called from client or server.
-	--- @param key string
-	--- @return any
+function saveState:getValueClient(key)
 	if saveState.clientState then
 		return saveState.clientState.privateShared[key]
 	else
-		mj:warning("saveState:getValue: clientState is nil")
+		mj:error("saveState:getValue: clientState is nil")
 		return nil
 	end
 end
 
+
 function saveState:setValueClient(key, value)
-	--- Sets a value on privateShared. This is only called from the client.
-	--- @param key string
-	--- @param value any
+
+	mj:log("saveState:setValue: " .. key .. " = " .. tostring(value))
 
 	if saveState.clientState then
 		local paramTable = {
@@ -55,23 +61,38 @@ function saveState:setValueClient(key, value)
 
 		return logicInterface:callServerFunction(
 			"setValueClient",
-			saveState.clientID,
-			key
+			paramTable
 		)
 	else
-		mj:warning("saveState:setValueClient: clientState is nil")
+		mj:error("saveState:setValueClient: clientState is nil")
 	end
 end
 
-function saveState:setValueServer(key, value)
+function saveState:getValueServer(key, clientID)
+	mj:log("saveState:getValueServer: " .. key .. " " .. clientID)
+
+	local clientState = saveState:getClientStateFromServer(clientID)
+	
+	if clientState then
+		return clientState.privateShared[key]
+	else
+		mj:error("saveState:getValueServer: clientState is nil")
+		return nil
+	end
+end
+
+function saveState:setValueServer(key, value, clientID)
 	--- Sets a value on privateShared. This is only called from the server.
 	--- @param key string
 	--- @param value any
+	--- @param clientID number
 
-	if saveState.clientState then
-		saveState.clientState.privateShared[key] = value
+	local clientState = saveState:getClientStateFromServer(clientID)
+
+	if clientState then
+		clientState.privateShared[key] = value
 	else
-		mj:warning("saveState:setValueServer: clientState is nil")
+		mj:error("saveState:setValueServer: clientState is nil")
 	end
 end
 

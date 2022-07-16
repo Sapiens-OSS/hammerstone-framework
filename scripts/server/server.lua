@@ -13,21 +13,23 @@ local mod = {
 -- Hammerstone
 local logger = mjrequire "hammerstone/logging"
 
+local function setValueClient(clientID, paramTable)
+	--- Sets a value on private shared.
+	--- @param clientID number
+	--- @param paramTable table: {key = string, value = any, clientID = number}
+
+	local saveState = mjrequire "hammerstone/state/saveState"
+	saveState:setValueServer(paramTable.key, paramTable.value, clientID)
+end
+
+
 local function initHammerstoneServer()
 	logger:log("Initializing Hammerstone Server.")
 
 	-- Register net function for cheats (move elsewhere eventually?)
-	mod.server:registerNetFunction("setValueClient", mod.setValueClient)
+	mod.server:registerNetFunction("setValueClient", setValueClient)
 end
 
-local function setValueClient(clientID, paramTable)
-	--- Sets a value on private shared.
-	--- @param clientID number
-	--- @param paramTable table: {key = string, value = any}
-
-	local saveState = mjrequire "hammerstone/state/saveState"
-	saveState:setValueServer(paramTable.key, paramTable.value)
-end
 
 function mod:onload(server)
 	logger:log("server.lua loaded.")
@@ -47,7 +49,9 @@ function mod:onload(server)
 		super_setServerWorld(self, serverWorld)
 		mod.serverWorld = serverWorld
 
-		logger:log("Server world set.")
+		local saveState = mjrequire "hammerstone/state/saveState"
+		saveState:setServerWorld(serverWorld)
+
 		-- Now that the brigd is set, we can init
 		initHammerstoneServer()
 	end
