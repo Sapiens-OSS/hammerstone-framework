@@ -1,24 +1,26 @@
---- Shadow file
+--- Hammerstone shadow: localPlayer.lua
 -- @author SirLich
 
--- Module setup
 local mod = {
 	loadOrder = 0, -- Load before everything else
 }
 
--- Requires
--- local eventManager = mjrequire "hammerstone/event/eventManager"
+-- Hammerstone 
 local gameState = mjrequire "hammerstone/state/gameState"
+local saveState = mjrequire "hammerstone/state/saveState"
 
--- Shadow the localPlayer.lua table
 function mod:onload(localPlayer)
-	local superInit = localPlayer.init
+	local super_init = localPlayer.init
 	localPlayer.init = function(self, world, gameUI)
-		superInit(self, world, gameUI)
+		super_init(self, world, gameUI)
 		gameState:OnWorldLoaded(world)
+	end
+
+	local super_setBridge = localPlayer.setBridge
+	localPlayer.setBridge = function(self, bridge, clientState)
+		super_setBridge(localPlayer, bridge, clientState)
+		saveState:setClientState(clientState)
 	end
 end
 
-
--- Module return
 return mod

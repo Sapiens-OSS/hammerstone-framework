@@ -1,8 +1,6 @@
---- Shadow function
--- @author SirLich
+--- Hammerstone shadow: server.lua
+--- @author SirLich
 
-
--- Module setup
 local mod = {
 	loadOrder = 1,
 
@@ -12,52 +10,47 @@ local mod = {
 	server = nil
 }
 
--- Requires
+-- Hammerstone
 local logger = mjrequire "hammerstone/logging"
 
--- Required because net-functions can only pass one argument
-local function unlockSkill(clientID, paramTable)
-	mod.serverWorld:completeDiscoveryForTribe(paramTable.tribeID, paramTable.skillTypeIndex)
-end
-
-
 local function initHammerstoneServer()
-	logger:log("Initializing Hammerstone Server")
-
-	-- serverWorld:completeDiscoveryForTribe(tribeID, skillTypeIndex)
+	logger:log("Initializing Hammerstone Server.")
 
 	-- Register net function for cheats (move elsewhere eventually?)
-	mod.server:registerNetFunction("unlockSkill", unlockSkill)
+	mod.server:registerNetFunction("setValueClient", mod.setValueClient)
+end
+
+local function setValueClient(clientID, paramTable)
+	--- Sets a value on private shared.
+	--- @param clientID number
+	--- @param paramTable table: {key = string, value = any}
+
+	local saveState = mjrequire "hammerstone/state/saveState"
+	saveState:setValueServer(paramTable.key, paramTable.value)
 end
 
 function mod:onload(server)
-	logger:log("Server Loaded")
+	logger:log("server.lua loaded.")
 	mod.server = server
 	
 	-- Shadow setBridge
-	local superSetBridge = server.setBridge
+	local super_setBridge = server.setBridge
 	server.setBridge = function(self, bridge)
-		superSetBridge(self, bridge)
+		super_setBridge(self, bridge)
 		mod.bridge = bridge
-
-		logger:log("Server bridge set")
+		logger:log("Server bridge set.")
 	end
 
 	-- Shadow setServerWorld
-	local superSetServerWorld = server.setServerWorld
+	local super_setServerWorld = server.setServerWorld
 	server.setServerWorld = function(self, serverWorld)
-		superSetServerWorld(self, serverWorld)
+		super_setServerWorld(self, serverWorld)
 		mod.serverWorld = serverWorld
 
-		logger:log("Server world set")
-
+		logger:log("Server world set.")
 		-- Now that the brigd is set, we can init
 		initHammerstoneServer()
 	end
 end
 
-
-
-
--- Module return
 return mod

@@ -1,29 +1,23 @@
---- Shadow of logicInterface.lua
--- @author SirLich
+--- Hammerstone shadow: logicInterface.lua
+--- The purpose of this file is to facilitate thread communication between the mainThread 
+--- and the server thread. 
+--- @author SirLich
 
 local mod = {
-	loadOrder = 0,
-
-	-- The bridge object for LogicInterface
-	bridge = nil
+	loadOrder = 0,   -- load as early as possible.
+	bridge = nil     -- The bridge object for LogicInterface
 }
-
--- Hammerstone
-local saveState = mjrequire "hammerstone/state/saveState"
 
 function mod:setBridge(bridge)
 	mod.bridge = bridge
 	mod:registerMainThreadFunctions()
-
 end
 
-function mod:registerMainThreadFunctions()
 
-	--- Test
+function mod:registerMainThreadFunctions()
 	mod.bridge:registerMainThreadFunction("getWorldValueFromServer", function(key)
-		local ret = saveState:getWorldValue(key)
-		mj:log("getWorldValueFromServer logicInterface.lua, ", key, ret)
-		return ret
+		local saveState = mjrequire "hammerstone/state/saveState"
+		return saveState:getWorldValue(key)
 	end)
 end
 

@@ -1,14 +1,15 @@
---- Shadow of logic.lua
--- @author SirLich
+--- Hammerstone shadow: logic.lua
+--- The purpose of this file is to facilitate thread communication between the logic thread
+--- and the main thread.
+--- @author SirLich
 
 local mod = {
-	loadOrder = 1,
+	loadOrder = 0, -- load as early as possible.
 	bridge = nil
 }
 
-
 function mod:registerLogicFunctions()
-    mod.bridge:registerLogicThreadNetFunction("getWorldValueFromServer", function(key)
+	mod.bridge:registerLogicThreadNetFunction("getWorldValueFromServer", function(key)
 		local ret = mod.bridge:callMainThreadFunction("getWorldValueFromServer", key)
 		mj:log("getWorldValueFromServer log.lua, ", key, ret)
 		return ret

@@ -11,14 +11,9 @@ local gameState = mjrequire "hammerstone/state/gameState"
 function mod:onload(world)
 
 	-- Shadow setBridge
-	local superSetBridge = world.setBridge
+	local super_setBridge = world.setBridge
 	world.setBridge = function(self, bridge, serverClientState, isVR)
-		superSetBridge(world, bridge, serverClientState, isVR)
-
-		-- local clientWorldSettingsDatabase = bridge.clientWorldSettingsDatabase
-		local clientWorldSettingsDatabase = "TEST STRING PARAM"
-		mj:log("world set bridge.")
-		mj:log(clientWorldSettingsDatabase)
+		super_setBridge(self, bridge, serverClientState, isVR)
 		gameState.worldBridge = bridge
 	end
 end
