@@ -1,9 +1,9 @@
 local modInfo = {
     name = "Hammerstone Framework",
-    description = "A Sapiens framework that provides an abstraction layer between your mod and the Sapiens code base.",
-    version = "0.0.1", -- Pre-release
-    type = "app",
-    developer = "SirLich & Friends"
+    description = "Sapiens Modding Framework. Some mods rely on this mod to run.",
+    version = "0.0.1",
+    type = "world",
+    developer = "SirLich"
 }
 
 return modInfo
