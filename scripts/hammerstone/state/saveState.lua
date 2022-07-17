@@ -50,9 +50,6 @@ end
 
 
 function saveState:setValueClient(key, value)
-
-	mj:log("saveState:setValue: " .. key .. " = " .. tostring(value))
-
 	if saveState.clientState then
 		local paramTable = {
 			key = key,
@@ -69,8 +66,6 @@ function saveState:setValueClient(key, value)
 end
 
 function saveState:getValueServer(key, clientID)
-	mj:log("saveState:getValueServer: " .. key .. " " .. clientID)
-
 	local clientState = saveState:getClientStateFromServer(clientID)
 	
 	if clientState then

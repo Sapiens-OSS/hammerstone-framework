@@ -1,14 +1,40 @@
+--- Hammerstone: uiBuilder.lua
 --- This is an experimental module for building UI in sapiens.
 --- It's designed to make building UIs easier
 
-uiBuilder = {}
+local uiBuilder = {}
 
--- Requires
+-- Math
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2
+
+-- Base
 local model = mjrequire "common/model"
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
+
+-- local function addToggleButton(parentView, toggleButtonTitle, toggleValue, changedFunction)
+--     local toggleButton = uiStandardButton:create(parentView, vec2(26,26), uiStandardButton.types.toggle)
+--     toggleButton.relativePosition = ViewPosition(MJPositionInnerLeft, MJPositionTop)
+--     toggleButton.baseOffset = vec3(elementControlX, elementYOffset, 0)
+--     uiStandardButton:setToggleState(toggleButton, toggleValue)
+    
+--     local textView = TextView.new(parentView)
+--     textView.font = Font(uiCommon.fontName, 16)
+--     textView.relativePosition = ViewPosition(MJPositionInnerRight, MJPositionTop)
+--     textView.baseOffset = vec3(elementTitleX,elementYOffset - 4, 0)
+--     textView.text = toggleButtonTitle
+
+--     uiStandardButton:setClickFunction(toggleButton, function()
+--         changedFunction(uiStandardButton:getToggleState(toggleButton))
+--     end)
+
+--     elementYOffset = elementYOffset - yOffsetBetweenElements
+    
+--     uiSelectionLayout:addView(parentView, toggleButton)
+--     return toggleButton
+-- end
+
 
 -- Util
 local function splitByWhitespace (inputstr, sep)
@@ -84,3 +110,5 @@ function uiBuilder:build()
 
     return o;
 end
+
+return uiBuilder
