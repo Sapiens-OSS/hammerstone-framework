@@ -1,4 +1,4 @@
---- Hammerstone shadow: server.lua
+--- Hammerstone: server.lua
 --- @author SirLich
 
 local mod = {
