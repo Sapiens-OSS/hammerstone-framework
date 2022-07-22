@@ -1,8 +1,9 @@
+--- Hammerstone: uiManager.lua
 --- This file contains a modding interface for creating, displaying, and managing UI elements.
--- It is not intended to build UI elements directly, but to provide a common interface for
--- UI elements to be created and displayed, allowing them to flawlessly combine with
--- base game UI.
--- @author SirLich
+--- It is not intended to build UI elements directly, but to provide a common interface for
+--- UI elements to be created and displayed, allowing them to flawlessly combine with
+--- base game UI.
+--- @author SirLich
 
 
 -- Module setup
@@ -10,18 +11,26 @@ local uiManager = {
 	-- The UI Elements that are displayed in the GameSlot
 	gameElements = {},
 
+	-- The UI Elements that are displayed in the ManageSlot
+	manageElements = {},
+
 	-- The UI Elements that are displayed in the ActionSlot
 	actionElements = {},
 
-	-- The UI Elements that are displayed in the ManageSlot
-	manageElements = {},
+	-- The view container for the action elements
+	actionContainerView = nil,
+
+	-- The currently rendered action elements
+	actionElementsRendered = {},
 }
 
 
--- Sapiens
+-- Base
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
 local uiToolTip = mjrequire "mainThread/ui/uiCommon/uiToolTip"
 local logger = mjrequire "hammerstone/logging"
+
+-- Math
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2
@@ -144,49 +153,79 @@ end
 -- Action Elements.
 -- ==========================================================================================
 
---- Action Elements are rendered alongside the radial menu, in a vertical tray.
--- @param UI - The UI to add to the action tray. Must contain: view, name, and f:initActionUI(gameUI, hubUI, world)
--- TODO: We need to make views contextually aware of what is clicked (when to display)
 function uiManager:registerActionElement(element)
-	logger:log("Registering ActionSlot Element: " .. element.name)
-	uiManager.actionElements[element.name] = element
+	--- Action Elements are rendered alongside the radial menu, in a vertical tray.
+	--- @param element table - The element class represnting this action element.
+
+	table.insert(uiManager.actionElements, element)
 end
 
---- Initialization function for Action Views.
--- This function is called when the Radial Menu is opened for the first time, amd will be used to create all modded Action Views.
--- @param actionUI - The action UI, which owns the radial menu.
--- @param gameUI - The general GameUI which holds most/all in-game UI
--- @param hubUI - Unknown
--- @param world - Unknown
-function uiManager:initActionElements(gameUI, hubUI, world)
-	logger:log("UI Manager: Initializing action elements [" .. #uiManager.actionElements .. "]")
+function uiManager:initActionView(gameUI, hubUI, world)
+	--- This function is called when the Radial Menu is opened for the first time,
+	--- and will be used to generate the action element view.
+	--- @param gameUI - The general GameUI which holds most/all in-game UI
+	--- @param hubUI - Unknown
+	--- @param world - Unknown
+	
+	mj:log("initActionView called")
 
 	-- Create a view container for the views to be rendered in.
-	local actionViewContainer = View.new(gameUI.view)
-	actionViewContainer.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
-	actionViewContainer.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers
+	self.actionContainerView = View.new(gameUI.view)
+	self.actionContainerView.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
+	self.actionContainerView.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers
+end
 
-	-- Render the Elements into this new container
-	for _, element in pairs(uiManager.actionElements) do
-		element:initActionElement(actionViewContainer, gameUI, hubUI, world)
-		element.view.hidden = true
+function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+	--- This function is called when the Radial Menu is opened, and will be used to render
+	--- the action elements, based on their own internal logic and structure.
+	--- TODO: Consider adding a priority function.
+	--- @param baseObjectInfo - Object info for single objects.localecategory
+	--- @param multiSelectAllObjects - Object info for multi-select objects
+	--- @param lookAtPos - Uknown
+
+	mj:log("renderActionElements called")
+
+	
+	-- Does this destroy the internal view?
+	-- TODO: No it doesn't, maybe cause refs are still kept in the container view.
+	
+	for _, element in ipairs(self.actionElementsRendered) do
+		self.actionContainerView:removeSubview(element)
+	end
+
+	
+	local vertical_offset = 0
+	for i,element in ipairs(self.actionElements) do
+		if element:visibilityFilter(baseObjectInfo, multiSelectAllObjects, lookAtPos) then
+			-- TODO: Consider moving this into it's own function.
+
+			local buttonWidth = 300
+			local buttonHeight = 40
+			local buttonSize = vec2(buttonWidth, buttonHeight)
+
+			local button = uiStandardButton:create(self.actionContainerView, buttonSize)
+			button.relativePosition = ViewPosition(MJPositionCenter, MJPositionTop)
+			button.baseOffset = vec3(0, vertical_offset, 5)
+		
+			uiStandardButton:setText(button, element:getName(baseObjectInfo, multiSelectAllObjects, lookAtPos))
+			uiStandardButton:setClickFunction(button, function()
+				element:onClick(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+			end)
+
+			table.insert(self.actionElementsRendered, button)
+			vertical_offset = vertical_offset + buttonHeight + 5
+		end
 	end
 end
 
 function uiManager:showActionElements()
-	logger:log("UI Manager: Showing action elements [" .. #uiManager.actionElements .. "]")
-	for _, element in pairs(uiManager.actionElements) do
-		-- Element may implement 'show' to customize its behavior
-		if element.show ~= nil then element:show() else element.view.hidden = false end
-	end
+	mj:log("showActionElements called")
+	self.actionContainerView.hidden = false
 end
 
 function uiManager:hideActionElements()
-	logger:log("UI Manager: Hiding action elements [" .. #uiManager.actionElements .. "]")
-	for _, element in pairs(uiManager.actionElements) do
-		-- Element may implement 'hide' to customize its behavior
-		if element.hide ~= nil then element:hide() else element.view.hidden = true end
-	end
+	mj:log("hideActionElements called")
+	self.actionContainerView.hidden = true
 end
 
 -- ==========================================================================================
