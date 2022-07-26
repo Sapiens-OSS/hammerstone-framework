@@ -1,5 +1,5 @@
---- Shadow of storage.lua.
--- @Author SirLich
+--- Hammerstone: storage.lua.
+--- @Author SirLich
 
 local mod = {
 	-- A low load-order makes the most since, as we need these
@@ -7,14 +7,14 @@ local mod = {
 	loadOrder = 0
 }
 
--- Base
+-- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
 function mod:onload(storage)
 	function storage:addStorage(key, objectType)
 		--- Allows adding a storage.
-		-- @param key: The key to add, such as 'cake'
-		-- @param objectType: The object to add, containing all fields.
+		--- @param key: The key to add, such as 'cake'
+		--- @param objectType: The object to add, containing all fields.
 
 		local typeIndexMap = typeMaps.types.storage -- Created automatically in storage.lua
 

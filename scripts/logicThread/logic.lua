@@ -1,4 +1,4 @@
---- Hammerstone shadow: logic.lua
+--- Hammerstone: logic.lua
 --- The purpose of this file is to facilitate thread communication between the logic thread
 --- and the main thread.
 --- @author SirLich

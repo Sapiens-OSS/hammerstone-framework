@@ -1,5 +1,5 @@
---- Shadow of evolvingObject.lua.
--- @Author SirLich
+--- Hammerstone: evolvingObject.lua.
+--- @Author SirLich
 
 local mod = {
 	-- A low load-order makes the most since, as we need these methods to be available
@@ -7,13 +7,13 @@ local mod = {
 	loadOrder = 0
 }
 
--- Base
+-- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 local gameObject = mjrequire "common/gameObject"
 
 function mod:onload(evolvingObject)
 	function evolvingObject:addEvolvingObject(key, objectType)
-		--- Allows adding a evolvingObject.
+		--- Allows adding an evolvingObject.
 		-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
 		-- @param objectType: The object to add, containing all fields.
 

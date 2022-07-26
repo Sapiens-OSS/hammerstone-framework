@@ -1,40 +1,50 @@
---- This file shadows actionUI from the main thread.
--- It will communicate with the uiManager to handle the creation of action-views in the action-view-slot.
--- @author SirLich
+--- Hammerstone: actionUI.lua
+--- It will communicate with the uiManager to handle the creation of action-views in the action-view-slot.
+--- @author SirLich
 
 local mod = {
 	loadOrder = 1
 }
 
+-- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
 
 function mod:onload(actionUI)
 
 	-- Handle init
-	local superInit = actionUI.init
+	local super_init = actionUI.init
 	function actionUI:init(gameUI, hubUI, world)
-		-- Call super
-		superInit(actionUI, gameUI, hubUI, world)
+		super_init(actionUI, gameUI, hubUI, world)
 		-- Interface with the uiManager
-		uiManager:initActionElements(gameUI, hubUI, world) -- TODO: Should I pass actionUI here too?
+		uiManager:initActionView(gameUI, hubUI, world)
 	end
 
 	-- Handle show
-	local superShow = actionUI.show
+	local super_show = actionUI.show
 	function actionUI:show()
-		-- Call super
-		superShow(self)
+		super_show(self)
+
 		-- Interface with the uiManager
 		uiManager:showActionElements()
 	end
 
 	-- Handle hide
-	local superHide = actionUI.hide
+	local super_hide = actionUI.hide
 	function actionUI:hide()
-		-- Call super
-		superHide(self)
+		super_hide(self)
+		
 		-- Interface with the uiManager
 		uiManager:hideActionElements()
+	end
+
+	-- Handle object selection
+	-- actionUI:showObjects(baseObjectInfo_, multiSelectAllObjects, lookAtPos_)
+	local super_showObjects = actionUI.showObjects
+	function actionUI:showObjects(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+		super_showObjects(self, baseObjectInfo, multiSelectAllObjects, lookAtPos)
+		
+		-- Interface with the uiManager
+		uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos)
 	end
 end
 

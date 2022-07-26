@@ -1,4 +1,4 @@
---- Shadow of world.lua
+--- Hammerstone: world.lua
 --- @author SirLich
 
 local mod = {

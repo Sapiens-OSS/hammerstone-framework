@@ -1,4 +1,4 @@
---- Hammerstone shadow: logicInterface.lua
+--- Hammerstone: logicInterface.lua
 --- The purpose of this file is to facilitate thread communication between the mainThread 
 --- and the server thread.
 --- @author SirLich
@@ -30,6 +30,5 @@ function mod:onload(logicInterface)
 		mod:setBridge(bridge)
 	end
 end
-
 
 return mod

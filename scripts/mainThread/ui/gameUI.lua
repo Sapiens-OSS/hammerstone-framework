@@ -1,12 +1,13 @@
---- Shadow of Sapiens gameUI.lua
+--- hammerstone: gameUI.lua
 -- This file shadows many functions, and will interface with the uiManager to display
 -- additional UIs, and to handle lifecycle events.
--- @author SirLich
+--- @author SirLich
 
 local mod = {
 	loadOrder = 1
 }
 
+-- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
 
 function mod:onload(gameUI)

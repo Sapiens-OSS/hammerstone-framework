@@ -1,6 +1,6 @@
---- Shadow of resource.lua.
+--- Hammerstone: resource.lua.
 --- Mostly used to extend the resource module with additional helpers.
--- @Author SirLich
+--- @Author SirLich
 
 local mod = {
 	-- A low load-order makes the most since, as we need these methods to be available
@@ -14,8 +14,8 @@ local typeMaps = mjrequire "common/typeMaps"
 function mod:onload(resource)
 	function resource:addResource(key, objectType)
 		--- Allows adding a resource.
-		-- @param key: The key to add, such as 'cake'
-		-- @param objectType: The object to add, containing all fields.
+		--- @param key: The key to add, such as 'cake'
+		--- @param objectType: The object to add, containing all fields.
 
 		local typeIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
 
