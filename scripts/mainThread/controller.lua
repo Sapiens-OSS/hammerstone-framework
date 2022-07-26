@@ -1,8 +1,9 @@
---- Hammerstone: controller.lua (shadow)
+--- Hammerstone: controller.lua
 --- Overridden controller file, used for hooking up lifecycle events to the Hammerstone Mod Loader.
 --- All events will be fired in the main thread, using the eventManager
 --- @author SirLich
 
+-- Hammerstone
 local eventManager = mjrequire "hammerstone/event/eventManager"
 local eventTypes = mjrequire "hammerstone/event/eventTypes"
 local logger = mjrequire "hammerstone/logging"
@@ -24,8 +25,6 @@ function mod:onload(controller)
 	local superWorldLoaded = controller.worldLoaded
 	controller.worldLoaded = function(self, world)
 		superWorldLoaded(controller, world) -- Shouldn't this be superWorldLoaded(self, world)?
-		
-		-- logger:log("World loaded, triggering event") -- Don't need this due to another log message in the actual function
 		eventManager:call(eventTypes.worldLoad)
 	end
 end

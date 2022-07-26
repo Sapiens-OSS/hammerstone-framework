@@ -1,5 +1,5 @@
---- Hammerstone shadow: localPlayer.lua
--- @author SirLich
+--- Hammerstone: localPlayer.lua
+--- @author SirLich
 
 local mod = {
 	loadOrder = 0, -- Load before everything else

@@ -1,10 +1,9 @@
---- Handler for key-presses and mouse input
--- @author SirLich
+--- Hammerstone: inputManager.lua
+--- @author SirLich
 
--- Module setup
 local inputManager = {}
 
--- Requires
+-- Sapiens
 local keyMapping = mjrequire "mainThread/keyMapping"
 local eventManager = mjrequire "mainThread/eventManager"
 

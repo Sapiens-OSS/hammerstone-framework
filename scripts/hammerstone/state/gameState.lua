@@ -1,6 +1,7 @@
+--- Hammerstone: gameState.lua
 --- gameState is an experimental file which stores stateful information
--- about your world.
--- @author SirLich
+--- about your world.
+--- @author SirLich
 
 local gameState = {
 	-- The current loaded world

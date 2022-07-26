@@ -1,4 +1,4 @@
---- Hammerstone shadow: logic.lua
+--- Hammerstone: logic.lua
 --- The purpose of this file is to facilitate thread communication between the logic thread
 --- and the main thread.
 --- @author SirLich
@@ -8,12 +8,16 @@ local mod = {
 	bridge = nil
 }
 
+-- Creative Mode
+local cheat = mjrequire "creativeMode/cheat"
+
+
 function mod:registerLogicFunctions()
 	mod.bridge:registerLogicThreadNetFunction("getWorldValueFromServer", function(key)
 		local ret = mod.bridge:callMainThreadFunction("getWorldValueFromServer", key)
 		mj:log("getWorldValueFromServer log.lua, ", key, ret)
 		return ret
-    end)
+	end)
 end
 
 function mod:onload(logic)
@@ -22,6 +26,11 @@ function mod:onload(logic)
 		super_setBridge(self, bridge)
 		mod.bridge = bridge
 		mod.registerLogicFunctions(self)
+	end
+
+	local super_setClientGOM = logic.setClientGOM
+	logic.setClientGOM = function(self, clientGOM, clientSapien_)
+		super_setClientGOM(self, clientGOM, clientSapien_)
 	end
 end
 

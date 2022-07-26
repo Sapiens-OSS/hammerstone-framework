@@ -1,11 +1,13 @@
---- Shadow of 'manageButtonsUI.lua'
--- Used to initialize the 'manageElements' in the UI Manager.
+--- Hammerstone: manageButtonsUI.lua
+--- Used to initialize the 'manageElements' in the UI Manager.
+--- @author SirLich
 
--- Module Setup
 local mod = { loadOrder = 1 }
 
--- Sapiens
+-- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
+
+-- Sapiens
 local mj = mjrequire "common/mj"
 
 function mod:onload(manageButtonsUI)
@@ -19,5 +21,4 @@ function mod:onload(manageButtonsUI)
 	end
 end
 
--- Module Return
 return mod

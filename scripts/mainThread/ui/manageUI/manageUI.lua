@@ -2,7 +2,9 @@
 --- Used to capture lifecycle events, and manage the state of custom 'manage' elements.
 --- @author SirLich
 
-local mod = { loadOrder = 1 }
+local mod = { 
+	loadOrder = 1 
+}
 
 -- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
