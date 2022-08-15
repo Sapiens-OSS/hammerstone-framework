@@ -24,7 +24,7 @@ function mod:onload(resource)
 			mj:error("Attempt to add resource type that isn't in typeIndexMap:", key)
 		else
 			if resource.types[key] then
-				mj:warning("Overwriting resource type:", key)
+				mj:warn("Overwriting resource type:", key)
 				mj:log(debug.traceback())
 			end
 	
@@ -61,7 +61,7 @@ function mod:onload(resource)
 			mj:error("Attempt to add resource group type that isn't in typeIndexMap:", key)
 		else
 			if resource.groups[key] then
-				mj:warning("Overwriting resource group type:", key)
+				mj:warn("Overwriting resource group type:", key)
 				mj:log(debug.traceback())
 			end
 	
