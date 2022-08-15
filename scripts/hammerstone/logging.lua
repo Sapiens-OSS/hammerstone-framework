@@ -8,7 +8,7 @@ function logging:log(msg)
 end
 
 function logging:warning(msg)
-	mj:warning("[Hammerstone] ", msg)
+	mj:warn("[Hammerstone] ", msg)
 end
 
 function logging:error(msg)
