@@ -8,10 +8,6 @@ local mod = {
 	bridge = nil
 }
 
--- Creative Mode
-local cheat = mjrequire "creativeMode/cheat"
-
-
 function mod:registerLogicFunctions()
 	mod.bridge:registerLogicThreadNetFunction("getWorldValueFromServer", function(key)
 		local ret = mod.bridge:callMainThreadFunction("getWorldValueFromServer", key)
