@@ -35,21 +35,40 @@ function saveState:getClientStateFromServer(clientID)
 	return saveState.serverWorld:getClientStates()[clientID]
 end
 
+function saveState:clientIDForTribeID(clientID)
+	return saveState.serverWorld:clientIDForTribeID(clientID)
+end
+
 ---------------------------------------------------------------------------------
 -- Private Shared Settings
 ---------------------------------------------------------------------------------
 
-function saveState:getValueClient(key)
+function saveState:getValueClient(key, defaultOrNil)
+	--- Get a value from the clients privateShared state.
+	--- @param key string The 'key' you want to retrieve, e.g. "vt.allowedPlansPerFollower".
+	--- @param defaultOrNil any (optional) The default value to return if the key is not found.
+
+	local ret = nil
 	if saveState.clientState then
-		return saveState.clientState.privateShared[key]
+		ret =  saveState.clientState.privateShared[key]
 	else
 		mj:error("saveState:getValue: clientState is nil")
-		return nil
 	end
+
+	if ret == nil then
+		ret = defaultOrNil
+	end
+
+	return ret
 end
 
 
 function saveState:setValueClient(key, value)
+	--- Set a value in the clients privateShared state. May only be called from the client.
+	--- @param key string The 'key' you want to set, e.g. "vt.allowedPlansPerFollower".
+	--- @param value any The value to set.
+
+
 	if saveState.clientState then
 		local paramTable = {
 			key = key,
@@ -65,22 +84,35 @@ function saveState:setValueClient(key, value)
 	end
 end
 
-function saveState:getValueServer(key, clientID)
+function saveState:getValueServer(key, clientID, defaultOrNil)
+	--- Get a value from the server's privateShared state.
+	--- May only be called from the server.
+	--- @param key string The 'key' you want to retrieve, e.g. "vt.allowedPlansPerFollower".
+	--- @param clientID number The clientID of the client you want to get the value from.
+	--- @param defaultOrNil any (optional) The default value to return if the key is not found.
+
 	local clientState = saveState:getClientStateFromServer(clientID)
 	
+	local ret = nil
+
 	if clientState then
-		return clientState.privateShared[key]
+		ret = clientState.privateShared[key]
 	else
 		mj:error("saveState:getValueServer: clientState is nil")
-		return nil
 	end
+
+	if ret == nil then
+		ret = defaultOrNil
+	end
+
+	return ret
 end
 
 function saveState:setValueServer(key, value, clientID)
-	--- Sets a value on privateShared. This is only called from the server.
-	--- @param key string
-	--- @param value any
-	--- @param clientID number
+	--- Set a value in the server's privateShared state. May only be called from the server.
+	--- @param key string The 'key' you want to set, e.g. "vt.allowedPlansPerFollower".
+	--- @param value any The value to set.
+	--- @param clientID number The clientID of the client you want to set the value for.
 
 	local clientState = saveState:getClientStateFromServer(clientID)
 
