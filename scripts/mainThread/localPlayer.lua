@@ -3,6 +3,10 @@
 
 local mod = {
 	loadOrder = 0, -- Load before everything else
+
+	-- Exposed to Hammerstone
+	bridge = nil,
+	clientState = nil
 }
 
 -- Hammerstone 
@@ -19,7 +23,10 @@ function mod:onload(localPlayer)
 	local super_setBridge = localPlayer.setBridge
 	localPlayer.setBridge = function(self, bridge, clientState)
 		super_setBridge(localPlayer, bridge, clientState)
-		saveState:setClientState(clientState)
+
+		mod.bridge = bridge
+		mod.bridge = clientState
+		saveState:initializeClientThread(clientState)
 	end
 end
 

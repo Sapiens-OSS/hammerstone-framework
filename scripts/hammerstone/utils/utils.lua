@@ -17,6 +17,7 @@ function utils:resourceExists(resourceKey)
         mj:error("Resource does not exist in typeIndexMap:", key)
     else
         return index
+    end
 end
 
 return utils

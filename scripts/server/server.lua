@@ -4,7 +4,7 @@
 local mod = {
 	loadOrder = 1,
 
-	-- Local state
+	-- Exposed to Hammerstone
 	bridge = nil,
 	serverWorld = nil,
 	server = nil
@@ -34,8 +34,7 @@ end
 function mod:onload(server)
 	logger:log("server.lua loaded.")
 	mod.server = server
-	
-	-- Shadow setBridge
+
 	local super_setBridge = server.setBridge
 	server.setBridge = function(self, bridge)
 		super_setBridge(self, bridge)
@@ -43,16 +42,15 @@ function mod:onload(server)
 		logger:log("Server bridge set.")
 	end
 
-	-- Shadow setServerWorld
 	local super_setServerWorld = server.setServerWorld
 	server.setServerWorld = function(self, serverWorld)
 		super_setServerWorld(self, serverWorld)
 		mod.serverWorld = serverWorld
 
 		local saveState = mjrequire "hammerstone/state/saveState"
-		saveState:setServerWorld(serverWorld)
+		saveState:initializeServerThread(serverWorld)
 
-		-- Now that the brigd is set, we can init
+		-- Now that the bridge is set, we can init
 		initHammerstoneServer()
 	end
 end

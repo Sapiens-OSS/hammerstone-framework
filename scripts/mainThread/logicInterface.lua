@@ -19,8 +19,14 @@ function mod:registerMainThreadFunctions()
 		local saveState = mjrequire "hammerstone/state/saveState"
 		return saveState:getWorldValue(key)
 	end)
-end
 
+	mod.bridge:registerMainThreadFunction("getValueFromLogic", function(key)
+		local saveState = mjrequire "hammerstone/state/saveState"
+		local ret = saveState:getValueClient(key)
+		mj:log("getValueFromLogic called on main Thread ", ret)
+		return ret
+	end)
+end
 
 function mod:onload(logicInterface)
 	local super_setBridge = logicInterface.setBridge
