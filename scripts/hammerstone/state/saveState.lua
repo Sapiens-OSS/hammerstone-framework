@@ -120,6 +120,9 @@ function saveState:setValue(key, value, paramTable)
 	--- @param paramTable.clientID string - Client identifier which the server thread uses to find privateShared
 	--- @param paramTable.tribeID string - Optional replacement for clientID
 
+	if not paramTable then
+		paramTable = {}
+	end
 	saveState:resolveClientID(paramTable)
 
 	local privateShared = saveState:getPrivateShared(paramTable)
@@ -176,6 +179,9 @@ function saveState:getValue(key, paramTable)
 	--- @param paramTable.clientID String - Required for getting values on the server thread
 	--- @param paramTable.tribeID String - May be used instead of the client ID if desired
 
+	if not paramTable then
+		paramTable = {}
+	end
 	saveState:resolveClientID(paramTable)
 
 	local returnValue = nil
