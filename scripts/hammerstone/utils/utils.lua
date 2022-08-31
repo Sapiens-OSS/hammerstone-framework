@@ -12,9 +12,9 @@ function utils:resourceExists(resourceKey)
 
     local typeIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
 
-    local index = typeIndexMap[key]
+    local index = typeIndexMap[resourceKey]
     if not index then
-        mj:error("Resource does not exist in typeIndexMap:", key)
+        mj:error("Resource does not exist in typeIndexMap:", resourceKey)
     else
         return index
     end

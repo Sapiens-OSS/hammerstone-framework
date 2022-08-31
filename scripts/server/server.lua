@@ -12,14 +12,14 @@ local mod = {
 
 -- Hammerstone
 local logger = mjrequire "hammerstone/logging"
-
-local function setValueClient(clientID, paramTable)
-	--- Sets a value on private shared.
-	--- @param clientID number
-	--- @param paramTable table: {key = string, value = any, clientID = number}
+local function setValueFromClient(clientID, paramTable)
+	--- Intended for propogating a value from the client thread, to the server (which is authorative)
+	--- @param clientID string - The client identifier which called this net function
+	--- @param paramTable.key string - The 'key' you want to set
+	--- @param paramTable.value any - The 'value' you want to set
 
 	local saveState = mjrequire "hammerstone/state/saveState"
-	saveState:setValueServer(paramTable.key, paramTable.value, clientID)
+	saveState:setValue(paramTable.key, paramTable.value, {clientID = clientID})
 end
 
 
@@ -27,7 +27,7 @@ local function initHammerstoneServer()
 	logger:log("Initializing Hammerstone Server.")
 
 	-- Register net function for cheats (move elsewhere eventually?)
-	mod.server:registerNetFunction("setValueClient", setValueClient)
+	mod.server:registerNetFunction("setValueFromClient", setValueFromClient)
 end
 
 

@@ -19,7 +19,6 @@ local saveState = {
 
 -- Base
 local server = mjrequire "server/server"
-local logicInterface = mjrequire "mainThread/logicInterface"
 
 -- Hammerstone
 local gameState = mjrequire "hammerstone/state/gameState"
@@ -63,7 +62,6 @@ function saveState:getClientStateServer(clientID)
 		return saveState.serverWorld:getClientStates()[clientID]
 	end
 
-	mj:warn("saveState:getClientStateServer called before 'serverWorld' is available, returning nil.")
 	return nil
 end
 
@@ -128,6 +126,7 @@ function saveState:setValue(key, value, paramTable)
 
 	-- If calling on the client, make a call to the server
 	if saveState.threadName == 'client' then
+		local logicInterface = mjrequire "mainThread/logicInterface"
 		logicInterface:callServerFunction(
 			"setValueFromClient",
 			{
@@ -164,6 +163,9 @@ function saveState:setValue(key, value, paramTable)
 		-- TODO: Write better error here, maybe using string formatting
 		mj:warn("saveState:setValue failed. Was it called too early? ")
 	end
+
+	mj:log("saveState:setValue, ", key, ", ", value, ", ", saveState.threadName)
+
 end
 
 function saveState:getValue(key, paramTable)
@@ -226,6 +228,7 @@ function saveState:setValueClient(key, value)
 			value = value
 		}
 
+		local logicInterface = mjrequire "mainThread/logicInterface"
 		return logicInterface:callServerFunction(
 			"setValueClient",
 			paramTable

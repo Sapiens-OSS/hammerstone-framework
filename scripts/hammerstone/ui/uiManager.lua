@@ -96,11 +96,7 @@ function uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 		-- Save the button for the UI into the button itself.
 		element.button = button
 
-		mj:log("Outside of lambda: ", element.name)
-
-
 		uiStandardButton:setClickFunction(button, function()
-			mj:log("Inside of lambda ", element.name)
 
 			-- Default behavior is to hide the menu.
 			-- After hiding, we must re-show the buttons.
@@ -167,8 +163,6 @@ function uiManager:initActionView(gameUI, hubUI, world)
 	--- @param hubUI - Unknown
 	--- @param world - Unknown
 	
-	mj:log("initActionView called")
-
 	-- Create a view container for the views to be rendered in.
 	self.actionContainerView = View.new(gameUI.view)
 	self.actionContainerView.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
@@ -182,9 +176,6 @@ function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, l
 	--- @param baseObjectInfo - Object info for single objects.localecategory
 	--- @param multiSelectAllObjects - Object info for multi-select objects
 	--- @param lookAtPos - Uknown
-
-	mj:log("renderActionElements called")
-
 	
 	-- Does this destroy the internal view?
 	-- TODO: No it doesn't, maybe cause refs are still kept in the container view.
@@ -219,12 +210,10 @@ function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, l
 end
 
 function uiManager:showActionElements()
-	mj:log("showActionElements called")
 	self.actionContainerView.hidden = false
 end
 
 function uiManager:hideActionElements()
-	mj:log("hideActionElements called")
 	self.actionContainerView.hidden = true
 end
 
