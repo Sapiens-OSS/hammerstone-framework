@@ -185,7 +185,7 @@ function saveState:getValue(key, paramTable)
 		returnValue = privateShared[key]
 	end
 
-	if returnValue == nil then
+	if returnValue == nil and paramTable then
 		returnValue = paramTable.default
 	end
 
