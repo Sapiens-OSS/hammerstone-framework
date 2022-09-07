@@ -79,7 +79,7 @@ function uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 
 	-- Loop through all the registered elements and create them.
 	for i, element in ipairs(self.manageElements) do
-		logger:log("Adding Manage Button: " .. element.name)
+		logger:log("Adding Manage Button: ", element.name)
 
 		-- Initialize the element itself
 		element:init(gameUI)
@@ -166,16 +166,16 @@ function uiManager:initActionView(gameUI, hubUI, world)
 	-- Create a view container for the views to be rendered in.
 	self.actionContainerView = View.new(gameUI.view)
 	self.actionContainerView.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
-	self.actionContainerView.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers
+	self.actionContainerView.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers!
 end
 
-function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
 	--- This function is called when the Radial Menu is opened, and will be used to render
 	--- the action elements, based on their own internal logic and structure.
 	--- TODO: Consider adding a priority function.
-	--- @param baseObjectInfo - Object info for single objects.localecategory
-	--- @param multiSelectAllObjects - Object info for multi-select objects
-	--- @param lookAtPos - Uknown
+	--- @param baseObjectInfo table - Object info for single objects.localecategory
+	--- @param multiSelectAllObjects table - Object info for multi-select objects
+	--- @param lookAtPos unknown - 
 	
 	-- Does this destroy the internal view?
 	-- TODO: No it doesn't, maybe cause refs are still kept in the container view.
@@ -183,11 +183,12 @@ function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, l
 	for _, element in ipairs(self.actionElementsRendered) do
 		self.actionContainerView:removeSubview(element)
 	end
+	self.actionElementsRendered = {}
 
 	
 	local vertical_offset = 0
 	for i,element in ipairs(self.actionElements) do
-		if element:visibilityFilter(baseObjectInfo, multiSelectAllObjects, lookAtPos) then
+		if element:visibilityFilter(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain) then
 			-- TODO: Consider moving this into it's own function.
 
 			local buttonWidth = 300
@@ -197,11 +198,28 @@ function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, l
 			local button = uiStandardButton:create(self.actionContainerView, buttonSize)
 			button.relativePosition = ViewPosition(MJPositionCenter, MJPositionTop)
 			button.baseOffset = vec3(0, vertical_offset, 5)
-		
-			uiStandardButton:setText(button, element:getName(baseObjectInfo, multiSelectAllObjects, lookAtPos))
+			
+			-- You have two options for setting the name
+			local elementName = element.name
+			if elementName == nil and element.getName ~= nil then
+				elementName = element:getName(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
+			end
+
+			uiStandardButton:setText(button, elementName)
 			uiStandardButton:setClickFunction(button, function()
-				element:onClick(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+				element:onClick(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
 			end)
+
+			-- You have two options for setting the iconModelName
+			local iconModelName = element.iconModelName
+			if iconModelName == nil and element.getIconModelName ~= nil then
+				iconModelName = element:getIconModelName(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
+			end
+
+			if iconModelName then
+				uiStandardButton:setIconModel(button, iconModelName)
+			end
+
 
 			table.insert(self.actionElementsRendered, button)
 			vertical_offset = vertical_offset + buttonHeight + 5

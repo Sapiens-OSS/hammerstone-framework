@@ -8,12 +8,6 @@ local mod = {
 	bridge = nil     -- The bridge object for LogicInterface
 }
 
-function mod:setBridge(bridge)
-	mod.bridge = bridge
-	mod:registerMainThreadFunctions()
-end
-
-
 function mod:registerMainThreadFunctions()
 	mod.bridge:registerMainThreadFunction("getWorldValueFromServer", function(key)
 		local saveState = mjrequire "hammerstone/state/saveState"
@@ -33,7 +27,12 @@ function mod:onload(logicInterface)
 
 	logicInterface.setBridge = function(self, bridge)
 		super_setBridge(self, bridge)
-		mod:setBridge(bridge)
+
+		-- Expose to Hammerstone
+		mod.bridge = bridge
+		logicInterface.bridge = bridge
+
+		mod:registerMainThreadFunctions()
 	end
 end
 

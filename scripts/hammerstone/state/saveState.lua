@@ -167,7 +167,7 @@ function saveState:setValue(key, value, paramTable)
 		mj:warn("saveState:setValue failed. Was it called too early? ")
 	end
 
-	mj:log("saveState:setValue, ", key, ", ", value, ", ", saveState.threadName)
+	-- mj:log("saveState:setValue, ", key, ", ", value, ", ", saveState.threadName)
 
 end
 
@@ -182,6 +182,7 @@ function saveState:getValue(key, paramTable)
 	if not paramTable then
 		paramTable = {}
 	end
+
 	saveState:resolveClientID(paramTable)
 
 	local returnValue = nil
@@ -195,7 +196,7 @@ function saveState:getValue(key, paramTable)
 		returnValue = paramTable.default
 	end
 
-	mj:log("saveState:getValue: ", key, ", returning: ", returnValue)
+	-- mj:log("saveState:getValue: ", key, ", returning: ", returnValue)
 
 	-- This could still be nil!
 	return returnValue
@@ -250,8 +251,6 @@ function saveState:getValueServer(key, clientID, defaultOrNil)
 	--- @param key string The 'key' you want to retrieve, e.g. "vt.allowedPlansPerFollower".
 	--- @param clientID number The clientID of the client you want to get the value from.
 	--- @param defaultOrNil any (optional) The default value to return if the key is not found.
-
-	mj:log("Attempting to get getValueServer with: ", clientID)
 
 	-- Try from Server
 	local clientState = saveState:getClientStateServer(clientID)
