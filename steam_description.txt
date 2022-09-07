@@ -1,0 +1,5 @@
+Sapiens Modding Framework.
+
+📓 Join the Community: https://discord.gg/WnN8hj2Fyg
+
+This modding Framework doesn't do anything on it's own. It's just a utility mod that wraps portions of the Sapiens codebase, and makes it more accessible to modders. 
