@@ -39,12 +39,15 @@ function mod:onload(resource)
 		return index
 	end
 
-	-- From the source code. It's a local function so copy/paste is the only way to use it :/
+	-- From the source code of version 0.3.8. It's a local function so copy/paste is the only way to use it :/
 	local function createGroupHashesForBuiltInTypes()
 		local validGroupTypes = typeMaps:createValidTypesArray("resourceGroup", resource.groups)
 		for i,groupType in ipairs(validGroupTypes) do
+			if not groupType.containsTypesSet then
+				groupType.containsTypesSet = {}
+			end
 			for j, resourceTypeIndex in ipairs(groupType.resourceTypes) do
-				groupType.containsTypesHash[resourceTypeIndex] = true
+				groupType.containsTypesSet[resourceTypeIndex] = true
 			end
 		end
 	end
