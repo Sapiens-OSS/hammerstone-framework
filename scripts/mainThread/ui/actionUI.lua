@@ -36,6 +36,15 @@ function mod:onload(actionUI)
 		-- Interface with the uiManager
 		uiManager:hideActionElements()
 	end
+	
+	-- Handle terrain actionUI:showTerrain
+	local super_showTerrain = actionUI.showTerrain
+	function actionUI.showTerrain(self, vertInfo, multiSelectAllVerts, lookAtPos)
+		super_showTerrain(self, vertInfo, multiSelectAllVerts, lookAtPos)
+
+		-- Interface with the uiManager
+		uiManager:renderActionElements(vertInfo, multiSelectAllVerts, lookAtPos, true)
+	end
 
 	-- Handle object selection
 	-- actionUI:showObjects(baseObjectInfo_, multiSelectAllObjects, lookAtPos_)
@@ -44,7 +53,7 @@ function mod:onload(actionUI)
 		super_showObjects(self, baseObjectInfo, multiSelectAllObjects, lookAtPos)
 		
 		-- Interface with the uiManager
-		uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos)
+		uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, false)
 	end
 end
 
