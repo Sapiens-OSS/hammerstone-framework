@@ -7,8 +7,13 @@ local mod = {
 	loadOrder = 1
 }
 
+local eventManager = mjrequire "mainThread/eventManager"
+local keyMapping = mjrequire "mainThread/keyMapping"
+local clientGameSettings = mjrequire "mainThread/clientGameSettings"
+
 -- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
+local debugUI   = mjrequire "hammerstone/ui/debugUI"
 
 function mod:onload(gameUI)
 
@@ -17,6 +22,34 @@ function mod:onload(gameUI)
 	function gameUI:init(controller, world)
 		superInit(gameUI, controller, world)
 		uiManager:initGameElements(gameUI)
+		debugUI:load(gameUI, controller)
+
+
+		local keyMap = {
+			[keyMapping:getMappingIndex("game", "testBinding")] = function(isDown, isRepeat)
+				if isDown then
+					clientGameSettings:changeSetting("renderLog", not clientGameSettings.values.renderLog)
+				end
+				return true 
+			end,
+		}
+
+
+		local function keyChanged(isDown, mapIndexes, isRepeat)
+			for i, mapIndex in ipairs(mapIndexes) do
+				if keyMap[mapIndex]  then
+					if keyMap[mapIndex](isDown, isRepeat) then
+						return true
+					end
+				end
+			end
+			return false
+		end
+
+
+		eventManager:addEventListenter(keyChanged, eventManager.keyChangedListeners)
+
+
 	end
 
 	-- Update the uiManager
