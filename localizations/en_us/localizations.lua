@@ -3,7 +3,7 @@ local localizations = {}
 
 
 localizations.values = {
-    key_game_testBinding = "Test Binding",
+    key_debug_showLog = "Show log",
 }
 
         
