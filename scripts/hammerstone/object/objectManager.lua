@@ -17,6 +17,14 @@ local objectDB = {
 	objectsForStorage = {}
 }
 
+-- TODO: Consider using metaTables to add default values to the objectDB
+-- local mt = {
+-- 	__index = function ()
+-- 		return "10"
+-- 	end
+-- }
+-- setmetatable(objectDB.objectConfigs, mt)
+
 -- sapiens
 local typeMaps = mjrequire "common/typeMaps"
 local rng = mjrequire "common/randomNumberGenerator"
@@ -147,6 +155,15 @@ function objectManager:generateResourceDefinition(config)
 	if foodComponent ~= nil then
 		newResource.foodValue = foodComponent.value
 		newResource.foodPortionCount = foodComponent.portions
+
+		-- TODO These should be implemented with a smarter default value check
+		if foodComponent.food_poison_chance ~= nil then
+			newResource.foodPoisoningChance = foodComponent.food_poison_chance
+		end
+		
+		if foodComponent.default_disabled ~= nil then
+			newResource.defaultToEatingDisabled = foodComponent.default_disabled
+		end
 	end
 
 	-- Handle Decorations
@@ -273,7 +290,7 @@ end
 
 function objectManager:registerGameObject(config, gameObject)
 	if config == nil then
-		mj:warn("Attempting to generate nil GameObject")
+		log:warn("Attempting to generate nil GameObject")
 		return
 	end
 
@@ -326,5 +343,3 @@ function objectManager:generateEvolvingObjects(evolvingObject)
 end
 
 return objectManager
-
-
