@@ -18,3 +18,7 @@ The first release of Hammerstone
 
 - Exposes terrainTypes:addBaseType
 - Expose terrainTypes:addVariation
+
+# 0.0.5
+
+ - Fix import issue in 0.0.4
