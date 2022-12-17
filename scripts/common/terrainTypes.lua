@@ -11,7 +11,7 @@ local mod = {
 local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
-local log = mjrequire "common/logging"
+local log = mjrequire "hammerstone/logging"
 
 function mod:onload(terrainTypes)
 
