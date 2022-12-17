@@ -4,7 +4,7 @@
 local mod = {
 	-- A low load-order makes the most since, as we need these methods to be available
 	-- for other shadows.
-	loadOrder = 0
+	loadOrder = 0,
 }
 
 -- Sapiens
@@ -30,14 +30,13 @@ function mod:onload(evolvingObject)
 		return index
 	end
 
-	-- TODO
-	-- local super_init = evolvingObject.init
-	-- evolvingObject.init = function(evolvingObject, dayLength, yearLength)
-	-- 	super_init(evolvingObject, dayLength, yearLength)
-
-	-- 	local objectManager = mjrequire "hammerstone/object/objectManager"
-	-- 	objectManager:generateEvolvingObjects(evolvingObject)
-	-- end
+	local super_init = evolvingObject.init
+	evolvingObject.init = function(evolvingObject, dayLength, yearLength)
+		-- Expose
+		evolvingObject.dayLength = dayLength
+		evolvingObject.yearLength = yearLength
+		super_init(evolvingObject, dayLength, yearLength)
+	end
 end
 
 return mod

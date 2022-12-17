@@ -63,6 +63,7 @@ function objectManager:init(gameObject)
 	objectManager:generateResourceDefinitions()
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
+	objectManager:generateEvolvingObjects(gameObject)
 
 end
 
@@ -166,6 +167,8 @@ function objectManager:generateResourceDefinition(config)
 		end
 	end
 
+	-- TODO: Consider handling `isRawMeat` and `isCookedMeat` for purpose of tutorial integration.
+
 	-- Handle Decorations
 	local decorationComponent = components["hammerstone:decoration"]
 	if decorationComponent ~= nil then
@@ -200,7 +203,6 @@ function objectManager:generateResourceForStorage(storageIdentifier)
 	end
 
 	return newResource
-
 end
 
 function objectManager:generateStorageObject(config)
@@ -251,6 +253,62 @@ function objectManager:generateStorageObject(config)
 	mj:log(newStorage)
 	local storageModule = mjrequire "common/storage"
 	storageModule:addStorage(identifier, newStorage)
+end
+
+---------------------------------------------------------------------------------
+-- Game Object
+---------------------------------------------------------------------------------
+
+function objectManager:generateEvolvingObjects(gameObject)
+	log:log("Generating EvolvingObjects:")
+
+	for i, config in ipairs(objectDB.objectConfigs) do
+		objectManager:generateEvolvingObject(gameObject, config)
+	end
+end
+
+function objectManager:generateEvolvingObject(gameObject, config)
+	if config == nil then
+		log:warn("Attempting to generate nil EvolvingObject")
+		return
+	end
+
+	local object_definition = config["hammerstone:object_definition"]
+	local evolvingObjectComponent = object_definition.components["hammerstone:evolving_object"]
+
+	local identifier = object_definition.description.identifier
+	
+	if evolvingObjectComponent == nil then
+		return -- This is allowed	
+	else
+		log:log("Creating EvolvingObject definition for " .. identifier)
+	end
+
+	-- Shoot me
+	local evolvingObject = mjrequire "common/evolvingObject"
+
+	-- TODO: Make this smart, and can handle day length OR year length.
+	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
+	local newEvolvingObject = {
+		minTime = evolvingObject.dayLength * evolvingObjectComponent.min_time,
+		categoryIndex = evolvingObject.categories[evolvingObjectComponent.category].index,
+	}
+
+	if evolvingObjectComponent.transform_to ~= nil then
+		local function generateTransformToTable(transform_to)
+			local newResource = {}
+			for i, identifier in ipairs(transform_to) do
+				table.insert(newResource, gameObject.types[identifier].index)
+			end
+		
+			return newResource
+		end
+
+		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
+	end
+	
+
+	evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -331,15 +389,5 @@ function objectManager:registerGameObject(config, gameObject)
 	gameObject:addGameObject(identifier, newObject)
 end
 
-
----------------------------------------------------------------------------------
--- Evolving Object
----------------------------------------------------------------------------------
-
---- Generates the evolving object, based on config files that were previouslly loaded.
--- @param evolvingObject - Module reference to evolvingObject.lua
-function objectManager:generateEvolvingObjects(evolvingObject)
-	mj:log("Hey")
-end
 
 return objectManager
