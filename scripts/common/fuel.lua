@@ -11,7 +11,7 @@ local resource = mjrequire "common/resource"
 local locale = mjrequire "common/locale"
 
 -- Hammerstone
-local log = mjrequire "hammerstone/logger"
+local log = mjrequire "hammerstone/logging"
 
 function mod:onload(fuel)
 

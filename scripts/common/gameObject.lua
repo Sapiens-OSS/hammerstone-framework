@@ -10,7 +10,9 @@ local objectManager = mjrequire "hammerstone/object/objectManager"
 
 function mod:onload(gameObject)
 	objectManager:init()
-	objectManager:generateGameObjects(gameObject)
+
+	-- TODO ordering is wrong :L
+	-- objectManager:generateGameObjects(gameObject)
 end
 
 

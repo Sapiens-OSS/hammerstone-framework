@@ -22,21 +22,28 @@ local typeMaps = mjrequire "common/typeMaps"
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local vec2 = mjm.vec2
+local mat3Identity = mjm.mat3Identity
+local mat3Rotate = mjm.mat3Rotate
 
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
 
 ---------------------------------------------------------------------------------
--- Public API
+-- Configuation and Loading
 ---------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------
--- Private API
----------------------------------------------------------------------------------
-
+-- Initialize the full Data Driven API (DDAPI).
 function objectManager:init()
+
+	-- Load configs from FS
 	objectManager:loadConfigs()
+
+	-- Register items, in the order the game expects!
+	objectManager:generateResourceDefinitions()
+	objectManager:generateResourceDefinitions()
+	objectManager:generateGameObjects()
+
 end
 
 --- Loops over known config locations and attempts to load them
@@ -81,16 +88,20 @@ function objectManager:loadConfig(path, type)
 	table.insert(type, configTable)
 end
 
+---------------------------------------------------------------------------------
+-- Resource
+---------------------------------------------------------------------------------
+
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
-function objectManager:generateResourceDefinitions(resource)
+function objectManager:generateResourceDefinitions()
 	log:log("Generating resource definitions:")
 	for i, config in ipairs(objectManager.objectConfigs) do
-		objectManager:generateResourceDefinition(resource, config)
+		objectManager:generateResourceDefinition(config)
 	end
 end
 
-function objectManager:generateResourceDefinition(resource, config)
+function objectManager:generateResourceDefinition(config)
 	local object = config["hammerstone:object"]
 	local description = object["description"]
 	local components = object["components"]
@@ -105,6 +116,9 @@ function objectManager:generateResourceDefinition(resource, config)
 	local physics = gom["physics"]
 	local marker_positions = gom["marker_positions"]
 
+	-- Local imports. Shoot me.
+	local resource = mjrequire "common/resource";
+
 	local newResource = {
 		key = identifier,
 		name = name,
@@ -117,15 +131,19 @@ function objectManager:generateResourceDefinition(resource, config)
 	resource:addResource(identifier, newResource)
 end
 
+---------------------------------------------------------------------------------
+-- Storage
+---------------------------------------------------------------------------------
+
 --- Generates DDAPI storage objects.
-function objectManager:generateStorageObjects(storage)
+function objectManager:generateStorageObjects()
 	log:log("Generating Storage Objects:")
 	for i, config in ipairs(objectManager.storageConfigs) do
-		objectManager:generateStorageObject(storage, config)
+		objectManager:generateStorageObject(config)
 	end
 end
 
-function objectManager:generateStorageObject(storageModule, config)
+function objectManager:generateStorageObject(config)
 	-- Load structured information
 	local object = config["hammerstone:storage"]
 	local description = object["description"]
@@ -133,9 +151,12 @@ function objectManager:generateStorageObject(storageModule, config)
 	local storageComponent = object.components["hammerstone:storage"]
 	local identifier = description.identifier
 
+	log:log("Generting Storage Object with ID: ", identifier)
+
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
 	local resource = mjrequire "common/resource";
+	local storageModule = mjrequire "common/storage";
 
 	local newStorage = {
 		key = identifier,
@@ -166,7 +187,7 @@ function objectManager:generateStorageObject(storageModule, config)
 end
 
 ---------------------------------------------------------------------------------
--- Game Object Handling
+-- Game Object
 ---------------------------------------------------------------------------------
 
 --- Registers an object into a storage
@@ -236,6 +257,11 @@ function objectManager:registerGameObject(gameObject, config)
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
 	gameObject:addGameObject(identifier, newObject)
 end
+
+
+---------------------------------------------------------------------------------
+-- Evolving Object
+---------------------------------------------------------------------------------
 
 --- Generates the evolving object, based on config files that were previouslly loaded.
 -- @param evolvingObject - Module reference to evolvingObject.lua

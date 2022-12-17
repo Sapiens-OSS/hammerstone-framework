@@ -13,7 +13,7 @@ local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/object/objectManager"
-local log = mjrequre "hammerstone/logger"
+local log = mjrequire "hammerstone/logging"
 
 function mod:onload(resource)
 	--- Allows adding a resource.
@@ -81,7 +81,8 @@ function mod:onload(resource)
 		return index
 	end
 
-	objectManager:generateResourceDefinitions(resource)
+	-- TODO: Ordering is wrong
+	-- objectManager:generateResourceDefinitions(resource)
 end
 
 return mod

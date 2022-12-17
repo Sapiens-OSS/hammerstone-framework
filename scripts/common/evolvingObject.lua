@@ -12,7 +12,7 @@ local typeMaps = mjrequire "common/typeMaps"
 local gameObject = mjrequire "common/gameObject"
 
 -- Hammerstone
-local log = mjrequire "hammerstone/logger"
+local log = mjrequire "hammerstone/logging"
 
 function mod:onload(evolvingObject)
 	--- Allows adding an evolvingObject.
@@ -30,6 +30,7 @@ function mod:onload(evolvingObject)
 		return index
 	end
 
+	-- TODO
 	-- local super_init = evolvingObject.init
 	-- evolvingObject.init = function(evolvingObject, dayLength, yearLength)
 	-- 	super_init(evolvingObject, dayLength, yearLength)
