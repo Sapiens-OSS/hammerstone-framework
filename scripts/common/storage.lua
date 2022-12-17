@@ -10,12 +10,14 @@ local mod = {
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
-function mod:onload(storage)
-	function storage:addStorage(key, objectType)
-		--- Allows adding a storage.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
+-- Hammerstone
+local objectManager = mjrequire "hammerstone/object/objectManager"
 
+function mod:onload(storage)
+	--- Allows adding a storage.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
+	function storage:addStorage(key, objectType)
 		local typeIndexMap = typeMaps.types.storage -- Created automatically in storage.lua
 
 		local index = typeIndexMap[key]
@@ -35,6 +37,8 @@ function mod:onload(storage)
 		end
 		return index
 	end
+
+	objectManager:generateStorageObjects(storage)
 end
 
 return mod

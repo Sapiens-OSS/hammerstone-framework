@@ -1,3 +1,5 @@
+--- Hammerstone: fuel.lua
+
 local mod = {
     loadOrder = 0
 }

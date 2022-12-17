@@ -1,6 +1,6 @@
 --- Hammerstone: resource.lua.
---- Mostly used to extend the resource module with additional helpers.
---- @Author SirLich
+-- Mostly used to extend the resource module with additional helpers.
+-- @author SirLich
 
 local mod = {
 	-- A low load-order makes the most since, as we need these methods to be available
@@ -11,12 +11,14 @@ local mod = {
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
-function mod:onload(resource)
-	function resource:addResource(key, objectType)
-		--- Allows adding a resource.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
+-- Hammerstone
+local objectManager = mjrequire "hammerstone/object/objectManager"
 
+function mod:onload(resource)
+	--- Allows adding a resource.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
+	function resource:addResource(key, objectType)
 		local typeIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
 
 		local index = typeIndexMap[key]
@@ -52,11 +54,10 @@ function mod:onload(resource)
 		end
 	end
 
+	--- Allows adding a resource group.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
 	function resource:addResourceGroup(key, objectType)
-		--- Allows adding a resource group.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
-
 		local typeIndexMap = typeMaps.types.resourceGroups -- Created automatically in resource.lua
 
 		local index = typeIndexMap[key]
@@ -78,6 +79,8 @@ function mod:onload(resource)
 
 		return index
 	end
+
+	objectManager:generateResourceDefinitions(resource)
 end
 
 return mod

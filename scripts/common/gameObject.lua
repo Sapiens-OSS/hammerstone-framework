@@ -9,7 +9,8 @@ local mod = {
 local objectManager = mjrequire "hammerstone/object/objectManager"
 
 function mod:onload(gameObject)
-	objectManager:finalizeObjectDefinitions(gameObject)
+	objectManager:init()
+	objectManager:generateGameObjects(gameObject)
 end
 
 
