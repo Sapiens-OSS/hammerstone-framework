@@ -51,8 +51,8 @@ function objectManager:init(gameObject)
 	objectManager:loadConfigs()
 
 	-- Register items, in the order the game expects!
-	objectManager:generateResourceDefinitions()
-	-- objectManager:generateStorageObjects()
+	-- objectManager:generateResourceDefinitions()
+	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
 
 end
@@ -182,7 +182,6 @@ function objectManager:generateStorageObject(config)
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
 	local resource = mjrequire "common/resource";
-	local storageModule = mjrequire "common/storage";
 
 	local newStorage = {
 		key = identifier,
@@ -210,8 +209,8 @@ function objectManager:generateStorageObject(config)
 		carryOffset = vec3(0.1,0.1,0.0),
 	}
 
-
-	-- TODO: Actually register the storage object!
+	local storageModule = mjrequire "common/storage";
+	storageModule:addStorage(identifier, newStorage)
 end
 
 ---------------------------------------------------------------------------------
