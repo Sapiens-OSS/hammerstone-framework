@@ -11,14 +11,15 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	storageConfigs = {},
 
-	-- Map between storage identifiers and objects that should use this storage.
-	-- Collected when generating objects, and inserted when generating storages.
-	-- @format map<string, array<string>>
+	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
+	-- Collected when generating objects, and inserted when generating storages (after converting to index)
+	-- @format map<string, array<string>>.
 	objectsForStorage = {}
 }
 
 -- sapiens
 local typeMaps = mjrequire "common/typeMaps"
+local rng = mjrequire "common/randomNumberGenerator"
 
 -- Math
 local mjm = mjrequire "common/mjm"
@@ -42,10 +43,10 @@ function objectManager:init(gameObject)
 	if initialized then
 		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
 		return
+	else
+		log:log("Initializing DDAPI...")
+		initialized = true
 	end
-	initialized = true
-
-	log:log("Initializing Object Manager...")
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
@@ -90,8 +91,6 @@ function objectManager:loadConfigs()
 	end
 
 	log:log("Loaded Configs totalling: " .. count)
-	log:log(objectDB)
-
 end
 
 function objectManager:loadConfig(path, type)
@@ -120,22 +119,16 @@ function objectManager:generateResourceDefinition(config)
 		return
 	end
 
-	local object = config["hammerstone:object"]
-	local description = object["description"]
-	local components = object["components"]
-	local gom = components["object"]
-	local localization = gom["localization"]
+	local objectDefinition = config["hammerstone:object_definition"]
+	local description = objectDefinition["description"]
+	local components = objectDefinition["components"]
 
 	local identifier = description["identifier"]
 	log:log("Generting Resource with ID: " .. identifier)
 
-
-	local name = localization["name"]
-	local plural = localization["plural"]
-	local scale = gom["scale"]
-	local model = gom["model"]
-	local physics = gom["physics"]
-	local marker_positions = gom["marker_positions"]
+	local objectComponent = components["hammerstone:object"]
+	local name = description["name"]
+	local plural = description["plural"]
 
 	-- Local imports. Shoot me.
 	local resource = mjrequire "common/resource"
@@ -143,10 +136,24 @@ function objectManager:generateResourceDefinition(config)
 	local newResource = {
 		key = identifier,
 		name = name,
+		FISHFISH = "FISHFISH",
 		plural = plural,
 		-- displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
-		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat -- TODO Fix this shit.
+		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat, -- TODO Fix this shit.
 	}
+
+	-- Handle Food
+	local foodComponent = components["hammerstone:food"]
+	if foodComponent ~= nil then
+		newResource.foodValue = foodComponent.value
+		newResource.foodPortionCount = foodComponent.portions
+	end
+
+	-- Handle Decorations
+	local decorationComponent = components["hammerstone:decoration"]
+	if decorationComponent ~= nil then
+		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
+	end
 
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
 	resource:addResource(identifier, newResource)
@@ -202,7 +209,7 @@ function objectManager:generateStorageObject(config)
 		key = identifier,
 		name = storageComponent.name,
 		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
-		resources = objectManager:generateResourceForStorage(identifier), -- TODO will this work?
+		resources = objectManager:generateResourceForStorage(identifier),
 
 		-- TODO: Add fields to customize this.
 		storageBox = {
@@ -270,21 +277,19 @@ function objectManager:registerGameObject(config, gameObject)
 		return
 	end
 
-	local object = config["hammerstone:object"]
-	local description = object["description"]
-	local components = object["components"]
-	local gom = components["object"]
-	local localization = gom["localization"]
-
+	local object_definition = config["hammerstone:object_definition"]
+	local description = object_definition["description"]
+	local components = object_definition["components"]
+	local objectComponent = components["hammerstone:object"]
 	local identifier = description["identifier"]
 	log:log("Registering GameObject with ID " .. identifier)
 
-	local name = localization["name"]
-	local plural = localization["plural"]
-	local scale = gom["scale"]
-	local model = gom["model"]
-	local physics = gom["physics"]
-	local marker_positions = gom["marker_positions"]
+	local name = description["name"]
+	local plural = description["plural"]
+	local scale = objectComponent["scale"]
+	local model = objectComponent["model"]
+	local physics = objectComponent["physics"]
+	local marker_positions = objectComponent["marker_positions"]
 
 	-- Shoot me
 	local resource = mjrequire "common/resource"
@@ -295,8 +300,6 @@ function objectManager:registerGameObject(config, gameObject)
 		modelName = model,
 		scale = scale,
 		hasPhysics = physics,
-
-		-- TODO:
 		resourceTypeIndex = resource.types[identifier].index,
 
 		-- TODO
@@ -307,7 +310,7 @@ function objectManager:registerGameObject(config, gameObject)
 		}
 	}
 
-	-- TODO:
+	-- Actually register the game object
 	gameObject:addGameObject(identifier, newObject)
 end
 

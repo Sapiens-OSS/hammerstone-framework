@@ -36,6 +36,11 @@ function mod:onload(storage)
 			storage.types[index] = objectType
 
 		end
+
+		-- Recache local storage data
+		-- TODO: Is this safe?
+		storage:mjInit()
+
 		return index
 	end
 
