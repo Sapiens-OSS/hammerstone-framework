@@ -19,6 +19,8 @@ function mod:onload(evolvingObject)
 	-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
 	-- @param objectData: The object to add, containing all fields.
 	function evolvingObject:addEvolvingObject(key, objectData)
+		mj:log("LOOK HERE")
+		mj:log(evolvingObject)
 		local index = typeMaps:keyToIndex(key, gameObject.validTypes)
 
 		if not index then
@@ -36,6 +38,9 @@ function mod:onload(evolvingObject)
 		evolvingObject.dayLength = dayLength
 		evolvingObject.yearLength = yearLength
 		super_init(evolvingObject, dayLength, yearLength)
+		
+		local objectManager = mjrequire "hammerstone/object/objectManager"
+		objectManager:generateEvolvingObjects(evolvingObject)
 	end
 end
 

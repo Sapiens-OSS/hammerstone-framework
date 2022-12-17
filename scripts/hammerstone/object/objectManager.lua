@@ -1,7 +1,9 @@
 --- Hammerstone: objectManager.lua
 -- @author SirLich
 
-local objectManager = {}
+local objectManager = {
+	gameObject = nil
+}
 
 -- Local database of config information
 local objectDB = {
@@ -56,6 +58,9 @@ function objectManager:init(gameObject)
 		initialized = true
 	end
 
+	-- Expose
+	objectManager.gameObject = gameObject
+
 	-- Load configs from FS
 	objectManager:loadConfigs()
 
@@ -63,8 +68,7 @@ function objectManager:init(gameObject)
 	objectManager:generateResourceDefinitions()
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
-	objectManager:generateEvolvingObjects(gameObject)
-
+	-- generateEvolvingObjects is called internally.
 end
 
 --- Loops over known config locations and attempts to load them
@@ -259,15 +263,15 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
-function objectManager:generateEvolvingObjects(gameObject)
+function objectManager:generateEvolvingObjects(evolvingObject)
 	log:log("Generating EvolvingObjects:")
 
 	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateEvolvingObject(gameObject, config)
+		objectManager:generateEvolvingObject(evolvingObject, config)
 	end
 end
 
-function objectManager:generateEvolvingObject(gameObject, config)
+function objectManager:generateEvolvingObject(evolvingObject, config)
 	if config == nil then
 		log:warn("Attempting to generate nil EvolvingObject")
 		return
@@ -284,9 +288,6 @@ function objectManager:generateEvolvingObject(gameObject, config)
 		log:log("Creating EvolvingObject definition for " .. identifier)
 	end
 
-	-- Shoot me
-	local evolvingObject = mjrequire "common/evolvingObject"
-
 	-- TODO: Make this smart, and can handle day length OR year length.
 	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
 	local newEvolvingObject = {
@@ -298,7 +299,7 @@ function objectManager:generateEvolvingObject(gameObject, config)
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
 			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, gameObject.types[identifier].index)
+				table.insert(newResource, objectManager.gameObject.types[identifier].index)
 			end
 		
 			return newResource
