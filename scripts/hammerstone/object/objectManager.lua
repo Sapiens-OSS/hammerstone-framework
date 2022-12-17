@@ -51,7 +51,7 @@ function objectManager:init(gameObject)
 	objectManager:loadConfigs()
 
 	-- Register items, in the order the game expects!
-	-- objectManager:generateResourceDefinitions()
+	objectManager:generateResourceDefinitions()
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
 
@@ -144,11 +144,11 @@ function objectManager:generateResourceDefinition(config)
 		key = identifier,
 		name = name,
 		plural = plural,
-		foodValue = 0.7, --TODO
-		foodPortionCount = 1, -- TODO
-		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
+		-- displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
+		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat -- TODO Fix this shit.
 	}
 
+	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
 	resource:addResource(identifier, newResource)
 end
 
@@ -162,6 +162,21 @@ function objectManager:generateStorageObjects()
 	for i, config in ipairs(objectDB.storageConfigs) do
 		objectManager:generateStorageObject(config)
 	end
+end
+
+--- Special helper function to generate the resource IDs that a storage should use, once they are available.
+--- This is a workaround :L
+function objectManager:generateResourceForStorage(storageIdentifier)
+	-- Shoot me
+	local resource = mjrequire "common/resource"
+
+	local newResource = {}
+	for i, identifier in ipairs(objectDB.objectsForStorage[storageIdentifier]) do
+		table.insert(newResource, resource.types[identifier].index)
+	end
+
+	return newResource
+
 end
 
 function objectManager:generateStorageObject(config)
@@ -187,7 +202,7 @@ function objectManager:generateStorageObject(config)
 		key = identifier,
 		name = storageComponent.name,
 		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
-		resources = objectDB.objectsForStorage[identifier], -- TODO will this work?
+		resources = objectManager:generateResourceForStorage(identifier), -- TODO will this work?
 
 		-- TODO: Add fields to customize this.
 		storageBox = {
@@ -209,7 +224,8 @@ function objectManager:generateStorageObject(config)
 		carryOffset = vec3(0.1,0.1,0.0),
 	}
 
-	local storageModule = mjrequire "common/storage";
+	mj:log(newStorage)
+	local storageModule = mjrequire "common/storage"
 	storageModule:addStorage(identifier, newStorage)
 end
 
@@ -230,6 +246,9 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	if objectDB.objectsForStorage[storageIdentifier] == nil then
 		objectDB.objectsForStorage[storageIdentifier] = {}
 	end
+
+	-- Shoot me
+	local resource = mjrequire "common/resource"
 
 	-- Insert the object identifier for this storage container
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
@@ -278,7 +297,7 @@ function objectManager:registerGameObject(config, gameObject)
 		hasPhysics = physics,
 
 		-- TODO:
-		-- resourceTypeIndex = resource.types[identifier].index,
+		resourceTypeIndex = resource.types[identifier].index,
 
 		-- TODO
 		markerPositions = {
@@ -289,7 +308,6 @@ function objectManager:registerGameObject(config, gameObject)
 	}
 
 	-- TODO:
-	-- objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
 	gameObject:addGameObject(identifier, newObject)
 end
 
