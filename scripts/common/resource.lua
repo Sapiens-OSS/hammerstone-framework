@@ -13,6 +13,7 @@ local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/object/objectManager"
+local log = mjrequre "hammerstone/logger"
 
 function mod:onload(resource)
 	--- Allows adding a resource.
@@ -23,11 +24,11 @@ function mod:onload(resource)
 
 		local index = typeIndexMap[key]
 		if not index then
-			mj:error("Attempt to add resource type that isn't in typeIndexMap:", key)
+			log:error("Attempt to add resource type that isn't in typeIndexMap:", key)
 		else
 			if resource.types[key] then
-				mj:warn("Overwriting resource type:", key)
-				mj:log(debug.traceback())
+				log:warn("Overwriting resource type:", key)
+				log:log(debug.traceback())
 			end
 	
 			objectType.key = key
@@ -62,11 +63,11 @@ function mod:onload(resource)
 
 		local index = typeIndexMap[key]
 		if not index then
-			mj:error("Attempt to add resource group type that isn't in typeIndexMap:", key)
+			log:error("Attempt to add resource group type that isn't in typeIndexMap:", key)
 		else
 			if resource.groups[key] then
-				mj:warn("Overwriting resource group type:", key)
-				mj:log(debug.traceback())
+				log:warn("Overwriting resource group type:", key)
+				log:log(debug.traceback())
 			end
 	
 			objectType.key = key

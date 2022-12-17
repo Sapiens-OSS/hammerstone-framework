@@ -75,7 +75,7 @@ function objectManager:loadConfigs()
 end
 
 function objectManager:loadConfig(path, type)
-	log:log("Loading DDAPI Config of type " .. type .. " at " .. path)
+	log:log("Loading DDAPI Config of type ", type, " at ", path)
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)
@@ -129,12 +129,38 @@ function objectManager:generateStorageObject(storageModule, config)
 	-- Load structured information
 	local object = config["hammerstone:storage"]
 	local description = object["description"]
-	local carry = object.components["hammerstone:carry"]
-	local storage = object.components["hammerstone:storage"]
+	local carryComponent = object.components["hammerstone:carry"]
+	local storageComponent = object.components["hammerstone:storage"]
+	local identifier = description.identifier
 
-	-- TODO: Can we somehow cache which objects should be added to this storage?
+	-- Inlined imports. Bad style. I don't care.
+	local gameObjectTypeIndexMap = typeMaps.types.gameObject
+	local resource = mjrequire "common/resource";
+
 	local newStorage = {
+		key = identifier,
+		name = storageComponent.name,
+		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
+		resources = objectManager.objectsForStorage[identifier], -- TODO will this work?
 
+		-- TODO: Add fields to customize this.
+		storageBox = {
+			size =  vec3(0.24, 0.1, 0.24),
+			rotationFunction = function(uniqueID, seed)
+				local randomValue = rng:valueForUniqueID(uniqueID, seed)
+				local rotation = mat3Rotate(mat3Identity, randomValue * 6.282, vec3(0.0,1.0,0.0))
+				return rotation
+			end,
+			dontRotateToFitBelowSurface = true,
+			placeObjectOffset = mj:mToP(vec3(0.0,0.4,0.0)),
+		},
+
+		-- TODO Handle this stuff too.
+		maxCarryCount = 1,
+		maxCarryCountLimitedAbility = 1,
+		--carryRotation = mat3Rotate(mat3Rotate(mat3Identity, math.pi * 0.4, vec3(0.0, 0.0, 1.0)), math.pi * 0.1, vec3(1.0, 0.0, 0.0)),
+		carryRotation = mat3Rotate(mat3Identity, 1.2, vec3(0.0, 0.0, 1.0)),
+		carryOffset = vec3(0.1,0.1,0.0),
 	}
 
 end
@@ -196,7 +222,8 @@ function objectManager:registerGameObject(gameObject, config)
 		scale = scale,
 		hasPhysics = physics,
 
-		resourceTypeIndex = resource.types[identifier].index,
+		-- TODO:
+		-- resourceTypeIndex = resource.types[identifier].index,
 
 		-- TODO
 		markerPositions = {

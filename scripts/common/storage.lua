@@ -12,6 +12,7 @@ local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/object/objectManager"
+local log = mjrequire "hammerstone/logging"
 
 function mod:onload(storage)
 	--- Allows adding a storage.
@@ -22,11 +23,11 @@ function mod:onload(storage)
 
 		local index = typeIndexMap[key]
 		if not index then
-			mj:log("ERROR: attempt to add storage type that isn't in typeIndexMap:", key)
+			log:error("attempt to add storage type that isn't in typeIndexMap:", key)
 		else
 			if storage.types[key] then
-				mj:log("WARNING: overwriting storage type:", key)
-				mj:log(debug.traceback())
+				log:warn("overwriting storage type:", key)
+				log:warn(debug.traceback())
 			end
 	
 			objectType.key = key

@@ -11,6 +11,9 @@ local mod = {
 local typeMaps = mjrequire "common/typeMaps"
 local gameObject = mjrequire "common/gameObject"
 
+-- Hammerstone
+local log = mjrequire "hammerstone/logger"
+
 function mod:onload(evolvingObject)
 	--- Allows adding an evolvingObject.
 	-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
@@ -19,7 +22,7 @@ function mod:onload(evolvingObject)
 		local index = typeMaps:keyToIndex(key, gameObject.validTypes)
 
 		if not index then
-			mj:error("Attempting to add evolving object which isn't a GameObject:", key)
+			log:error("Attempting to add evolving object which isn't a GameObject:", key)
 		else
 			evolvingObject.evolutions[index] = objectData
 		end
