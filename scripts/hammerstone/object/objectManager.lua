@@ -37,23 +37,23 @@ local log = mjrequire "hammerstone/logging"
 
 -- Initialize the full Data Driven API (DDAPI).
 local initialized = false
-function objectManager:init()
-	log:log("Initializing Object Manager...")
-
+function objectManager:init(gameObject)
 	-- Initialization guard to prevent infinite looping
 	if initialized then
-		mj:warn("Attempting to re-initialize objectManager DDAPI!")
+		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
 		return
 	end
 	initialized = true
+
+	log:log("Initializing Object Manager...")
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
 
 	-- Register items, in the order the game expects!
-	-- objectManager:generateResourceDefinitions()
+	objectManager:generateResourceDefinitions()
 	-- objectManager:generateStorageObjects()
-	objectManager:generateGameObjects()
+	objectManager:generateGameObjects(gameObject)
 
 end
 
@@ -138,7 +138,7 @@ function objectManager:generateResourceDefinition(config)
 	local marker_positions = gom["marker_positions"]
 
 	-- Local imports. Shoot me.
-	local resource = mjrequire "common/resource";
+	local resource = mjrequire "common/resource"
 
 	local newResource = {
 		key = identifier,
@@ -146,7 +146,7 @@ function objectManager:generateResourceDefinition(config)
 		plural = plural,
 		foodValue = 0.7, --TODO
 		foodPortionCount = 1, -- TODO
-		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO: Does this work???
+		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
 	}
 
 	resource:addResource(identifier, newResource)
@@ -238,15 +238,15 @@ end
 
 --- Called from `gameObject.lua`, and generates all game objects from cached storage
 -- @param gameObject - gameObject module.
-function objectManager:generateGameObjects()
+function objectManager:generateGameObjects(gameObject)
 	log:log("Generating GameObjects:")
 
 	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:registerGameObject(config)
+		objectManager:registerGameObject(config, gameObject)
 	end
 end
 
-function objectManager:registerGameObject(config)
+function objectManager:registerGameObject(config, gameObject)
 	if config == nil then
 		mj:warn("Attempting to generate nil GameObject")
 		return
@@ -269,8 +269,7 @@ function objectManager:registerGameObject(config)
 	local marker_positions = gom["marker_positions"]
 
 	-- Shoot me
-	local gameObject = mjrequire "common/gameObject"
-	local resource = mjrequire "common/resource";
+	local resource = mjrequire "common/resource"
 
 	local newObject = {
 		name = name,
