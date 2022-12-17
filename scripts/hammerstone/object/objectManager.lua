@@ -1,7 +1,10 @@
 --- Hammerstone: objectManager.lua
 -- @author SirLich
 
-local objectManager = {
+local objectManager = {}
+
+-- Local database of config information
+local objectDB = {
 	-- Unstructured game object definitions, read from FS
 	objectConfigs = {},
 
@@ -12,7 +15,6 @@ local objectManager = {
 	-- Collected when generating objects, and inserted when generating storages.
 	-- @format map<string, array<string>>
 	objectsForStorage = {}
-
 }
 
 -- sapiens
@@ -34,14 +36,23 @@ local log = mjrequire "hammerstone/logging"
 ---------------------------------------------------------------------------------
 
 -- Initialize the full Data Driven API (DDAPI).
+local initialized = false
 function objectManager:init()
+	log:log("Initializing Object Manager...")
+
+	-- Initialization guard to prevent infinite looping
+	if initialized then
+		mj:warn("Attempting to re-initialize objectManager DDAPI!")
+		return
+	end
+	initialized = true
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
 
 	-- Register items, in the order the game expects!
-	objectManager:generateResourceDefinitions()
-	objectManager:generateResourceDefinitions()
+	-- objectManager:generateResourceDefinitions()
+	-- objectManager:generateStorageObjects()
 	objectManager:generateGameObjects()
 
 end
@@ -63,7 +74,7 @@ function objectManager:loadConfigs()
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
 			count = count + 1;
-			objectManager:loadConfig(fullPath, objectManager.objectConfigs)
+			objectManager:loadConfig(fullPath, objectDB.objectConfigs)
 		end
 	end
 
@@ -74,15 +85,17 @@ function objectManager:loadConfigs()
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
 			count = count + 1;
-			objectManager:loadConfig(fullPath, objectManager.storageConfigs)
+			objectManager:loadConfig(fullPath, objectDB.storageConfigs)
 		end
 	end
 
 	log:log("Loaded Configs totalling: " .. count)
+	log:log(objectDB)
+
 end
 
 function objectManager:loadConfig(path, type)
-	log:log("Loading DDAPI Config of type ", type, " at ", path)
+	log:log("Loading DDAPI Config at " .. path)
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)
@@ -96,12 +109,17 @@ end
 -- @param resource - Module definition of resource.lua
 function objectManager:generateResourceDefinitions()
 	log:log("Generating resource definitions:")
-	for i, config in ipairs(objectManager.objectConfigs) do
+	for i, config in ipairs(objectDB.objectConfigs) do
 		objectManager:generateResourceDefinition(config)
 	end
 end
 
 function objectManager:generateResourceDefinition(config)
+	if config == nil then
+		log:warn("Warning! Attempting to generate a resource definition that is nil.")
+		return
+	end
+
 	local object = config["hammerstone:object"]
 	local description = object["description"]
 	local components = object["components"]
@@ -109,6 +127,9 @@ function objectManager:generateResourceDefinition(config)
 	local localization = gom["localization"]
 
 	local identifier = description["identifier"]
+	log:log("Generting Resource with ID: " .. identifier)
+
+
 	local name = localization["name"]
 	local plural = localization["plural"]
 	local scale = gom["scale"]
@@ -138,12 +159,17 @@ end
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
 	log:log("Generating Storage Objects:")
-	for i, config in ipairs(objectManager.storageConfigs) do
+	for i, config in ipairs(objectDB.storageConfigs) do
 		objectManager:generateStorageObject(config)
 	end
 end
 
 function objectManager:generateStorageObject(config)
+	if config == nil then
+		log:warn("Attempting to Generate nil Storage Object.")
+		return
+	end
+
 	-- Load structured information
 	local object = config["hammerstone:storage"]
 	local description = object["description"]
@@ -151,7 +177,7 @@ function objectManager:generateStorageObject(config)
 	local storageComponent = object.components["hammerstone:storage"]
 	local identifier = description.identifier
 
-	log:log("Generting Storage Object with ID: ", identifier)
+	log:log("Generting Storage Object with ID: " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
@@ -162,7 +188,7 @@ function objectManager:generateStorageObject(config)
 		key = identifier,
 		name = storageComponent.name,
 		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
-		resources = objectManager.objectsForStorage[identifier], -- TODO will this work?
+		resources = objectDB.objectsForStorage[identifier], -- TODO will this work?
 
 		-- TODO: Add fields to customize this.
 		storageBox = {
@@ -184,6 +210,8 @@ function objectManager:generateStorageObject(config)
 		carryOffset = vec3(0.1,0.1,0.0),
 	}
 
+
+	-- TODO: Actually register the storage object!
 end
 
 ---------------------------------------------------------------------------------
@@ -200,25 +228,30 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 
 	-- Initialize this storage container, if this is the first item we're adding.
 	local storageIdentifier = componentData.identifier
-	if objectManager.objectsForStorage[storageIdentifier] == nil then
-		objectManager.objectsForStorage[storageIdentifier] = {}
+	if objectDB.objectsForStorage[storageIdentifier] == nil then
+		objectDB.objectsForStorage[storageIdentifier] = {}
 	end
 
 	-- Insert the object identifier for this storage container
-	table.insert(objectManager.objectsForStorage[storageIdentifier], identifier)
+	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
 
 --- Called from `gameObject.lua`, and generates all game objects from cached storage
 -- @param gameObject - gameObject module.
-function objectManager:generateGameObjects(gameObject)
+function objectManager:generateGameObjects()
 	log:log("Generating GameObjects:")
 
-	for i, config in ipairs(objectManager.objectConfigs) do
-		objectManager:registerGameObject(gameObject, config)
+	for i, config in ipairs(objectDB.objectConfigs) do
+		objectManager:registerGameObject(config)
 	end
 end
 
-function objectManager:registerGameObject(gameObject, config)
+function objectManager:registerGameObject(config)
+	if config == nil then
+		mj:warn("Attempting to generate nil GameObject")
+		return
+	end
+
 	local object = config["hammerstone:object"]
 	local description = object["description"]
 	local components = object["components"]
@@ -226,6 +259,7 @@ function objectManager:registerGameObject(gameObject, config)
 	local localization = gom["localization"]
 
 	local identifier = description["identifier"]
+	log:log("Registering GameObject with ID " .. identifier)
 
 	local name = localization["name"]
 	local plural = localization["plural"]
@@ -234,6 +268,8 @@ function objectManager:registerGameObject(gameObject, config)
 	local physics = gom["physics"]
 	local marker_positions = gom["marker_positions"]
 
+	-- Shoot me
+	local gameObject = mjrequire "common/gameObject"
 	local resource = mjrequire "common/resource";
 
 	local newObject = {
@@ -254,7 +290,8 @@ function objectManager:registerGameObject(gameObject, config)
 		}
 	}
 
-	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
+	-- TODO:
+	-- objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
 	gameObject:addGameObject(identifier, newObject)
 end
 
