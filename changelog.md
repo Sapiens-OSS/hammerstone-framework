@@ -13,3 +13,8 @@ The first release of Hammerstone
 
  - Small updates to support the release of creative mode
  - Rewrote the 'action UI' system to allow better flexibility
+
+# 0.0.4
+
+- Exposes terrainTypes:addBaseType
+- Expose terrainTypes:addVariation
