@@ -19,8 +19,6 @@ function mod:onload(evolvingObject)
 	-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
 	-- @param objectData: The object to add, containing all fields.
 	function evolvingObject:addEvolvingObject(key, objectData)
-		mj:log("LOOK HERE")
-		mj:log(evolvingObject)
 		local index = typeMaps:keyToIndex(key, gameObject.validTypes)
 
 		if not index then

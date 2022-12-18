@@ -36,8 +36,8 @@ local rng = mjrequire "common/randomNumberGenerator"
 
 -- Math
 local mjm = mjrequire "common/mjm"
-local vec3 = mjm.vec3
 local vec2 = mjm.vec2
+local vec3 = mjm.vec3
 local mat3Identity = mjm.mat3Identity
 local mat3Rotate = mjm.mat3Rotate
 
@@ -211,9 +211,16 @@ function objectManager:generateResourceForStorage(storageIdentifier)
 	local resource = mjrequire "common/resource"
 
 	local newResource = {}
-	for i, identifier in ipairs(objectDB.objectsForStorage[storageIdentifier]) do
-		table.insert(newResource, resource.types[identifier].index)
+
+	local objectIdentifiers = objectDB.objectsForStorage[storageIdentifier]
+	if objectIdentifiers ~= nil then
+		for i, identifier in ipairs(objectIdentifiers) do
+			table.insert(newResource, resource.types[identifier].index)
+		end
+	else
+		log:warning("Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
 	end
+
 
 	return newResource
 end
@@ -325,7 +332,7 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
---- Registers an object into a storage
+--- Registers an object into a storage.
 -- @param identifier - The identifier of the object. e.g., hs:cake
 -- @param componentData - The inner-table data for `hammerstone:storage`
 function objectManager:registerObjectForStorage(identifier, componentData)
@@ -385,6 +392,15 @@ function objectManager:generateGameObject(config, gameObject)
 		resourceIdentifier = resourceLinkComponent["identifier"]
 	end
 
+	-- TODO: toolUsages
+	-- TODO: selectionGroupTypeIndexes
+	-- TODO: Implement eatByProducts
+
+	-- TODO: These ones are probably for a new component related to world placement.
+	-- allowsAnyInitialRotation
+	-- randomMaxScale = 1.5,
+	-- randomShiftDownMin = -1.0,
+	-- randomShiftUpMax = 0.5,
 	local newObject = {
 		name = name,
 		plural = plural,
@@ -393,7 +409,7 @@ function objectManager:generateGameObject(config, gameObject)
 		hasPhysics = physics,
 		resourceTypeIndex = resource.types[resourceIdentifier].index,
 
-		-- TODO
+		-- TODO: Implement marker positions
 		markerPositions = {
 			{
 				worldOffset = vec3(mj:mToP(0.0), mj:mToP(0.3), mj:mToP(0.0))
