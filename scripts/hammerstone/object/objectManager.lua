@@ -1,4 +1,7 @@
 --- Hammerstone: objectManager.lua
+-- This module controlls the registration of all Data Driven API objects. 
+-- It will search the filesystem for mod files which should be loaded, and then
+-- interact with Sapiens to create the objects.
 -- @author SirLich
 
 local objectManager = {
@@ -68,7 +71,7 @@ function objectManager:init(gameObject)
 	objectManager:generateResourceDefinitions()
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
-	-- generateEvolvingObjects is called internally.
+	-- generateEvolvingObjects is called internally, from `evolvingObjects.lua`.
 end
 
 --- Loops over known config locations and attempts to load them
@@ -135,9 +138,16 @@ function objectManager:generateResourceDefinition(config)
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
 	local components = objectDefinition["components"]
-
 	local identifier = description["identifier"]
-	log:log("Generting Resource with ID: " .. identifier)
+
+	-- Resource links would prevent a *new* resource from being generated.
+	local resourceLinkComponent = components["hammerstone:resource_link"]
+	if resourceLinkComponent ~= nil then
+		log:log("GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. " no unique resource created.")
+		return
+	end
+
+	log:log("Generting Resource with identifier: " .. identifier)
 
 	local objectComponent = components["hammerstone:object"]
 	local name = description["name"]
@@ -149,7 +159,6 @@ function objectManager:generateResourceDefinition(config)
 	local newResource = {
 		key = identifier,
 		name = name,
-		FISHFISH = "FISHFISH",
 		plural = plural,
 		-- displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
 		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat, -- TODO Fix this shit.
@@ -179,7 +188,7 @@ function objectManager:generateResourceDefinition(config)
 		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
 	end
 
-	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage"])
+	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
 	resource:addResource(identifier, newResource)
 end
 
@@ -337,17 +346,15 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
 
---- Called from `gameObject.lua`, and generates all game objects from cached storage
--- @param gameObject - gameObject module.
 function objectManager:generateGameObjects(gameObject)
 	log:log("Generating GameObjects:")
 
 	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:registerGameObject(config, gameObject)
+		objectManager:generateGameObject(config, gameObject)
 	end
 end
 
-function objectManager:registerGameObject(config, gameObject)
+function objectManager:generateGameObject(config, gameObject)
 	if config == nil then
 		log:warn("Attempting to generate nil GameObject")
 		return
@@ -370,13 +377,21 @@ function objectManager:registerGameObject(config, gameObject)
 	-- Shoot me
 	local resource = mjrequire "common/resource"
 
+	
+	-- Allow resource linking
+	local resourceIdentifier = identifier
+	local resourceLinkComponent = components["hammerstone:resource_link"]
+	if resourceLinkComponent ~= nil then
+		resourceIdentifier = resourceLinkComponent["identifier"]
+	end
+
 	local newObject = {
 		name = name,
 		plural = plural,
 		modelName = model,
 		scale = scale,
 		hasPhysics = physics,
-		resourceTypeIndex = resource.types[identifier].index,
+		resourceTypeIndex = resource.types[resourceIdentifier].index,
 
 		-- TODO
 		markerPositions = {

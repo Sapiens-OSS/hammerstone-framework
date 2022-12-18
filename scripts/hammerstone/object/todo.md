@@ -4,13 +4,15 @@
  - Tutorial integration
  - Craftables
  - Plants
- - Evolving Objects
+ - Tools
+ - Fuel
  - Item groups
  - Medicine
- - Schemas
  - Localization wrapping for name/plural.
 
 # Done
  - Resources
  - Objects
  - Storages
+ - Evolving Objects
+ - Schemas
