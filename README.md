@@ -1,29 +1,24 @@
-![Hammerstone Logo](https://sirlich.github.io/sapiens-modding-wiki/assets/hammerstone_wide.cc13ae54.png)
+![Hammerstone Logo](./assets/wordmark.png)
 # Hammerstone Mod Framework
+[![](https://dcbadge.vercel.app/api/server/WnN8hj2Fyg?style=flat)](https://discord.gg/WnN8hj2Fyg)
+Hammerstone is a modding API and framework for the Sapiens video game. It aims to improve compatibility between mods and provide several useful features to mod developers. It has no functionality by itself. 
 
-## About
-This framework is a modding API for the upcoming Sapiens video game. It is (currently) heavily work-in-progress, so expect many breaking changes.
+## Installing
+Hammerstone has many different versions, and it can be installed a variety of ways.
 
-Hammerstone's purpose is to: 
-* Clean abstraction layers
-* Data-driven approaches to input handling, UI, etc
-* Reusability and write-once architecture
+### Steam Workshop
+The Steam Workshop is the officially-supported way of installed Hammerstone. By going to it's [Steam Workshop page](https://steamcommunity.com/sharedfiles/filedetails/?id=2840825226) and click 'Subscribe', the game will automatically download the mod for you.
 
-[<img src="https://discord.com/assets/cb48d2a8d4991281d7a6a95d2f58195e.svg" width="300"/>](https://discord.gg/WnN8hj2Fyg)
+### GitHub (manual)
+If you need more control over the version, or need bleedging-edge features, you can clone this repository to your mods folder. Depending on your platform, the location you need to download it to changes:
+| Platform       	| File Path                                                                                                           	|
+|----------------	|---------------------------------------------------------------------------------------------------------------------	|
+| Windows        	| `%AppData%\majicjungle\sapiens\mods`                                                                                	|
+| MacOS          	| ?                                                                                                                   	|
+| Linux (Proton) 	| `~/.steam/steam/steamapps/compatdata/1060230/pfx/drive_c/users/steamuser/AppData/Roaming/majicjungle/sapiens/mods/` 	|
 
-
-## Docs
-
-### Installing
-
-See the docs at [Installing](https://sirlich.github.io/sapiens-modding-wiki/hammerstone/installing.html)
-
-### Developing
-
-See the docs at [Developing](https://sirlich.github.io/sapiens-modding-wiki/hammerstone/getting-started.html)
+## Developers
+Hammerstone has extensive documentation on the interfaces it provides. It can be found over on the [Sapiens Modding Wiki](https://wiki.sapiens.dev/). 
 
 ## Credits
-
-See contributors on the right-hand side!
-
-Big thanks to entire Sapiens modding community and majicdave!
+A massive thank you for SirLich for starting the project, the contributors listed on the GitHub repository, and the Sapiens modding community as a whole.
