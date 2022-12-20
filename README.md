@@ -1,6 +1,7 @@
 ![Hammerstone Logo](./assets/wordmark.png)
 # Hammerstone Mod Framework
 [![](https://dcbadge.vercel.app/api/server/WnN8hj2Fyg?style=flat)](https://discord.gg/WnN8hj2Fyg)
+
 Hammerstone is a modding API and framework for the Sapiens video game. It aims to improve compatibility between mods and provide several useful features to mod developers. It has no functionality by itself. 
 
 ## Installing
