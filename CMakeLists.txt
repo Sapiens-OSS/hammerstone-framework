@@ -8,7 +8,8 @@ project(${MOD_ID} C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_library(${MOD_ID} SHARED src/height.c src/biome.c)
+file(GLOB_RECURSE SOURCES "src/*.c")
+add_library(${MOD_ID} SHARED ${SOURCES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/splugins/include)
 find_library(SP_LIBRARY SPCommon PATHS ${CMAKE_CURRENT_SOURCE_DIR}/splugins/lib REQUIRED)
