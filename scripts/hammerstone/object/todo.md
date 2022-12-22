@@ -1,8 +1,6 @@
 # Todo
-
  - Musical instruments
  - Tutorial integration
- - Craftables
  - Plants
  - Tools
  - Fuel
@@ -16,7 +14,10 @@
  - Skill
  - Terrain types
  - Wind strength for models
+ - Materials
  
+ # In Progress
+ - Craftables
 
 # Done
  - Resources

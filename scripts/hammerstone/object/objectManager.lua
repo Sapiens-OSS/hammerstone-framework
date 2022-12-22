@@ -89,8 +89,6 @@ function objectManager:loadConfigs()
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	local count = 0;
 
-	mj:log(mods)
-
 	-- Objects
 	for i, mod in ipairs(mods) do
 		local objectConfigDir = mod.path .. "/hammerstone/objects/"
@@ -135,6 +133,133 @@ function objectManager:loadConfig(path, type)
 end
 
 ---------------------------------------------------------------------------------
+-- Utilities
+---------------------------------------------------------------------------------
+
+-- Returns result of running predicate on each item in table
+function map(tbl, predicate)
+	local data = {}
+	for i,e in ipairs(tbl) do
+		local value = predicate(e)
+		if value ~= nil then
+			table.insert(data, value)
+		end
+	end
+	return data
+end
+
+-- Returns items that have returned true for predicate
+function where(tbl, predicate)
+	local data = {}
+	for i,e in ipairs(tbl) do
+		if predicate(e) then
+			table.insert(data, e)
+		end
+	end
+	return data
+end
+
+function logNotImplemented(featureName)
+	log:log("Unfortunately, " .. featureName .. " is yet to be implemented")
+end
+
+function logMissing(displayAlias, key, tbl)
+	log:log(displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+	mj:log(tbl)
+end
+
+function getTypeIndex(tbl, key, displayAlias)
+	if tbl[key] ~= nil then
+		return tbl[key].index
+	end
+	return logMissing(displayAlias, key, tbl)
+end
+
+function getTypeKey(tbl, key, displayAlias)
+	if tbl[key] ~= nil then
+		return tbl[key].key
+	end
+	return logMissing(displayAlias, key, tbl)
+end
+
+function hasKey(tbl, key)
+	return tbl[key] ~= nil
+end
+
+function isEmpty(tbl)
+	return tbl == nil or next(tbl) == nil
+end
+
+function getField(tbl, key, options)
+	local value = tbl[key]
+	local name = key
+
+	if value == nil then
+		return
+	end
+
+	if options.displayName ~= nil then
+		name = options.displayName
+	end
+
+	if options.existsIn ~= nil then
+		if type(options.existsIn) == "table" then
+			if not hasKey(options.existsIn, value) then
+				return logMissing(name, value, tbl)
+			end
+		else
+			log:log("Value of existsIn option is not a table")
+		end
+	end
+
+	if options.forEach then
+		log:log("forEach option is not supported for getField")
+	end
+
+	return value
+end
+
+function getTable(tbl, key, options)
+	local value = tbl[key]
+	local name = key
+
+	if value == nil then
+		return
+	end
+
+	if type(value) ~= "table" then
+		return log:log("Value type of key '" .. key .. "' is not a table")
+	end
+
+	if options.displayName ~= nil then
+		name = options.displayName
+	end
+
+	if options.existsIn ~= nil then
+		if type(options.existsIn) == "table" then
+			for _, item in ipairs(value) do
+				if not hasKey(options.existsIn, item) then
+					return logMissing(name, item, tbl)
+				end
+			end
+		else
+			log:log("Value of existsIn option is not a table")
+		end
+	end
+
+	if options.map then
+		if type(options.map) == "function" then
+			value = map(value, options.map)
+		else
+			log:log("Value of map option is not a function")
+		end
+	end
+
+	return value
+end
+
+
+---------------------------------------------------------------------------------
 -- Resource
 ---------------------------------------------------------------------------------
 
@@ -152,6 +277,8 @@ function objectManager:generateResourceDefinition(config)
 		log:warn("Warning! Attempting to generate a resource definition that is nil.")
 		return
 	end
+
+	local resource = mjrequire "common/resource"
 
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
@@ -171,15 +298,11 @@ function objectManager:generateResourceDefinition(config)
 	local name = description["name"]
 	local plural = description["plural"]
 
-	-- Local imports. Shoot me.
-	local resource = mjrequire "common/resource"
-
 	local newResource = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		-- displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
-		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat, -- TODO Fix this shit.
+		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier], -- TODO Fix this shit.
 	}
 
 	-- Handle Food
@@ -458,38 +581,6 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 		return
 	end
 
-	-- Returns result of running predicate on each item in table
-	function map(tbl, predicate)
-		local data = {}
-		for i,e in ipairs(tbl) do
-			local value = predicate(e)
-			if value ~= nil then
-				table.insert(data, value)
-			end
-		end
-		return data
-	end
-
-	-- Returns items that have returned true for predicate
-	function where(tbl, predicate)
-		local data = {}
-		for i,e in ipairs(tbl) do
-			if predicate(e) then
-				table.insert(data, e)
-			end
-		end
-		return data
-	end
-
-	function getTypeIndex(tbl, key, displayAlias)
-		if tbl[key] ~= nil then
-			return tbl[key].index
-		end
-		mj:log("[Hammerstone] " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
-		mj:log(tbl)
-		return nil
-	end
-
 	local craftable = mjrequire "common/craftable"
 	local constructable = mjrequire "common/constructable"
 	local resource = mjrequire "common/resource"
@@ -503,7 +594,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	local description = objectDefinition["description"]
 	local identifier = description["identifier"]
 	local components = objectDefinition["components"]
-	mj:log("[Hammerstone]   " .. identifier)
+	log:log("   " .. identifier)
 
 	local recipe = components["hammerstone:recipe"]
 	local requirements = components["hammerstone:requirements"]
@@ -524,18 +615,14 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	if gameObject.typeIndexMap[recipe.preview_object] ~= nil then
 		data.iconGameObjectType = gameObject.typeIndexMap[recipe.preview_object]
 	else
-		mj:log("[Hammerstone] Preview Object '" .. recipe.preview_object .. "' does not exist. Try one of these instead:")
-		mj:log(gameObject.typeIndexMap)
-		return
+		return logMissing("Preview Object", recipe.preview_object, gameObject.typeIndexMap)
 	end
 
 	-- Classification
 	if constructable.classifications[recipe.classification] ~= nil then
 		data.classification = constructable.classifications[recipe.classification].index
 	else
-		mj:log("[Hammerstone] Classification '" .. recipe.classification .. "' does not exist. Try one of these instead:")
-		mj:log(constructable.classifications)
-		return 
+		return logMissing("Classification", recipe.classification, constructable.classifications)
 	end
 
 	-- Is Food Preparation
@@ -555,7 +642,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	local requiredTools = map(requirements.tools, function(element)
 		return getTypeIndex(tool.types, element, "Tool")
 	end)
-	if requiredTools ~= nil then
+	if not isEmpty(requiredTools) then
 		data.requiredTools = requiredTools
 	end
 
@@ -566,16 +653,14 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 				required = skill.types[requirements.skills[1]].index
 			}
 		else
-			mj:log("[Hammerstone] Skill '" .. requirements.skills[1] .. "' does not exist. Try one of these instead:")
-			mj:log(skill.types)
+			return logMissing("Skill", requirements.skills[1], skill.types)
 		end
 	end
 	if #requirements.skills > 1 then
 		if skill.types[requirements.skills[2]] ~= nil then
 			data.disabledUntilAdditionalSkillTypeDiscovered = skill.types[requirements.skills[2]].index
 		else
-			mj:log("[Hammerstone] Skill '" .. requirements.skills[2] .. "' does not exist. Try one of these instead:")
-			mj:log(skill.types)
+			return logMissing("Skill", requirements.skills[2], skill.types)
 		end
 	end
 
@@ -587,12 +672,10 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 					if gameObject.typeIndexMap[e] ~= nil then
 						return gameObject.typeIndexMap[e]
 					end
-					mj:log("[Hammerstone] Game object '" .. e .. "' does not exist. Try one of these instead:")
-					mj:log(gameObject.typeIndexMap)
+					return logMissing("Game object", e, gameObject.typeIndexMap)
 				end)
 			end
-			mj:log("[Hammerstone] Game object '" .. element.input .. "' does not exist. Try one of these instead:")
-			mj:log(gameObject.typeIndexMap)
+			return logMissing("Game object", element.input, gameObject.typeIndexMap)
 		end)
 		if outputArraysByResourceObjectType ~= nil then
 			data.outputObjectInfo.outputArraysByResourceObjectType = outputArraysByResourceObjectType
@@ -609,7 +692,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	if buildSequenceModel ~= nil then
 		data.inProgressBuildModel = buildSequenceModel
 	else
-		mj:log("[Hammerstone] Missing build sequence model")
+		return log:log("[Hammerstone] Missing build sequence model")
 	end
 	
 	-- Build Sequence
@@ -618,6 +701,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 		if steps ~= nil then
 			-- Custom build sequence
 			-- TODO
+			logNotImplemented("custom build sequences")
 		else
 			-- Standard build sequence
 			local action = buildSequence["action"]
@@ -626,31 +710,35 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 				if actionSequence.types[action] ~= nil then
 					action = actionSequence.types[action].index
 					if tool ~= nil then
-						if tool.types[tool] == nil then
-							mj:log("[Hammerstone] Tool '" .. tool .. "' does not exist. Try one of these instead:")
-							mj:log(tool.types)
-						else
+						if tool.types[tool] ~= nil then
 							tool = tool.types[tool].index
+						else
+							return logMissing("Tool", tool, tool.types)
 						end
 					end
 					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
 				else
-					mj:log("[Hammerstone] Action sequence '" .. action .. "' does not exist. Try one of these instead:")
-					mj:log(actionSequence.types)
+					return logMissing("Action sequence", action, actionSequence.types)
 				end
 			else
-				mj:log("[Hammerstone] Missing action sequence")
+				log:log("Missing action sequence")
 			end
 		end
 	else
-		mj:log("[Hammerstone] Missing build sequence")
+		log:log("Missing build sequence")
 	end
 
 	-- Object Prop
 	-- TODO
+	if objectProp ~= nil then
+		logNotImplemented("object props")
+	end
 
 	-- Resource Prop
 	-- TODO
+	if resourceProp ~= nil then
+		logNotImplemented("resource props")
+	end
 
 	-- Resource Sequence
 	if resourceSequence ~= nil then
@@ -681,19 +769,17 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 								mj:log("[Hammerstone] Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
 							end
 						else
-							mj:log("[Hammerstone] Action '" .. item["action"]["action_type"] .. "' does not exist. Try one of these instead:")
-							mj:log(action.types)
+							return logMissing("Action", item["action"]["action_type"], action.types)
 						end
 					end
 				end
 				table.insert(data.requiredResources, resourceData)
 			else
-				mj:log("[Hammerstone] Resource '" .. resourceName .. "' does not exist. Try one of these instead:")
-				mj:log(actionSequence.types)
+				return logMissing("Resource", resourceName, actionSequence.types)
 			end
 		end
 	else
-		mj:log("[Hammerstone] Missing resource sequence")
+		log:log("Missing resource sequence")
 	end
 
 	mj:log(data)
