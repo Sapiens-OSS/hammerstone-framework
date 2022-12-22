@@ -5,7 +5,8 @@
 -- @author SirLich
 
 local objectManager = {
-	gameObject = nil
+	gameObject = nil,
+	inspectCraftPanelData = {},
 }
 
 -- Local database of config information
@@ -19,7 +20,10 @@ local objectDB = {
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
-	objectsForStorage = {}
+	objectsForStorage = {},
+
+	-- Unstructured storage configurations, read from FS
+	recipeConfigs = {},
 }
 
 -- TODO: Consider using metaTables to add default values to the objectDB
@@ -72,6 +76,7 @@ function objectManager:init(gameObject)
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
 	-- generateEvolvingObjects is called internally, from `evolvingObjects.lua`.
+	-- generateRecipeDefinitions is called internally, from `craftable.lua`.
 end
 
 --- Loops over known config locations and attempts to load them
@@ -105,6 +110,19 @@ function objectManager:loadConfigs()
 			objectManager:loadConfig(fullPath, objectDB.storageConfigs)
 		end
 	end
+
+	-- Craftable
+	for i, mod in ipairs(mods) do
+		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/recipes/"
+		local configs = fileUtils.getDirectoryContents(objectConfigDir)
+		for j, config in ipairs(configs) do
+			local fullPath =  objectConfigDir .. config
+			count = count + 1;
+			objectManager:loadConfig(fullPath, objectDB.recipeConfigs)
+		end
+	end
+
+	--mj:log(objectDB.recipeConfigs)
 
 	log:log("Loaded Configs totalling: " .. count)
 end
@@ -147,7 +165,7 @@ function objectManager:generateResourceDefinition(config)
 		return
 	end
 
-	log:log("Generting Resource with identifier: " .. identifier)
+	log:log("Generating Resource with identifier: " .. identifier)
 
 	local objectComponent = components["hammerstone:object"]
 	local name = description["name"]
@@ -238,7 +256,7 @@ function objectManager:generateStorageObject(config)
 	local storageComponent = object.components["hammerstone:storage"]
 	local identifier = description.identifier
 
-	log:log("Generting Storage Object with ID: " .. identifier)
+	log:log("Generating Storage Object with ID: " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
@@ -421,5 +439,276 @@ function objectManager:generateGameObject(config, gameObject)
 	gameObject:addGameObject(identifier, newObject)
 end
 
+---------------------------------------------------------------------------------
+-- Craftable
+---------------------------------------------------------------------------------
+
+--- Generates recipe definitions based on the loaded config, and registers them.
+function objectManager:generateRecipeDefinitions(gameObject)
+	log:log("Generating recipe definitions:")
+	for i, config in ipairs(objectDB.recipeConfigs) do
+		objectManager:generateRecipeDefinition(gameObject, config)
+	end
+end
+
+function objectManager:generateRecipeDefinition(gameObject, config)
+
+	if config == nil then
+		log:warn("Warning! Attempting to generate a recipe definition that is nil.")
+		return
+	end
+
+	-- Returns result of running predicate on each item in table
+	function map(tbl, predicate)
+		local data = {}
+		for i,e in ipairs(tbl) do
+			local value = predicate(e)
+			if value ~= nil then
+				table.insert(data, value)
+			end
+		end
+		return data
+	end
+
+	-- Returns items that have returned true for predicate
+	function where(tbl, predicate)
+		local data = {}
+		for i,e in ipairs(tbl) do
+			if predicate(e) then
+				table.insert(data, e)
+			end
+		end
+		return data
+	end
+
+	function getTypeIndex(tbl, key, displayAlias)
+		if tbl[key] ~= nil then
+			return tbl[key].index
+		end
+		mj:log("[Hammerstone] " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+		mj:log(tbl)
+		return nil
+	end
+
+	local craftable = mjrequire "common/craftable"
+	local constructable = mjrequire "common/constructable"
+	local resource = mjrequire "common/resource"
+	local action = mjrequire "common/action"
+	local actionSequence = mjrequire "common/actionSequence"
+	local craftAreaGroup = mjrequire "common/craftAreaGroup"
+	local tool = mjrequire "common/tool"
+	local skill = mjrequire "common/skill"
+	
+	local objectDefinition = config["hammerstone:recipe_definition"]
+	local description = objectDefinition["description"]
+	local identifier = description["identifier"]
+	local components = objectDefinition["components"]
+	mj:log("[Hammerstone]   " .. identifier)
+
+	local recipe = components["hammerstone:recipe"]
+	local requirements = components["hammerstone:requirements"]
+	local output = components["hammerstone:output"]
+	local build_sequence = components["hammerstone:build_sequence"]
+
+	local data = {
+		name = description.name,
+		plural = description.plural,
+		summary = description.summary,
+		outputObjectInfo = {},
+		requiredResources = {},
+	}
+
+	-- The following code is for sanitizing inputs and logging errors accordingly
+
+	-- Preview Object
+	if gameObject.typeIndexMap[recipe.preview_object] ~= nil then
+		data.iconGameObjectType = gameObject.typeIndexMap[recipe.preview_object]
+	else
+		mj:log("[Hammerstone] Preview Object '" .. recipe.preview_object .. "' does not exist. Try one of these instead:")
+		mj:log(gameObject.typeIndexMap)
+		return
+	end
+
+	-- Classification
+	if constructable.classifications[recipe.classification] ~= nil then
+		data.classification = constructable.classifications[recipe.classification].index
+	else
+		mj:log("[Hammerstone] Classification '" .. recipe.classification .. "' does not exist. Try one of these instead:")
+		mj:log(constructable.classifications)
+		return 
+	end
+
+	-- Is Food Preparation
+	if description["isFoodPreparation"] ~= nil and description["isFoodPreparation"] then
+		data.isFoodPreparation = true
+	end
+
+	-- Required Craft Area Groups
+	local requiredCraftAreaGroups = map(requirements.craft_area_groups, function(element)
+		return getTypeIndex(craftAreaGroup.types, element, "Craft Area Group")
+	end)
+	if requiredCraftAreaGroups ~= nil then
+		data.requiredCraftAreaGroups = requiredCraftAreaGroups
+	end
+
+	-- Required Tools
+	local requiredTools = map(requirements.tools, function(element)
+		return getTypeIndex(tool.types, element, "Tool")
+	end)
+	if requiredTools ~= nil then
+		data.requiredTools = requiredTools
+	end
+
+	-- Required Skills
+	if #requirements.skills > 0 then
+		if skill.types[requirements.skills[1]] ~= nil then
+			data.skills = {
+				required = skill.types[requirements.skills[1]].index
+			}
+		else
+			mj:log("[Hammerstone] Skill '" .. requirements.skills[1] .. "' does not exist. Try one of these instead:")
+			mj:log(skill.types)
+		end
+	end
+	if #requirements.skills > 1 then
+		if skill.types[requirements.skills[2]] ~= nil then
+			data.disabledUntilAdditionalSkillTypeDiscovered = skill.types[requirements.skills[2]].index
+		else
+			mj:log("[Hammerstone] Skill '" .. requirements.skills[2] .. "' does not exist. Try one of these instead:")
+			mj:log(skill.types)
+		end
+	end
+
+	-- Outputs
+	if output.output_by_object ~= nil then
+		local outputArraysByResourceObjectType = map(output.output_by_object, function(element)
+			if gameObject.typeIndexMap[element.input] ~= nil then
+				return map(element.output, function(e)
+					if gameObject.typeIndexMap[e] ~= nil then
+						return gameObject.typeIndexMap[e]
+					end
+					mj:log("[Hammerstone] Game object '" .. e .. "' does not exist. Try one of these instead:")
+					mj:log(gameObject.typeIndexMap)
+				end)
+			end
+			mj:log("[Hammerstone] Game object '" .. element.input .. "' does not exist. Try one of these instead:")
+			mj:log(gameObject.typeIndexMap)
+		end)
+		if outputArraysByResourceObjectType ~= nil then
+			data.outputObjectInfo.outputArraysByResourceObjectType = outputArraysByResourceObjectType
+		end
+	end
+	
+	local buildSequenceModel = build_sequence["build_sequence_model"]
+	local buildSequence = build_sequence["build_sequence"]
+	local objectProp = build_sequence["object_prop"]
+	local resourceProp = build_sequence["resource_prop"]
+	local resourceSequence = build_sequence["resource_sequence"]
+
+	-- Build Sequence Model
+	if buildSequenceModel ~= nil then
+		data.inProgressBuildModel = buildSequenceModel
+	else
+		mj:log("[Hammerstone] Missing build sequence model")
+	end
+	
+	-- Build Sequence
+	if buildSequence ~= nil then
+		local steps = buildSequence["steps"]
+		if steps ~= nil then
+			-- Custom build sequence
+			-- TODO
+		else
+			-- Standard build sequence
+			local action = buildSequence["action"]
+			local tool = buildSequence["tool"]
+			if action ~= nil then
+				if actionSequence.types[action] ~= nil then
+					action = actionSequence.types[action].index
+					if tool ~= nil then
+						if tool.types[tool] == nil then
+							mj:log("[Hammerstone] Tool '" .. tool .. "' does not exist. Try one of these instead:")
+							mj:log(tool.types)
+						else
+							tool = tool.types[tool].index
+						end
+					end
+					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
+				else
+					mj:log("[Hammerstone] Action sequence '" .. action .. "' does not exist. Try one of these instead:")
+					mj:log(actionSequence.types)
+				end
+			else
+				mj:log("[Hammerstone] Missing action sequence")
+			end
+		end
+	else
+		mj:log("[Hammerstone] Missing build sequence")
+	end
+
+	-- Object Prop
+	-- TODO
+
+	-- Resource Prop
+	-- TODO
+
+	-- Resource Sequence
+	if resourceSequence ~= nil then
+		for _, item in ipairs(resourceSequence) do
+			local resourceName = item["resource"]
+			local count = item["count"]
+			if resource.types[resourceName] ~= nil then
+				if count == nil then
+					count = 1
+				end
+				local resourceData = {
+					type = resource.types[resourceName].index,
+					count = count
+				}
+				if action ~= nil then
+					if item["action"]["action_type"] ~= nil then
+						if action.types[item["action"]["action_type"]] ~= nil then
+							if item["action"]["duration"] ~= nil then
+								resourceData.afterAction = {}
+								resourceData.afterAction.actionTypeIndex = action.types[item["action"]["action_type"]].index
+								resourceData.afterAction.duration = item["action"]["duration"]
+								if item["action"]["duration_without_skill"] ~= nil then
+									resourceData.afterAction.durationWithoutSkill = item["action"]["duration_without_skill"]
+								else
+									resourceData.afterAction.durationWithoutSkill = item["action"]["duration"]
+								end
+							else
+								mj:log("[Hammerstone] Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
+							end
+						else
+							mj:log("[Hammerstone] Action '" .. item["action"]["action_type"] .. "' does not exist. Try one of these instead:")
+							mj:log(action.types)
+						end
+					end
+				end
+				table.insert(data.requiredResources, resourceData)
+			else
+				mj:log("[Hammerstone] Resource '" .. resourceName .. "' does not exist. Try one of these instead:")
+				mj:log(actionSequence.types)
+			end
+		end
+	else
+		mj:log("[Hammerstone] Missing resource sequence")
+	end
+
+	mj:log(data)
+
+	-- Add recipe
+	craftable:addCraftable(identifier, data)
+
+	-- Add items in crafting panels
+	for _, group in ipairs(requiredCraftAreaGroups) do
+		local key = gameObject.typeIndexMap[craftAreaGroup.types[group].key]
+		if objectManager.inspectCraftPanelData[key] == nil then
+			objectManager.inspectCraftPanelData[key] = {}
+		end
+		table.insert(objectManager.inspectCraftPanelData[key], constructable.types[identifier].index)
+	end
+end
 
 return objectManager

@@ -6,17 +6,15 @@ local mod = {
     loadOrder = 0
 }
 
--- Sapiens
-local constructable = mjrequire "common/constructable"
-
 function mod:onload(craftable)
-    --- Adds a craftable
-    -- @param key - The key to add
-    -- @param objectData - The objectData table.
-    function craftable:addCraftable(key, objectData)
-        return constructable:addConstructable(key, objectData)
-    end
 
+    local super_load = craftable.load
+    craftable.load = function(craftable_, gameObject, flora)
+        super_load(craftable_, gameObject, flora)
+
+        local objectManager = mjrequire "hammerstone/object/objectManager"
+        objectManager:generateRecipeDefinitions(gameObject)
+    end
 end
 
 return mod
