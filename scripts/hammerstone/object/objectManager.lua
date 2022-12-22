@@ -85,13 +85,15 @@ end
 -- TODO: Call this method from the correct location
 function objectManager:loadConfigs()
 	log:log("Loading Configuration files:")
-	local modsDirectory = fileUtils.getSavePath("mods")
-	local mods = fileUtils.getDirectoryContents(modsDirectory)
+	local modManager = mjrequire "common/modManager"
+	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	local count = 0;
+
+	mj:log(mods)
 
 	-- Objects
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/objects/"
+		local objectConfigDir = mod.path .. "/hammerstone/objects/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -102,7 +104,7 @@ function objectManager:loadConfigs()
 
 	-- Storage
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/storage/"
+		local objectConfigDir = mod.path .. "/hammerstone/storage/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -113,7 +115,7 @@ function objectManager:loadConfigs()
 
 	-- Craftable
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/recipes/"
+		local objectConfigDir = mod.path .. "/hammerstone/recipes/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -121,8 +123,6 @@ function objectManager:loadConfigs()
 			objectManager:loadConfig(fullPath, objectDB.recipeConfigs)
 		end
 	end
-
-	--mj:log(objectDB.recipeConfigs)
 
 	log:log("Loaded Configs totalling: " .. count)
 end
