@@ -79,15 +79,17 @@ function objectManager:init(gameObject)
 	-- generateRecipeDefinitions is called internally, from `craftable.lua`.
 end
 
---- Loops over known config locations and attempts to load them
--- TODO: Do mods get stored in different places when downloaded from steam?
--- TODO: Make sure it only loads configs from enabled mods.
+-- Loops over known config locations and attempts to load them
 -- TODO: Call this method from the correct location
 function objectManager:loadConfigs()
 	log:log("Loading Configuration files:")
 	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	local count = 0;
+
+	log:schema("resource", "test")
+	log:schema("resource", "test2")
+	log:schema("resource", "test3")
 
 	-- Objects
 	for i, mod in ipairs(mods) do
@@ -133,7 +135,7 @@ function objectManager:loadConfig(path, type)
 end
 
 ---------------------------------------------------------------------------------
--- Utilities
+-- Utilities (very temporary stuff, testing phase)
 ---------------------------------------------------------------------------------
 
 -- Returns result of running predicate on each item in table
@@ -159,15 +161,31 @@ function where(tbl, predicate)
 	return data
 end
 
+local logMissingTables = {}
+
+function logMissing(displayAlias, key, tbl)
+	if logMissingTables[tbl] == nil then
+		table.insert(logMissingTables, tbl)
+
+		log:log(displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+
+		for k, _ in pairs(tbl) do
+			if type(k) == "string" then
+				log:log(" " .. k)
+			end
+		end
+	end
+end
+
+function logWrongType(key, typeName)
+	log:log(key .. " should be of type " .. typeName .. ", not " .. type(key))
+end
+
 function logNotImplemented(featureName)
 	log:log("Unfortunately, " .. featureName .. " is yet to be implemented")
 end
 
-function logMissing(displayAlias, key, tbl)
-	log:log(displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
-	mj:log(tbl)
-end
-
+-- Returns the index of a type, or nil if not found.
 function getTypeIndex(tbl, key, displayAlias)
 	if tbl[key] ~= nil then
 		return tbl[key].index
@@ -175,6 +193,10 @@ function getTypeIndex(tbl, key, displayAlias)
 	return logMissing(displayAlias, key, tbl)
 end
 
+-- Returns the key of a type, or nil if not found.
+--- @param tbl table
+--- @param key string
+--- @param displayAlias string
 function getTypeKey(tbl, key, displayAlias)
 	if tbl[key] ~= nil then
 		return tbl[key].key
@@ -182,12 +204,25 @@ function getTypeKey(tbl, key, displayAlias)
 	return logMissing(displayAlias, key, tbl)
 end
 
+-- Return true if a table has key.
 function hasKey(tbl, key)
-	return tbl[key] ~= nil
+	return tbl ~= nil and tbl[key] ~= nil
 end
 
+-- Return true if a table is null or empty.
 function isEmpty(tbl)
 	return tbl == nil or next(tbl) == nil
+end
+
+-- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
+function isType(value, typeName)
+	if type(value) == typeName then
+		return true
+	end
+	if typeName == "boolean" then
+		return value == "true"
+	end
+	return false
 end
 
 function getField(tbl, key, options)
@@ -198,22 +233,25 @@ function getField(tbl, key, options)
 		return
 	end
 
-	if options.displayName ~= nil then
-		name = options.displayName
-	end
+	if options ~= nil then
 
-	if options.existsIn ~= nil then
-		if type(options.existsIn) == "table" then
-			if not hasKey(options.existsIn, value) then
-				return logMissing(name, value, tbl)
+		-- Make sure this field has the proper type
+		if options.type ~= nil then
+			if not isType(value, options.type) then
+				return logWrongType(key, options.type)
 			end
-		else
-			log:log("Value of existsIn option is not a table")
 		end
-	end
 
-	if options.forEach then
-		log:log("forEach option is not supported for getField")
+		-- Make sure this field value has a valid type
+		if options.typeTable ~= nil then
+			if type(options.typeTable) == "table" then
+				if not hasKey(options.typeTable, value) then
+					return logMissing(name, value, tbl)
+				end
+			else
+				log:log("Value of typeTable is not table")
+			end
+		end
 	end
 
 	return value
@@ -228,30 +266,23 @@ function getTable(tbl, key, options)
 	end
 
 	if type(value) ~= "table" then
-		return log:log("Value type of key '" .. key .. "' is not a table")
+		return log:log("Value type of key '" .. key .. "' is not table")
 	end
 
-	if options.displayName ~= nil then
-		name = options.displayName
-	end
+	if options ~= nil then
 
-	if options.existsIn ~= nil then
-		if type(options.existsIn) == "table" then
-			for _, item in ipairs(value) do
-				if not hasKey(options.existsIn, item) then
-					return logMissing(name, item, tbl)
+		if options.displayName ~= nil then
+			name = options.displayName
+		end
+
+		for k, v in pairs(options) do
+			if k == "map" then
+				if type(options.map) == "function" then
+					value = map(value, options.map)
+				else
+					log:log("Value of map option is not function")
 				end
 			end
-		else
-			log:log("Value of existsIn option is not a table")
-		end
-	end
-
-	if options.map then
-		if type(options.map) == "function" then
-			value = map(value, options.map)
-		else
-			log:log("Value of map option is not a function")
 		end
 	end
 
@@ -302,12 +333,13 @@ function objectManager:generateResourceDefinition(config)
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier], -- TODO Fix this shit.
+		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier],
 	}
 
 	-- Handle Food
 	local foodComponent = components["hammerstone:food"]
 	if foodComponent ~= nil then
+		--if type() -- TODO
 		newResource.foodValue = foodComponent.value
 		newResource.foodPortionCount = foodComponent.portions
 
@@ -594,7 +626,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	local description = objectDefinition["description"]
 	local identifier = description["identifier"]
 	local components = objectDefinition["components"]
-	log:log("   " .. identifier)
+	log:log(identifier)
 
 	local recipe = components["hammerstone:recipe"]
 	local requirements = components["hammerstone:requirements"]
@@ -612,10 +644,10 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	-- The following code is for sanitizing inputs and logging errors accordingly
 
 	-- Preview Object
-	if gameObject.typeIndexMap[recipe.preview_object] ~= nil then
-		data.iconGameObjectType = gameObject.typeIndexMap[recipe.preview_object]
+	if gameObject.types[recipe.preview_object] ~= nil then
+		data.iconGameObjectType = recipe.preview_object
 	else
-		return logMissing("Preview Object", recipe.preview_object, gameObject.typeIndexMap)
+		return logMissing("Preview Object", recipe.preview_object, gameObject.types)
 	end
 
 	-- Classification
@@ -667,15 +699,15 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	-- Outputs
 	if output.output_by_object ~= nil then
 		local outputArraysByResourceObjectType = map(output.output_by_object, function(element)
-			if gameObject.typeIndexMap[element.input] ~= nil then
+			if gameObject.types[element.input] ~= nil then
 				return map(element.output, function(e)
-					if gameObject.typeIndexMap[e] ~= nil then
-						return gameObject.typeIndexMap[e]
+					if gameObject.types[e] ~= nil then
+						return gameObject.types[e]
 					end
-					return logMissing("Game object", e, gameObject.typeIndexMap)
+					return logMissing("Game Object", e, gameObject.types)
 				end)
 			end
-			return logMissing("Game object", element.input, gameObject.typeIndexMap)
+			return logMissing("Game Object", element.input, gameObject.types)
 		end)
 		if outputArraysByResourceObjectType ~= nil then
 			data.outputObjectInfo.outputArraysByResourceObjectType = outputArraysByResourceObjectType
@@ -701,7 +733,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 		if steps ~= nil then
 			-- Custom build sequence
 			-- TODO
-			logNotImplemented("custom build sequences")
+			logNotImplemented("Custom Build Sequences")
 		else
 			-- Standard build sequence
 			local action = buildSequence["action"]
@@ -718,7 +750,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 					end
 					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
 				else
-					return logMissing("Action sequence", action, actionSequence.types)
+					return logMissing("Action Sequence", action, actionSequence.types)
 				end
 			else
 				log:log("Missing action sequence")
@@ -744,11 +776,8 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	if resourceSequence ~= nil then
 		for _, item in ipairs(resourceSequence) do
 			local resourceName = item["resource"]
-			local count = item["count"]
+			local count = item["count"] or 1
 			if resource.types[resourceName] ~= nil then
-				if count == nil then
-					count = 1
-				end
 				local resourceData = {
 					type = resource.types[resourceName].index,
 					count = count
@@ -782,7 +811,60 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 		log:log("Missing resource sequence")
 	end
 
+
+
+	function compile(req, data)
+		return data
+	end
+
+
+	local required = {
+		requiredTools = false,
+		inProgressBuildModel = true
+	}
+
+	local testdata = compile(required, {
+
+		preview_object = getField(recipe, "preview_object", {
+			typeTable = gameObject.types
+		}),
+
+		isFoodPreparation = getField(recipe, "preview_object", {
+			type = "boolean"
+		}),
+
+		inProgressBuildModel = getField(build_sequence, "build_sequence_model", {
+			typeTable = gameObject.types
+		}),
+
+		requiredTools = getTable(requirements.tools, "build_sequence", {
+			-- Return a table of tool indexes
+			map = function(e)
+				return getTypeIndex(tool.types, e, "Tool")
+			end
+		}),
+		
+		requiredResources = getTable(build_sequence, "resource_sequence", {
+			-- Return a table of resource sequences
+			map = function(e)
+
+				-- Cancel if resource doesn't exist
+				if (getTypeIndex(resource.types, e["resource"], "Resource") == nil) then return end
+
+				return e
+			end
+		})
+	})
+
 	mj:log(data)
+	mj:log(testdata)
+
+	if testdata ~= nil then
+		-- add whatever
+	else
+		-- you got an error
+	end
+
 
 	-- Add recipe
 	craftable:addCraftable(identifier, data)
