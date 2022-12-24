@@ -16,6 +16,7 @@
  - Skill
  - Terrain types
  - Wind strength for models
+ - Plants
  
 
 # Done

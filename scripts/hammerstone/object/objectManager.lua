@@ -16,6 +16,9 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	storageConfigs = {},
 
+	-- Unstructured recipe configurations, read from FS
+	recipeConfigs = {},
+
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
@@ -106,6 +109,17 @@ function objectManager:loadConfigs()
 		end
 	end
 
+	-- Recipes
+	for i, mod in ipairs(mods) do
+		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/recipe/"
+		local configs = fileUtils.getDirectoryContents(objectConfigDir)
+		for j, config in ipairs(configs) do
+			local fullPath =  objectConfigDir .. config
+			count = count + 1;
+			objectManager:loadConfig(fullPath, objectDB.recipeConfigs)
+		end
+	end
+
 	log:log("Loaded Configs totalling: " .. count)
 end
 
@@ -114,6 +128,26 @@ function objectManager:loadConfig(path, type)
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)
+end
+
+---------------------------------------------------------------------------------
+-- Recipe
+---------------------------------------------------------------------------------
+
+function objectManager:generateRecipeDefinitions()
+	log:log("Generating recipe definitions:")
+	for i, config in ipairs(objectDB.objectConfigs) do
+		objectManager:generateRecipeDefinition(config)
+	end
+end
+
+function objectManager:generateRecipeDefinition(config)
+	if config == nil then
+		log:warn("Warning! Attempting to generate a recipe definition that is nil.")
+		return
+	end
+
+
 end
 
 ---------------------------------------------------------------------------------
