@@ -38,7 +38,9 @@ function mod:onload(evolvingObject)
 		super_init(evolvingObject, dayLength, yearLength)
 		
 		local objectManager = mjrequire "hammerstone/object/objectManager"
-		objectManager:generateEvolvingObjects(evolvingObject)
+		objectManager:generateEvolvingObjects({
+			evolvingObject = evolvingObject
+		})
 	end
 end
 

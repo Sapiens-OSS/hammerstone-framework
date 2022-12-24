@@ -23,8 +23,6 @@ function mod:onload(inspectCraftPanel)
 		end
 
         super_load(inspectCraftPanel_, serinspectUI_, inspectObjectUI_, world_, parentContainerView)
-
-        mj:log(inspectCraftPanel.itemLists)
     end
 end
 

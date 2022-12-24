@@ -10,7 +10,7 @@ local logging = {
 }
 
 local function enforceValid(msg)
-	if msg == nil  then
+	if msg == nil then
 		return "Nil"
 	else
 		return msg
@@ -19,6 +19,7 @@ end
 
 function logging:log(msg)
 	mj:log("[Hammerstone] ", enforceValid(msg))
+	logging:schema(nil, msg)
 end
 
 --- @deprecated, use logging:warn instead
@@ -44,8 +45,8 @@ local boundToEventManager = false
 local schemaLogsByFile = {}
 
 local logSaveNewLog = false
-local logSaveTimeout = 0 -- When this hits 0, save logs to file
-local logSaveTimeoutMax = 5
+local logSaveTimeout = 0
+local logSaveTimeoutMax = 1
 local logSaveTimer = nil
 
 --- Returns the world's log directory.
@@ -98,25 +99,34 @@ end
 --- @return nil
 function logging:schema(file, msg)
 
+	--logging:log(msg)
+
 	local logPath = getLogDirectoryPath()
 	local msgString = mj:tostring(msg, 0) .. "\n"
+	--local msgString = "[Hammerstone] " .. mj:tostring(msg, 0) .. "\n"
 
-	-- Add log
-	if schemaLogsByFile[file] == nil then
-		schemaLogsByFile[file] = msgString
+	-- Add log to main
+	if schemaLogsByFile["_main"] == nil then
+		schemaLogsByFile["_main"] = msgString
 	else
-		schemaLogsByFile[file] = schemaLogsByFile[file] .. msgString
+		schemaLogsByFile["_main"] = schemaLogsByFile["_main"] .. msgString
+	end
+
+	-- Add log to specific file
+	if file ~= nil then
+		if schemaLogsByFile[file] == nil then
+			schemaLogsByFile[file] = msgString
+		else
+			schemaLogsByFile[file] = schemaLogsByFile[file] .. msgString
+		end
 	end
 
 	-- Prepare to save log file
 	logSaveNewLog = true
-	logSaveTimeout = logSaveTimeout + 0.2
-	if logSaveTimeout > logSaveTimeoutMax then
-		logSaveTimeout = logSaveTimeoutMax
-	end
+	logSaveTimeout = logSaveTimeoutMax
 end
 
---- This function updates log files a few milliseconds after a log is sent.
+--- This function updates log files some time after a log is sent.
 --- The delay is to save to file in batches.
 --- This only exists because I haven't found a way to append to a file, only overwrite it. :)
 function updateLogs(dt)
@@ -124,7 +134,7 @@ function updateLogs(dt)
 		-- Only save if a change has been done to schemaLogsByFile
 		if logSaveNewLog then
 			for file, data in pairs(schemaLogsByFile) do
-				local filePath = getLogDirectoryPath() .. "/logs/hammerstone_" .. file .. ".txt"
+				local filePath = getLogDirectoryPath() .. "/logs/hammerstone_" .. file .. ".log"
 				fileUtils.writeToFile(filePath, data)
 			end
 			logSaveNewLog = false
