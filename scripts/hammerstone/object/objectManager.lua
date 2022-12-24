@@ -5,13 +5,13 @@
 -- @author SirLich
 
 local objectManager = {
-	gameObject = nil,
+	modules = {},
 	inspectCraftPanelData = {},
 }
 
 -- Local database of config information
 local objectDB = {
-	-- Unstructured game object definitions, read from FS
+	-- Unstructured game object definitions , read from FS
 	objectConfigs = {},
 
 	-- Unstructured storage configurations, read from FS
@@ -24,6 +24,12 @@ local objectDB = {
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
 	objectsForStorage = {},
+
+	-- Unstructured storage configurations, read from FS
+	recipeConfigs = {},
+
+	-- Unstructured storage configurations, read from FS
+	materialConfigs = {},
 }
 
 -- TODO: Consider using metaTables to add default values to the objectDB
@@ -34,7 +40,9 @@ local objectDB = {
 -- }
 -- setmetatable(objectDB.objectConfigs, mt)
 
--- sapiens
+local modules = objectManager.modules
+
+-- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 local rng = mjrequire "common/randomNumberGenerator"
 
@@ -55,72 +63,72 @@ local log = mjrequire "hammerstone/logging"
 
 -- Initialize the full Data Driven API (DDAPI).
 local initialized = false
-function objectManager:init(gameObject)
+function objectManager:init()
+
 	-- Initialization guard to prevent infinite looping
 	if initialized then
 		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
 		return
 	else
+		log:schema(nil, "")
 		log:log("Initializing DDAPI...")
 		initialized = true
 	end
 
 	-- Expose
-	objectManager.gameObject = gameObject
+	modules.resource = mjrequire "common/resource"
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
 
 	-- Register items, in the order the game expects!
+	objectManager:generateMaterialDefinitions()
 	objectManager:generateResourceDefinitions()
-	objectManager:generateStorageObjects()
-	objectManager:generateGameObjects(gameObject)
-	-- generateEvolvingObjects is called internally, from `evolvingObjects.lua`.
+	-- generateGameObjects is called internally, from `gameObject.lua`.
+	-- generateStorageObjects is called internally, from `gameObject.lua`.
+	-- generateEvolvingObjects is called internally, from `evolvingObject.lua`.
 	-- generateRecipeDefinitions is called internally, from `craftable.lua`.
 end
 
 -- Loops over known config locations and attempts to load them
 -- TODO: Call this method from the correct location
 function objectManager:loadConfigs()
+
 	log:log("Loading Configuration files:")
+
+	local routes = {
+		{
+			path = "/hammerstone/objects/",
+			dbTable = objectDB.objectConfigs
+		},
+		{
+			path = "/hammerstone/storage/",
+			dbTable = objectDB.storageConfigs
+		},
+		{
+			path = "/hammerstone/recipes/",
+			dbTable = objectDB.recipeConfigs
+		},
+		{
+			path = "/hammerstone/materials/",
+			dbTable = objectDB.materialConfigs
+		}
+	}
+
+	-- Loads files at path to dbTable for each active mod
 	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	local count = 0;
 
-	log:schema("resource", "test")
-	log:schema("resource", "test2")
-	log:schema("resource", "test3")
-
-	-- Objects
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = mod.path .. "/hammerstone/objects/"
-		local configs = fileUtils.getDirectoryContents(objectConfigDir)
-		for j, config in ipairs(configs) do
-			local fullPath =  objectConfigDir .. config
-			count = count + 1;
-			objectManager:loadConfig(fullPath, objectDB.objectConfigs)
-		end
-	end
-
-	-- Storage
-	for i, mod in ipairs(mods) do
-		local objectConfigDir = mod.path .. "/hammerstone/storage/"
-		local configs = fileUtils.getDirectoryContents(objectConfigDir)
-		for j, config in ipairs(configs) do
-			local fullPath =  objectConfigDir .. config
-			count = count + 1;
-			objectManager:loadConfig(fullPath, objectDB.storageConfigs)
-		end
-	end
-
-	-- Craftable
-	for i, mod in ipairs(mods) do
-		local objectConfigDir = mod.path .. "/hammerstone/recipes/"
-		local configs = fileUtils.getDirectoryContents(objectConfigDir)
-		for j, config in ipairs(configs) do
-			local fullPath =  objectConfigDir .. config
-			count = count + 1;
-			objectManager:loadConfig(fullPath, objectDB.recipeConfigs)
+		for _, route in pairs(routes) do
+			local objectConfigDir = mod.path .. route.path
+			local configs = fileUtils.getDirectoryContents(objectConfigDir)
+			for j, config in ipairs(configs) do
+				local fullPath =  objectConfigDir .. config
+				count = count + 1;
+				objectManager:loadConfig(fullPath, route.dbTable)
+			end
 		end
 	end
 
@@ -132,6 +140,12 @@ function objectManager:loadConfig(path, type)
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)
+end
+
+function addModules(modulesTable)
+	for k, v in pairs(modulesTable) do
+		objectManager.modules[k] = v
+	end
 end
 
 ---------------------------------------------------------------------------------
@@ -148,6 +162,17 @@ function map(tbl, predicate)
 		end
 	end
 	return data
+end
+
+-- Returns data if running predicate on each item in table returns true
+function all(tbl, predicate)
+	for i,e in ipairs(tbl) do
+		local value = predicate(e)
+		if value == nil or value == false then
+			return false
+		end
+	end
+	return tbl
 end
 
 -- Returns items that have returned true for predicate
@@ -167,22 +192,31 @@ function logMissing(displayAlias, key, tbl)
 	if logMissingTables[tbl] == nil then
 		table.insert(logMissingTables, tbl)
 
-		log:log(displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+		if key == nil then
+			log:schema(nil, "    ERROR: " .. displayAlias .. " key is nil.")
+			log:schema(nil, debug.traceback())
+		else
+			log:schema(nil, "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
 
-		for k, _ in pairs(tbl) do
-			if type(k) == "string" then
-				log:log(" " .. k)
+			for k, _ in pairs(tbl) do
+				if type(k) == "string" then
+					log:schema(nil, "      " .. k)
+				end
 			end
 		end
 	end
 end
 
+function logExisting(displayAlias, key, tbl)
+	log:schema(nil, "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
+end
+
 function logWrongType(key, typeName)
-	log:log(key .. " should be of type " .. typeName .. ", not " .. type(key))
+	log:schema(nil, "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
 end
 
 function logNotImplemented(featureName)
-	log:log("Unfortunately, " .. featureName .. " is yet to be implemented")
+	log:schema(nil, "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
 
 -- Returns the index of a type, or nil if not found.
@@ -219,10 +253,48 @@ function isType(value, typeName)
 	if type(value) == typeName then
 		return true
 	end
+	if typeName == "number" then
+		return tonumber(value)
+	end
 	if typeName == "boolean" then
 		return value == "true"
 	end
 	return false
+end
+
+function validate(key, value, options)
+
+	-- Make sure this field has the proper type
+	if options.type ~= nil then
+		if not isType(value, options.type) then
+			return logWrongType(key, options.type)
+		end
+	end
+
+	-- Make sure this field value has a valid type
+	if options.inTypeTable ~= nil then
+		--mj:log("inTypeTable " .. key, options.inTypeTable)
+		if type(options.inTypeTable) == "table" then
+			if not hasKey(options.inTypeTable, value) then
+				return logMissing(key, value, options.inTypeTable)
+			end
+		else
+			log:schema(nil, "    ERROR: Value of inTypeTable is not table")
+		end
+	end
+
+	-- Make sure this field value is a unique type
+	if options.notInTypeTable ~= nil then
+		if type(options.notInTypeTable) == "table" then
+			if hasKey(options.notInTypeTable, value) then
+				return logExisting(key, value, options.notInTypeTable)
+			end
+		else
+			log:schema(nil, "    ERROR: Value of notInTypeTable is not table")
+		end
+	end
+
+	return value
 end
 
 function getField(tbl, key, options)
@@ -234,22 +306,15 @@ function getField(tbl, key, options)
 	end
 
 	if options ~= nil then
-
-		-- Make sure this field has the proper type
-		if options.type ~= nil then
-			if not isType(value, options.type) then
-				return logWrongType(key, options.type)
-			end
+		if validate(key, value, options) == nil then
+			return
 		end
 
-		-- Make sure this field value has a valid type
-		if options.typeTable ~= nil then
-			if type(options.typeTable) == "table" then
-				if not hasKey(options.typeTable, value) then
-					return logMissing(name, value, tbl)
-				end
+		if options.with ~= nil then
+			if type(options.with) == "function" then
+				value = options.with(value)
 			else
-				log:log("Value of typeTable is not table")
+				log:schema("    ERROR: Value of with option is not function")
 			end
 		end
 	end
@@ -258,35 +323,67 @@ function getField(tbl, key, options)
 end
 
 function getTable(tbl, key, options)
-	local value = tbl[key]
+	local values = tbl[key]
 	local name = key
 
-	if value == nil then
+	if values == nil then
 		return
 	end
 
-	if type(value) ~= "table" then
-		return log:log("Value type of key '" .. key .. "' is not table")
+	if type(values) ~= "table" then
+		return log:schema("    ERROR: Value type of key '" .. key .. "' is not table")
 	end
 
 	if options ~= nil then
+
+		-- Run basic validation on all elements in the table
+		for k, v in pairs(values) do
+			if validate(key, v, options) == nil then
+				return
+			end
+		end
 
 		if options.displayName ~= nil then
 			name = options.displayName
 		end
 
+		if options.length ~= nil and options.length ~= #values then
+			return log:schema("    ERROR: Value of key '" .. key .. "' requires " .. options.length .. " elements")
+		end
+
 		for k, v in pairs(options) do
 			if k == "map" then
-				if type(options.map) == "function" then
-					value = map(value, options.map)
+				if type(v) == "function" then
+					values = map(values, v)
 				else
-					log:log("Value of map option is not function")
+					log:schema("    ERROR: Value of map option is not function")
+				end
+			end
+
+			if k == "with" then
+				if type(v) == "function" then
+					values = v(values)
+					if values == nil then
+						return
+					end
+				else
+					log:schema("    ERROR: Value of with option is not function")
 				end
 			end
 		end
 	end
 
-	return value
+	return values
+end
+
+function compile(req, data)
+	for k, v in pairs(req) do
+		if v and data[k] == nil then
+			log:schema(nil, "    Missing " .. k)
+			return
+		end
+	end
+	return data
 end
 
 
@@ -297,7 +394,8 @@ end
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
 function objectManager:generateResourceDefinitions()
-	log:log("Generating resource definitions:")
+	log:schema(nil, "")
+	log:log("Generating Resource definitions:")
 	for i, config in ipairs(objectDB.objectConfigs) do
 		objectManager:generateResourceDefinition(config)
 	end
@@ -323,7 +421,7 @@ function objectManager:generateResourceDefinition(config)
 		return
 	end
 
-	log:log("Generating Resource with identifier: " .. identifier)
+	log:log("  " .. identifier)
 
 	local objectComponent = components["hammerstone:object"]
 	local name = description["name"]
@@ -371,7 +469,8 @@ end
 
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
-	log:log("Generating Storage Objects:")
+	log:schema(nil, "")
+	log:log("Generating Storage definitions:")
 	for i, config in ipairs(objectDB.storageConfigs) do
 		objectManager:generateStorageObject(config)
 	end
@@ -394,7 +493,6 @@ function objectManager:generateResourceForStorage(storageIdentifier)
 		log:warning("Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
 	end
 
-
 	return newResource
 end
 
@@ -411,7 +509,7 @@ function objectManager:generateStorageObject(config)
 	local storageComponent = object.components["hammerstone:storage"]
 	local identifier = description.identifier
 
-	log:log("Generating Storage Object with ID: " .. identifier)
+	log:log("  " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
@@ -443,7 +541,7 @@ function objectManager:generateStorageObject(config)
 		carryOffset = vec3(0.1,0.1,0.0),
 	}
 
-	mj:log(newStorage)
+	--mj:log(newStorage)
 	local storageModule = mjrequire "common/storage"
 	storageModule:addStorage(identifier, newStorage)
 end
@@ -452,9 +550,11 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
-function objectManager:generateEvolvingObjects(evolvingObject)
-	log:log("Generating EvolvingObjects:")
+function objectManager:generateEvolvingObjects(modules)
+	addModules(modules)
 
+	log:schema(nil, "")
+	log:log("Generating EvolvingObjects:")
 	for i, config in ipairs(objectDB.objectConfigs) do
 		objectManager:generateEvolvingObject(evolvingObject, config)
 	end
@@ -466,15 +566,16 @@ function objectManager:generateEvolvingObject(evolvingObject, config)
 		return
 	end
 
+	local evolvingObject = modules.evolvingObject
+
 	local object_definition = config["hammerstone:object_definition"]
 	local evolvingObjectComponent = object_definition.components["hammerstone:evolving_object"]
-
 	local identifier = object_definition.description.identifier
 	
 	if evolvingObjectComponent == nil then
 		return -- This is allowed	
 	else
-		log:log("Creating EvolvingObject definition for " .. identifier)
+		log:log("  " .. identifier)
 	end
 
 	-- TODO: Make this smart, and can handle day length OR year length.
@@ -485,19 +586,19 @@ function objectManager:generateEvolvingObject(evolvingObject, config)
 	}
 
 	if evolvingObjectComponent.transform_to ~= nil then
+		local gameObject = mjrequire "common/gameObject"
+
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
 			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, objectManager.gameObject.types[identifier].index)
+				table.insert(newResource, gameObject.types[identifier].index)
 			end
-		
 			return newResource
 		end
 
 		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
 	end
 	
-
 	evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
 end
 
@@ -526,9 +627,11 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
 
-function objectManager:generateGameObjects(gameObject)
-	log:log("Generating GameObjects:")
+function objectManager:generateGameObjects(modules)
+	addModules(modules)
 
+	log:schema(nil, "") 
+	log:log("Generating Object definitions:")
 	for i, config in ipairs(objectDB.objectConfigs) do
 		objectManager:generateGameObject(config, gameObject)
 	end
@@ -545,7 +648,7 @@ function objectManager:generateGameObject(config, gameObject)
 	local components = object_definition["components"]
 	local objectComponent = components["hammerstone:object"]
 	local identifier = description["identifier"]
-	log:log("Registering GameObject with ID " .. identifier)
+	log:log("  " .. identifier)
 
 	local name = description["name"]
 	local plural = description["plural"]
@@ -553,10 +656,6 @@ function objectManager:generateGameObject(config, gameObject)
 	local model = objectComponent["model"]
 	local physics = objectComponent["physics"]
 	local marker_positions = objectComponent["marker_positions"]
-
-	-- Shoot me
-	local resource = mjrequire "common/resource"
-
 	
 	-- Allow resource linking
 	local resourceIdentifier = identifier
@@ -580,7 +679,7 @@ function objectManager:generateGameObject(config, gameObject)
 		modelName = model,
 		scale = scale,
 		hasPhysics = physics,
-		resourceTypeIndex = resource.types[resourceIdentifier].index,
+		resourceTypeIndex = modules.resource.types[resourceIdentifier].index,
 
 		-- TODO: Implement marker positions
 		markerPositions = {
@@ -591,7 +690,7 @@ function objectManager:generateGameObject(config, gameObject)
 	}
 
 	-- Actually register the game object
-	gameObject:addGameObject(identifier, newObject)
+	modules.gameObject:addGameObject(identifier, newObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -599,40 +698,52 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates recipe definitions based on the loaded config, and registers them.
-function objectManager:generateRecipeDefinitions(gameObject)
-	log:log("Generating recipe definitions:")
+function objectManager:generateRecipeDefinitions(modules)
+	addModules(modules)
+
+	modules.action = mjrequire "common/action"
+	modules.actionSequence = mjrequire "common/actionSequence"
+	modules.craftAreaGroup = mjrequire "common/craftAreaGroup"
+	modules.tool = mjrequire "common/tool"
+	
+	modules.constructable = mjrequire "common/constructable"
+	modules.skill = mjrequire "common/skill"
+	
+	for k, v in pairs(modules) do
+		--mj:log(k, v ~= nil)
+	end
+
+	mj:log(modules.craftAreaGroup.types)
+
+	--mj:log(modules.constructable.classifications)
+	--mj:log(modules.skill.types)
+	
+
+	log:schema(nil, "Generating Recipe definitions:")
 	for i, config in ipairs(objectDB.recipeConfigs) do
-		objectManager:generateRecipeDefinition(gameObject, config)
+		objectManager:generateRecipeDefinition(config)
 	end
 end
 
-function objectManager:generateRecipeDefinition(gameObject, config)
+function objectManager:generateRecipeDefinition(config)
 
 	if config == nil then
-		log:warn("Warning! Attempting to generate a recipe definition that is nil.")
+		log:schema(nil, "  Warning! Attempting to generate a recipe definition that is nil.")
 		return
 	end
-
-	local craftable = mjrequire "common/craftable"
-	local constructable = mjrequire "common/constructable"
-	local resource = mjrequire "common/resource"
-	local action = mjrequire "common/action"
-	local actionSequence = mjrequire "common/actionSequence"
-	local craftAreaGroup = mjrequire "common/craftAreaGroup"
-	local tool = mjrequire "common/tool"
-	local skill = mjrequire "common/skill"
 	
 	local objectDefinition = config["hammerstone:recipe_definition"]
 	local description = objectDefinition["description"]
 	local identifier = description["identifier"]
 	local components = objectDefinition["components"]
-	log:log(identifier)
+	log:schema(nil, "  " .. identifier)
 
 	local recipe = components["hammerstone:recipe"]
 	local requirements = components["hammerstone:requirements"]
 	local output = components["hammerstone:output"]
 	local build_sequence = components["hammerstone:build_sequence"]
 
+	--[[
 	local data = {
 		name = description.name,
 		plural = description.plural,
@@ -644,17 +755,17 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	-- The following code is for sanitizing inputs and logging errors accordingly
 
 	-- Preview Object
-	if gameObject.types[recipe.preview_object] ~= nil then
+	if modules.gameObject.types[recipe.preview_object] ~= nil then
 		data.iconGameObjectType = recipe.preview_object
 	else
 		return logMissing("Preview Object", recipe.preview_object, gameObject.types)
 	end
 
 	-- Classification
-	if constructable.classifications[recipe.classification] ~= nil then
-		data.classification = constructable.classifications[recipe.classification].index
+	if modules.constructable.classifications[recipe.classification] ~= nil then
+		data.classification = modules.constructable.classifications[recipe.classification].index
 	else
-		return logMissing("Classification", recipe.classification, constructable.classifications)
+		return logMissing("Classification", recipe.classification, modules.constructable.classifications)
 	end
 
 	-- Is Food Preparation
@@ -664,7 +775,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 
 	-- Required Craft Area Groups
 	local requiredCraftAreaGroups = map(requirements.craft_area_groups, function(element)
-		return getTypeIndex(craftAreaGroup.types, element, "Craft Area Group")
+		return getTypeIndex(modules.craftAreaGroup.types, element, "Craft Area Group")
 	end)
 	if requiredCraftAreaGroups ~= nil then
 		data.requiredCraftAreaGroups = requiredCraftAreaGroups
@@ -672,7 +783,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 
 	-- Required Tools
 	local requiredTools = map(requirements.tools, function(element)
-		return getTypeIndex(tool.types, element, "Tool")
+		return getTypeIndex(modules.tool.types, element, "Tool")
 	end)
 	if not isEmpty(requiredTools) then
 		data.requiredTools = requiredTools
@@ -680,19 +791,19 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 
 	-- Required Skills
 	if #requirements.skills > 0 then
-		if skill.types[requirements.skills[1]] ~= nil then
+		if modules.skill.types[requirements.skills[1] ] ~= nil then
 			data.skills = {
-				required = skill.types[requirements.skills[1]].index
+				required = modules.skill.types[requirements.skills[1] ].index
 			}
 		else
-			return logMissing("Skill", requirements.skills[1], skill.types)
+			return logMissing("Skill", requirements.skills[1], modules.skill.types)
 		end
 	end
 	if #requirements.skills > 1 then
-		if skill.types[requirements.skills[2]] ~= nil then
-			data.disabledUntilAdditionalSkillTypeDiscovered = skill.types[requirements.skills[2]].index
+		if modules.skill.types[requirements.skills[2] ] ~= nil then
+			data.disabledUntilAdditionalSkillTypeDiscovered = modules.skill.types[requirements.skills[2] ].index
 		else
-			return logMissing("Skill", requirements.skills[2], skill.types)
+			return logMissing("Skill", requirements.skills[2], modules.skill.types)
 		end
 	end
 
@@ -724,7 +835,7 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 	if buildSequenceModel ~= nil then
 		data.inProgressBuildModel = buildSequenceModel
 	else
-		return log:log("[Hammerstone] Missing build sequence model")
+		return log:schema(nil, "    Missing build sequence model")
 	end
 	
 	-- Build Sequence
@@ -733,43 +844,43 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 		if steps ~= nil then
 			-- Custom build sequence
 			-- TODO
-			logNotImplemented("Custom Build Sequences")
+			logNotImplemented("Custom Build Sequence")
 		else
 			-- Standard build sequence
 			local action = buildSequence["action"]
 			local tool = buildSequence["tool"]
 			if action ~= nil then
-				if actionSequence.types[action] ~= nil then
-					action = actionSequence.types[action].index
+				if modules.actionSequence.types[action] ~= nil then
+					action = modules.actionSequence.types[action].index
 					if tool ~= nil then
-						if tool.types[tool] ~= nil then
-							tool = tool.types[tool].index
+						if modules.tool.types[tool] ~= nil then
+							tool = modules.tool.types[tool].index
 						else
-							return logMissing("Tool", tool, tool.types)
+							return logMissing("Tool", tool, modules.tool.types)
 						end
 					end
 					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
 				else
-					return logMissing("Action Sequence", action, actionSequence.types)
+					return logMissing("Action Sequence", action, modules.actionSequence.types)
 				end
 			else
-				log:log("Missing action sequence")
+				log:schema(nil, "    Missing Action Sequence")
 			end
 		end
 	else
-		log:log("Missing build sequence")
+		log:schema(nil, "    Missing Build Sequence")
 	end
 
 	-- Object Prop
 	-- TODO
 	if objectProp ~= nil then
-		logNotImplemented("object props")
+		logNotImplemented("Object Props")
 	end
 
 	-- Resource Prop
 	-- TODO
 	if resourceProp ~= nil then
-		logNotImplemented("resource props")
+		logNotImplemented("Resource Props")
 	end
 
 	-- Resource Sequence
@@ -782,12 +893,12 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 					type = resource.types[resourceName].index,
 					count = count
 				}
-				if action ~= nil then
+				if item["action"] ~= nil then
 					if item["action"]["action_type"] ~= nil then
-						if action.types[item["action"]["action_type"]] ~= nil then
+						if modules.action.types[item["action"]["action_type"] ] ~= nil then
 							if item["action"]["duration"] ~= nil then
 								resourceData.afterAction = {}
-								resourceData.afterAction.actionTypeIndex = action.types[item["action"]["action_type"]].index
+								resourceData.afterAction.actionTypeIndex = modules.action.types[item["action"]["action_type"] ].index
 								resourceData.afterAction.duration = item["action"]["duration"]
 								if item["action"]["duration_without_skill"] ~= nil then
 									resourceData.afterAction.durationWithoutSkill = item["action"]["duration_without_skill"]
@@ -795,87 +906,269 @@ function objectManager:generateRecipeDefinition(gameObject, config)
 									resourceData.afterAction.durationWithoutSkill = item["action"]["duration"]
 								end
 							else
-								mj:log("[Hammerstone] Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
+								mj:schema(nil, "    Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
 							end
 						else
-							return logMissing("Action", item["action"]["action_type"], action.types)
+							return logMissing("Action", item["action"]["action_type"], modules.action.types)
 						end
 					end
 				end
 				table.insert(data.requiredResources, resourceData)
 			else
-				return logMissing("Resource", resourceName, actionSequence.types)
+				return logMissing("Resource", resourceName, resource.types)
 			end
 		end
 	else
-		log:log("Missing resource sequence")
+		log:schema(nil, "    Missing Resource Sequence")
 	end
 
 
-
-	function compile(req, data)
-		return data
-	end
+	]]
+	
 
 
 	local required = {
+		identifier = true,
+		name = true,
+		plural = true,
+		summary = true,
+
+		iconGameObjectType = true,
+		classification = true,
+		isFoodPreperation = false,
+
+		outputObjectInfo = true,
+
+		buildSequence = true,
+		inProgressBuildModel = true,
+
 		requiredTools = false,
-		inProgressBuildModel = true
+		skills = false,
+
+		-- TODO: outputDisplayCount
 	}
 
-	local testdata = compile(required, {
+	local data = {
 
-		preview_object = getField(recipe, "preview_object", {
-			typeTable = gameObject.types
+		-- Description
+		identifier = getField(description, "identifier", {
+			notInTypeTable = modules.craftable.types
 		}),
 
-		isFoodPreparation = getField(recipe, "preview_object", {
+		name = getField(description, "name"),
+
+		plural = getField(description, "plural"),
+
+		summary = getField(description, "summary"),
+
+
+		-- Recipe Component
+		iconGameObjectType = getField(recipe, "preview_object", {
+			inTypeTable = modules.gameObject.types
+		}),
+
+		classification = getField(recipe, "classification", {
+			-- inTypeTable = modules.constructable.classifications -- Why is this crashing?
+		}),
+
+		isFoodPreperation = getField(recipe, "isFoodPreparation", {
 			type = "boolean"
 		}),
 
-		inProgressBuildModel = getField(build_sequence, "build_sequence_model", {
-			typeTable = gameObject.types
-		}),
 
-		requiredTools = getTable(requirements.tools, "build_sequence", {
-			-- Return a table of tool indexes
-			map = function(e)
-				return getTypeIndex(tool.types, e, "Tool")
+		-- Output Component
+		outputObjectInfo = {
+			outputArraysByResourceObjectType = getTable(output, "output_by_object", {
+				-- Simple method that allows running code
+				-- In this case, passes the table output.output_by_object
+				with = function(tbl)
+					local result = {}
+					for _, value in pairs(tbl) do
+						
+						-- Return if input isn't a gameObject
+						if getTypeIndex(modules.gameObject.types, value.input, "Game Object") == nil then return end
+
+						-- The input resource's index
+						local index = modules.gameObject.types[value.input].index
+
+						-- Convert from schema format to vanilla format
+						-- If the predicate returns nil for any element, map returns nil
+						-- In this case, log an error and return if any output item does not exist in gameObject.types
+						result[index] = map(value.output, function(e)
+							return getTypeIndex(modules.gameObject.types, e, "Game Object")
+						end)
+					end
+					return result
+				end
+			}),
+		},
+
+		-- Requirements Component
+		--[[
+		skills = getTable(requirements, "skills", {
+			--inTypeTable = modules.skill.types,
+			with = function(tbl)
+				--mj:log(objectManager.modules.skill)
+				if #tbl > 0 then
+					return {
+						required = modules.skill.types[tbl[1] ].index
+					}
+				end
 			end
 		}),
+
+		disabledUntilAdditionalSkillTypeDiscovered = getTable(requirements, "skills", {
+			inTypeTable = modules.skill.types,
+			with = function(tbl)
+				if #tbl > 1 then
+					return modules.skill.types[tbl[2] ].index
+				end
+			end
+		}),
+
+		requiredCraftAreaGroups = getTable(requirements, "craft_area_groups", {
+			inTypeTable = modules.craftAreaGroup.types
+		}),
+
+		requiredTools = getTable(requirements, "tools", {
+			inTypeTable = modules.tool.types
+		}),]]
+
 		
+
+
+		-- Build Sequence Component
+		inProgressBuildModel = getField(build_sequence, "build_sequence_model"),
+
+		buildSequence = getTable(build_sequence, "build_sequence", {
+			with = function(tbl)
+				if tbl.steps ~= nil then
+					-- If steps exist, we create a custom build sequence instead a standard one
+					logNotImplemented("Custom Build Sequence") -- TODO: Implement steps
+				else
+					-- Cancel if action field doesn't exist
+					if tbl.action == nil then
+						return log:schema(nil, "    Missing Action Sequence")
+					end
+
+					-- Get the action sequence
+					local sequence = getTypeIndex(modules.actionSequence.types, tbl.action, "Action Sequence")
+					if sequence ~= nil then
+
+						-- Cancel if a tool is stated but doesn't exist
+						if tbl.tool ~= nil and getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
+							return
+						end
+
+						-- Return the standard build sequence constructor
+						return modules.craftable:createStandardBuildSequence(sequence, tbl.tool)
+					end
+				end
+			end
+		}),
+
 		requiredResources = getTable(build_sequence, "resource_sequence", {
 			-- Return a table of resource sequences
 			map = function(e)
 
-				-- Cancel if resource doesn't exist
-				if (getTypeIndex(resource.types, e["resource"], "Resource") == nil) then return end
+				-- Cancel if resource does not exist
+				if (getTypeIndex(modules.resource.types, e["resource"], "Resource") == nil) then return end
+
+
 
 				return e
 			end
 		})
-	})
+	}
 
 	mj:log(data)
-	mj:log(testdata)
+	--mj:log(testdata)
 
-	if testdata ~= nil then
-		-- add whatever
-	else
-		-- you got an error
+
+
+	if data ~= nil then
+		
 	end
 
-
+	--[[
 	-- Add recipe
-	craftable:addCraftable(identifier, data)
+	modules.craftable:addCraftable(identifier, data)
 
 	-- Add items in crafting panels
 	for _, group in ipairs(requiredCraftAreaGroups) do
-		local key = gameObject.typeIndexMap[craftAreaGroup.types[group].key]
+		local key = modules.gameObject.typeIndexMap[modules.craftAreaGroup.types[group].key]
 		if objectManager.inspectCraftPanelData[key] == nil then
 			objectManager.inspectCraftPanelData[key] = {}
 		end
-		table.insert(objectManager.inspectCraftPanelData[key], constructable.types[identifier].index)
+		table.insert(objectManager.inspectCraftPanelData[key], modules.constructable.types[identifier].index)
+	end]]
+end
+
+---------------------------------------------------------------------------------
+-- Material
+---------------------------------------------------------------------------------
+
+--- Generates material definitions based on the loaded config, and registers them.
+function objectManager:generateMaterialDefinitions()
+
+	modules.material = mjrequire "common/material"
+
+	log:schema(nil, "Generating Material definitions:")
+	for i, config in ipairs(objectDB.materialConfigs) do
+		objectManager:generateMaterialDefinition(config)
+	end
+end
+
+function objectManager:generateMaterialDefinition(config)
+
+	if config == nil then
+		log:schema(nil, "  Warning! Attempting to generate a material definition that is nil.")
+		return
+	end
+	
+	local materialDefinition = config["hammerstone:material_definition"]
+	local materials = materialDefinition["materials"]
+
+	for _, mat in pairs(materials) do
+
+		log:schema(nil, "  " .. mat["identifier"])
+
+		local required = {
+			identifier = true,
+			color = true,
+			roughness = true,
+			metal = false,
+		}
+
+		local data = compile(required, {
+
+			identifier = getField(mat, "identifier", {
+				notInTypeTable = modules.material.types
+			}),
+
+			color = getTable(mat, "color", {
+				type = "number",
+				length = 3,
+				with = function(tbl)
+					if tbl ~= nil then
+						-- Convert number table to vec3
+						return vec3(tbl[1], tbl[2], tbl[3])
+					end
+				end
+			}),
+			
+			roughness = getField(mat, "roughness", {
+				type = "number"
+			}),
+
+			metal = getField(mat, "metal", {
+				type = "number"
+			})
+		})
+
+		if data ~= nil then
+			modules.material:addMaterial(data.identifier, data.color, data.roughness, data.metal)
+		end
 	end
 end
 

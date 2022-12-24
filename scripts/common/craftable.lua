@@ -13,7 +13,9 @@ function mod:onload(craftable)
         super_load(craftable_, gameObject, flora)
 
         local objectManager = mjrequire "hammerstone/object/objectManager"
-        objectManager:generateRecipeDefinitions(gameObject)
+        objectManager:generateRecipeDefinitions({
+            craftable = craftable
+        })
     end
 end
 

@@ -12,7 +12,11 @@ function mod:onload(gameObject)
 
 	local super_mjInit = gameObject.mjInit
 	gameObject.mjInit = function()
-		objectManager:init(gameObject)
+
+		objectManager:generateGameObjects({
+			gameObject = gameObject
+		})
+		objectManager:generateStorageObjects()
 
 		super_mjInit()
 	end
