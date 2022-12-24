@@ -37,6 +37,16 @@ function mod:onload(resource)
 
 			-- Recache the type maps
 			resource.validTypes = typeMaps:createValidTypesArray("resource", resource.types)
+
+			for index, value in ipairs(resource.validTypes) do
+				if value.key ~= nil and value.key == key then
+					table.insert(resource.alphabeticallyOrderedTypes, resource.validTypes[index])
+					table.sort(resource.alphabeticallyOrderedTypes, function(a, b)
+						return a.name < b.name
+					end)
+					break
+				end
+			end
 		end
 
 		return index

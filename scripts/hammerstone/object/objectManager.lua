@@ -5,7 +5,8 @@
 -- @author SirLich
 
 local objectManager = {
-	gameObject = nil
+	gameObject = nil,
+	inspectCraftPanelData = {},
 }
 
 -- Local database of config information
@@ -22,7 +23,10 @@ local objectDB = {
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
-	objectsForStorage = {}
+	objectsForStorage = {},
+
+	-- Unstructured storage configurations, read from FS
+	recipeConfigs = {},
 }
 
 -- TODO: Consider using metaTables to add default values to the objectDB
@@ -75,21 +79,24 @@ function objectManager:init(gameObject)
 	objectManager:generateStorageObjects()
 	objectManager:generateGameObjects(gameObject)
 	-- generateEvolvingObjects is called internally, from `evolvingObjects.lua`.
+	-- generateRecipeDefinitions is called internally, from `craftable.lua`.
 end
 
---- Loops over known config locations and attempts to load them
--- TODO: Do mods get stored in different places when downloaded from steam?
--- TODO: Make sure it only loads configs from enabled mods.
+-- Loops over known config locations and attempts to load them
 -- TODO: Call this method from the correct location
 function objectManager:loadConfigs()
 	log:log("Loading Configuration files:")
-	local modsDirectory = fileUtils.getSavePath("mods")
-	local mods = fileUtils.getDirectoryContents(modsDirectory)
+	local modManager = mjrequire "common/modManager"
+	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	local count = 0;
+
+	log:schema("resource", "test")
+	log:schema("resource", "test2")
+	log:schema("resource", "test3")
 
 	-- Objects
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/objects/"
+		local objectConfigDir = mod.path .. "/hammerstone/objects/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -100,7 +107,7 @@ function objectManager:loadConfigs()
 
 	-- Storage
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/storage/"
+		local objectConfigDir = mod.path .. "/hammerstone/storage/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -109,9 +116,9 @@ function objectManager:loadConfigs()
 		end
 	end
 
-	-- Recipes
+	-- Craftable
 	for i, mod in ipairs(mods) do
-		local objectConfigDir = modsDirectory .. "/" .. mod .. "/hammerstone/recipe/"
+		local objectConfigDir = mod.path .. "/hammerstone/recipes/"
 		local configs = fileUtils.getDirectoryContents(objectConfigDir)
 		for j, config in ipairs(configs) do
 			local fullPath =  objectConfigDir .. config
@@ -131,24 +138,160 @@ function objectManager:loadConfig(path, type)
 end
 
 ---------------------------------------------------------------------------------
--- Recipe
+-- Utilities (very temporary stuff, testing phase)
 ---------------------------------------------------------------------------------
 
-function objectManager:generateRecipeDefinitions()
-	log:log("Generating recipe definitions:")
-	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateRecipeDefinition(config)
+-- Returns result of running predicate on each item in table
+function map(tbl, predicate)
+	local data = {}
+	for i,e in ipairs(tbl) do
+		local value = predicate(e)
+		if value ~= nil then
+			table.insert(data, value)
+		end
+	end
+	return data
+end
+
+-- Returns items that have returned true for predicate
+function where(tbl, predicate)
+	local data = {}
+	for i,e in ipairs(tbl) do
+		if predicate(e) then
+			table.insert(data, e)
+		end
+	end
+	return data
+end
+
+local logMissingTables = {}
+
+function logMissing(displayAlias, key, tbl)
+	if logMissingTables[tbl] == nil then
+		table.insert(logMissingTables, tbl)
+
+		log:log(displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+
+		for k, _ in pairs(tbl) do
+			if type(k) == "string" then
+				log:log(" " .. k)
+			end
+		end
 	end
 end
 
-function objectManager:generateRecipeDefinition(config)
-	if config == nil then
-		log:warn("Warning! Attempting to generate a recipe definition that is nil.")
+function logWrongType(key, typeName)
+	log:log(key .. " should be of type " .. typeName .. ", not " .. type(key))
+end
+
+function logNotImplemented(featureName)
+	log:log("Unfortunately, " .. featureName .. " is yet to be implemented")
+end
+
+-- Returns the index of a type, or nil if not found.
+function getTypeIndex(tbl, key, displayAlias)
+	if tbl[key] ~= nil then
+		return tbl[key].index
+	end
+	return logMissing(displayAlias, key, tbl)
+end
+
+-- Returns the key of a type, or nil if not found.
+--- @param tbl table
+--- @param key string
+--- @param displayAlias string
+function getTypeKey(tbl, key, displayAlias)
+	if tbl[key] ~= nil then
+		return tbl[key].key
+	end
+	return logMissing(displayAlias, key, tbl)
+end
+
+-- Return true if a table has key.
+function hasKey(tbl, key)
+	return tbl ~= nil and tbl[key] ~= nil
+end
+
+-- Return true if a table is null or empty.
+function isEmpty(tbl)
+	return tbl == nil or next(tbl) == nil
+end
+
+-- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
+function isType(value, typeName)
+	if type(value) == typeName then
+		return true
+	end
+	if typeName == "boolean" then
+		return value == "true"
+	end
+	return false
+end
+
+function getField(tbl, key, options)
+	local value = tbl[key]
+	local name = key
+
+	if value == nil then
 		return
 	end
 
+	if options ~= nil then
 
+		-- Make sure this field has the proper type
+		if options.type ~= nil then
+			if not isType(value, options.type) then
+				return logWrongType(key, options.type)
+			end
+		end
+
+		-- Make sure this field value has a valid type
+		if options.typeTable ~= nil then
+			if type(options.typeTable) == "table" then
+				if not hasKey(options.typeTable, value) then
+					return logMissing(name, value, tbl)
+				end
+			else
+				log:log("Value of typeTable is not table")
+			end
+		end
+	end
+
+	return value
 end
+
+function getTable(tbl, key, options)
+	local value = tbl[key]
+	local name = key
+
+	if value == nil then
+		return
+	end
+
+	if type(value) ~= "table" then
+		return log:log("Value type of key '" .. key .. "' is not table")
+	end
+
+	if options ~= nil then
+
+		if options.displayName ~= nil then
+			name = options.displayName
+		end
+
+		for k, v in pairs(options) do
+			if k == "map" then
+				if type(options.map) == "function" then
+					value = map(value, options.map)
+				else
+					log:log("Value of map option is not function")
+				end
+			end
+		end
+	end
+
+	return value
+end
+
 
 ---------------------------------------------------------------------------------
 -- Resource
@@ -169,6 +312,8 @@ function objectManager:generateResourceDefinition(config)
 		return
 	end
 
+	local resource = mjrequire "common/resource"
+
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
 	local components = objectDefinition["components"]
@@ -181,26 +326,23 @@ function objectManager:generateResourceDefinition(config)
 		return
 	end
 
-	log:log("Generting Resource with identifier: " .. identifier)
+	log:log("Generating Resource with identifier: " .. identifier)
 
 	local objectComponent = components["hammerstone:object"]
 	local name = description["name"]
 	local plural = description["plural"]
 
-	-- Local imports. Shoot me.
-	local resource = mjrequire "common/resource"
-
 	local newResource = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		-- displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier] -- TODO Fix this shit.
-		displayGameObjectTypeIndex = typeMaps.types.gameObject.chickenMeat, -- TODO Fix this shit.
+		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier],
 	}
 
 	-- Handle Food
 	local foodComponent = components["hammerstone:food"]
 	if foodComponent ~= nil then
+		--if type() -- TODO
 		newResource.foodValue = foodComponent.value
 		newResource.foodPortionCount = foodComponent.portions
 
@@ -272,7 +414,7 @@ function objectManager:generateStorageObject(config)
 	local storageComponent = object.components["hammerstone:storage"]
 	local identifier = description.identifier
 
-	log:log("Generting Storage Object with ID: " .. identifier)
+	log:log("Generating Storage Object with ID: " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local gameObjectTypeIndexMap = typeMaps.types.gameObject
@@ -455,5 +597,289 @@ function objectManager:generateGameObject(config, gameObject)
 	gameObject:addGameObject(identifier, newObject)
 end
 
+---------------------------------------------------------------------------------
+-- Craftable
+---------------------------------------------------------------------------------
+
+--- Generates recipe definitions based on the loaded config, and registers them.
+function objectManager:generateRecipeDefinitions(gameObject)
+	log:log("Generating recipe definitions:")
+	for i, config in ipairs(objectDB.recipeConfigs) do
+		objectManager:generateRecipeDefinition(gameObject, config)
+	end
+end
+
+function objectManager:generateRecipeDefinition(gameObject, config)
+
+	if config == nil then
+		log:warn("Warning! Attempting to generate a recipe definition that is nil.")
+		return
+	end
+
+	local craftable = mjrequire "common/craftable"
+	local constructable = mjrequire "common/constructable"
+	local resource = mjrequire "common/resource"
+	local action = mjrequire "common/action"
+	local actionSequence = mjrequire "common/actionSequence"
+	local craftAreaGroup = mjrequire "common/craftAreaGroup"
+	local tool = mjrequire "common/tool"
+	local skill = mjrequire "common/skill"
+	
+	local objectDefinition = config["hammerstone:recipe_definition"]
+	local description = objectDefinition["description"]
+	local identifier = description["identifier"]
+	local components = objectDefinition["components"]
+	log:log(identifier)
+
+	local recipe = components["hammerstone:recipe"]
+	local requirements = components["hammerstone:requirements"]
+	local output = components["hammerstone:output"]
+	local build_sequence = components["hammerstone:build_sequence"]
+
+	local data = {
+		name = description.name,
+		plural = description.plural,
+		summary = description.summary,
+		outputObjectInfo = {},
+		requiredResources = {},
+	}
+
+	-- The following code is for sanitizing inputs and logging errors accordingly
+
+	-- Preview Object
+	if gameObject.types[recipe.preview_object] ~= nil then
+		data.iconGameObjectType = recipe.preview_object
+	else
+		return logMissing("Preview Object", recipe.preview_object, gameObject.types)
+	end
+
+	-- Classification
+	if constructable.classifications[recipe.classification] ~= nil then
+		data.classification = constructable.classifications[recipe.classification].index
+	else
+		return logMissing("Classification", recipe.classification, constructable.classifications)
+	end
+
+	-- Is Food Preparation
+	if description["isFoodPreparation"] ~= nil and description["isFoodPreparation"] then
+		data.isFoodPreparation = true
+	end
+
+	-- Required Craft Area Groups
+	local requiredCraftAreaGroups = map(requirements.craft_area_groups, function(element)
+		return getTypeIndex(craftAreaGroup.types, element, "Craft Area Group")
+	end)
+	if requiredCraftAreaGroups ~= nil then
+		data.requiredCraftAreaGroups = requiredCraftAreaGroups
+	end
+
+	-- Required Tools
+	local requiredTools = map(requirements.tools, function(element)
+		return getTypeIndex(tool.types, element, "Tool")
+	end)
+	if not isEmpty(requiredTools) then
+		data.requiredTools = requiredTools
+	end
+
+	-- Required Skills
+	if #requirements.skills > 0 then
+		if skill.types[requirements.skills[1]] ~= nil then
+			data.skills = {
+				required = skill.types[requirements.skills[1]].index
+			}
+		else
+			return logMissing("Skill", requirements.skills[1], skill.types)
+		end
+	end
+	if #requirements.skills > 1 then
+		if skill.types[requirements.skills[2]] ~= nil then
+			data.disabledUntilAdditionalSkillTypeDiscovered = skill.types[requirements.skills[2]].index
+		else
+			return logMissing("Skill", requirements.skills[2], skill.types)
+		end
+	end
+
+	-- Outputs
+	if output.output_by_object ~= nil then
+		local outputArraysByResourceObjectType = map(output.output_by_object, function(element)
+			if gameObject.types[element.input] ~= nil then
+				return map(element.output, function(e)
+					if gameObject.types[e] ~= nil then
+						return gameObject.types[e]
+					end
+					return logMissing("Game Object", e, gameObject.types)
+				end)
+			end
+			return logMissing("Game Object", element.input, gameObject.types)
+		end)
+		if outputArraysByResourceObjectType ~= nil then
+			data.outputObjectInfo.outputArraysByResourceObjectType = outputArraysByResourceObjectType
+		end
+	end
+	
+	local buildSequenceModel = build_sequence["build_sequence_model"]
+	local buildSequence = build_sequence["build_sequence"]
+	local objectProp = build_sequence["object_prop"]
+	local resourceProp = build_sequence["resource_prop"]
+	local resourceSequence = build_sequence["resource_sequence"]
+
+	-- Build Sequence Model
+	if buildSequenceModel ~= nil then
+		data.inProgressBuildModel = buildSequenceModel
+	else
+		return log:log("[Hammerstone] Missing build sequence model")
+	end
+	
+	-- Build Sequence
+	if buildSequence ~= nil then
+		local steps = buildSequence["steps"]
+		if steps ~= nil then
+			-- Custom build sequence
+			-- TODO
+			logNotImplemented("Custom Build Sequences")
+		else
+			-- Standard build sequence
+			local action = buildSequence["action"]
+			local tool = buildSequence["tool"]
+			if action ~= nil then
+				if actionSequence.types[action] ~= nil then
+					action = actionSequence.types[action].index
+					if tool ~= nil then
+						if tool.types[tool] ~= nil then
+							tool = tool.types[tool].index
+						else
+							return logMissing("Tool", tool, tool.types)
+						end
+					end
+					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
+				else
+					return logMissing("Action Sequence", action, actionSequence.types)
+				end
+			else
+				log:log("Missing action sequence")
+			end
+		end
+	else
+		log:log("Missing build sequence")
+	end
+
+	-- Object Prop
+	-- TODO
+	if objectProp ~= nil then
+		logNotImplemented("object props")
+	end
+
+	-- Resource Prop
+	-- TODO
+	if resourceProp ~= nil then
+		logNotImplemented("resource props")
+	end
+
+	-- Resource Sequence
+	if resourceSequence ~= nil then
+		for _, item in ipairs(resourceSequence) do
+			local resourceName = item["resource"]
+			local count = item["count"] or 1
+			if resource.types[resourceName] ~= nil then
+				local resourceData = {
+					type = resource.types[resourceName].index,
+					count = count
+				}
+				if action ~= nil then
+					if item["action"]["action_type"] ~= nil then
+						if action.types[item["action"]["action_type"]] ~= nil then
+							if item["action"]["duration"] ~= nil then
+								resourceData.afterAction = {}
+								resourceData.afterAction.actionTypeIndex = action.types[item["action"]["action_type"]].index
+								resourceData.afterAction.duration = item["action"]["duration"]
+								if item["action"]["duration_without_skill"] ~= nil then
+									resourceData.afterAction.durationWithoutSkill = item["action"]["duration_without_skill"]
+								else
+									resourceData.afterAction.durationWithoutSkill = item["action"]["duration"]
+								end
+							else
+								mj:log("[Hammerstone] Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
+							end
+						else
+							return logMissing("Action", item["action"]["action_type"], action.types)
+						end
+					end
+				end
+				table.insert(data.requiredResources, resourceData)
+			else
+				return logMissing("Resource", resourceName, actionSequence.types)
+			end
+		end
+	else
+		log:log("Missing resource sequence")
+	end
+
+
+
+	function compile(req, data)
+		return data
+	end
+
+
+	local required = {
+		requiredTools = false,
+		inProgressBuildModel = true
+	}
+
+	local testdata = compile(required, {
+
+		preview_object = getField(recipe, "preview_object", {
+			typeTable = gameObject.types
+		}),
+
+		isFoodPreparation = getField(recipe, "preview_object", {
+			type = "boolean"
+		}),
+
+		inProgressBuildModel = getField(build_sequence, "build_sequence_model", {
+			typeTable = gameObject.types
+		}),
+
+		requiredTools = getTable(requirements.tools, "build_sequence", {
+			-- Return a table of tool indexes
+			map = function(e)
+				return getTypeIndex(tool.types, e, "Tool")
+			end
+		}),
+		
+		requiredResources = getTable(build_sequence, "resource_sequence", {
+			-- Return a table of resource sequences
+			map = function(e)
+
+				-- Cancel if resource doesn't exist
+				if (getTypeIndex(resource.types, e["resource"], "Resource") == nil) then return end
+
+				return e
+			end
+		})
+	})
+
+	mj:log(data)
+	mj:log(testdata)
+
+	if testdata ~= nil then
+		-- add whatever
+	else
+		-- you got an error
+	end
+
+
+	-- Add recipe
+	craftable:addCraftable(identifier, data)
+
+	-- Add items in crafting panels
+	for _, group in ipairs(requiredCraftAreaGroups) do
+		local key = gameObject.typeIndexMap[craftAreaGroup.types[group].key]
+		if objectManager.inspectCraftPanelData[key] == nil then
+			objectManager.inspectCraftPanelData[key] = {}
+		end
+		table.insert(objectManager.inspectCraftPanelData[key], constructable.types[identifier].index)
+	end
+end
 
 return objectManager

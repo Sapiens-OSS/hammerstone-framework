@@ -6,6 +6,7 @@
 -- Hammerstone
 local eventManager = mjrequire "hammerstone/event/eventManager"
 local eventTypes = mjrequire "hammerstone/event/eventTypes"
+local gameState = mjrequire "hammerstone/state/gameState"
 local logger = mjrequire "hammerstone/logging"
 local inputManager = mjrequire "hammerstone/input/inputManager"
 local utils = mjrequire "hammerstone/utils/utils"
@@ -24,8 +25,11 @@ function mod:onload(controller)
 
 	-- Save super
 	local superWorldLoaded = controller.worldLoaded
-	controller.worldLoaded = function(self, world)
-		superWorldLoaded(controller, world) -- Shouldn't this be superWorldLoaded(self, world)?
+	controller.worldLoaded = function(controller, worldID)
+		superWorldLoaded(controller, worldID)
+
+		gameState.worldPath = controller:getWorldSavePath(worldID, nil)
+
 		eventManager:call(eventTypes.worldLoad)
 	end
 end
