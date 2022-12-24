@@ -24,9 +24,6 @@ local objectDB = {
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
 	objectsForStorage = {},
-
-	-- Unstructured storage configurations, read from FS
-	recipeConfigs = {},
 }
 
 -- TODO: Consider using metaTables to add default values to the objectDB
@@ -319,7 +316,7 @@ function objectManager:generateResourceDefinition(config)
 	local components = objectDefinition["components"]
 	local identifier = description["identifier"]
 
-	-- Resource links would prevent a *new* resource from being generated.
+	-- Resource links prevent a *new* resource from being generated.
 	local resourceLinkComponent = components["hammerstone:resource_link"]
 	if resourceLinkComponent ~= nil then
 		log:log("GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. " no unique resource created.")
