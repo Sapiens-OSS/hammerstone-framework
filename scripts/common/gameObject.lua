@@ -18,6 +18,8 @@ function mod:onload(gameObject)
 		})
 		objectManager:generateStorageObjects()
 
+		
+
 		super_mjInit()
 	end
 end

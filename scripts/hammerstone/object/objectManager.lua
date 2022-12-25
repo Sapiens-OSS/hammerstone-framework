@@ -919,9 +919,6 @@ function objectManager:generateRecipeDefinition(config)
 		})
 	})
 
-	mj:log(data)
-
-
 	if data ~= nil then
 		-- Add recipe
 		modules.craftable:addCraftable(identifier, data)

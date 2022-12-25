@@ -11,13 +11,16 @@
  - Buildable
  - Research
  - Sapien traits
- - Skill
  - Terrain types
  - Wind strength for models
- - Materials
  
  # In Progress
  - Craftables
+    - Add definable build sequences
+    - Add tool and resource props
+ - Materials
+    - Add variants
+ - Skill
 
 # Done
  - Resources
