@@ -1,0 +1,55 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "hammerstone.storage.schema",
+    "title": "Storage Definition File",
+    "description": "A file which describes how objects are stored/carried",
+    "type": "object",
+    "required": [
+        "hammerstone:storage_definition"
+    ],
+	"properties": {
+		"hammerstone:storage_definition": {
+			"description": "A wrapper object to make storage files easier to identify.",
+			"properties": {
+				"description": {
+					"type": "object",
+					"description": "UNDOCUMENTED",
+					"required": [
+						"identifier"
+					],
+					"properties": {
+						"identifier": {
+							"type": "string",
+							"description": "The name of the storage zone",
+							"examples": [
+								"sirlich:skull_storage"
+							]
+						}
+					}
+				},
+				"components": {
+					"type": "object",
+					"description": "A list of components controlling this storage zone.",
+					"required": [
+						"hammerstone:storage",
+						"hammerstone:carry"
+					],
+					"properties": {
+						"hammerstone:storage": {
+							"type": "object",
+							"description": "Describes how the object is stored.",
+							"properties": {
+								"preview_object": {
+									"type": "string",
+									"description": "UNDOCUMENTED"
+								},
+								"name": {},
+								"size": {}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
