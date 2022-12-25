@@ -44,10 +44,21 @@
                 "materials": {
                     "description": "Container for materials.",
                     "type": "array",
+                    "examples": [
+                        [
+                            {
+                                "identifier": ""
+                            }
+                        ]
+                    ],
                     "items": [
                         {
                             "type": "object",
                             "description": "A material definition.",
+                            "required": [
+                                "identifier",
+                                "color"
+                            ],
                             "properties": {
                                 "identifier": {
                                     "type": "string",
