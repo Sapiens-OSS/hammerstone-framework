@@ -547,8 +547,8 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
-function objectManager:generateEvolvingObjects(modules)
-	addModules(modules)
+function objectManager:generateEvolvingObjects(mods)
+	addModules(mods)
 
 	log:schema(nil, "")
 	log:log("Generating EvolvingObjects:")
@@ -624,10 +624,10 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
 
-function objectManager:generateGameObjects(modules)
-	addModules(modules)
+function objectManager:generateGameObjects(mods)
+	addModules(mods)
 
-	log:schema(nil, "") 
+	log:schema(nil, "")
 	log:log("Generating Object definitions:")
 	for i, config in ipairs(objectDB.objectConfigs) do
 		objectManager:generateGameObject(config, gameObject)
@@ -695,27 +695,18 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates recipe definitions based on the loaded config, and registers them.
-function objectManager:generateRecipeDefinitions(modules)
-	addModules(modules)
+function objectManager:generateRecipeDefinitions(mods)
+	addModules(mods)
 
 	modules.action = mjrequire "common/action"
 	modules.actionSequence = mjrequire "common/actionSequence"
-	modules.craftAreaGroup = mjrequire "common/craftAreaGroup"
 	modules.tool = mjrequire "common/tool"
 	
+	modules.craftAreaGroup = mjrequire "common/craftAreaGroup"
 	modules.constructable = mjrequire "common/constructable"
 	modules.skill = mjrequire "common/skill"
-	
-	for k, v in pairs(modules) do
-		--mj:log(k, v ~= nil)
-	end
 
-	mj:log(modules.craftAreaGroup.types)
-
-	--mj:log(modules.constructable.classifications)
-	--mj:log(modules.skill.types)
-	
-
+	log:schema(nil, "")
 	log:schema(nil, "Generating Recipe definitions:")
 	for i, config in ipairs(objectDB.recipeConfigs) do
 		objectManager:generateRecipeDefinition(config)
@@ -729,200 +720,19 @@ function objectManager:generateRecipeDefinition(config)
 		return
 	end
 	
+	-- Definition
 	local objectDefinition = config["hammerstone:recipe_definition"]
 	local description = objectDefinition["description"]
 	local identifier = description["identifier"]
 	local components = objectDefinition["components"]
-	log:schema(nil, "  " .. identifier)
 
+	-- Components
 	local recipe = components["hammerstone:recipe"]
 	local requirements = components["hammerstone:requirements"]
 	local output = components["hammerstone:output"]
 	local build_sequence = components["hammerstone:build_sequence"]
 
-	--[[
-	local data = {
-		name = description.name,
-		plural = description.plural,
-		summary = description.summary,
-		outputObjectInfo = {},
-		requiredResources = {},
-	}
-
-	-- The following code is for sanitizing inputs and logging errors accordingly
-
-	-- Preview Object
-	if modules.gameObject.types[recipe.preview_object] ~= nil then
-		data.iconGameObjectType = recipe.preview_object
-	else
-		return logMissing("Preview Object", recipe.preview_object, gameObject.types)
-	end
-
-	-- Classification
-	if modules.constructable.classifications[recipe.classification] ~= nil then
-		data.classification = modules.constructable.classifications[recipe.classification].index
-	else
-		return logMissing("Classification", recipe.classification, modules.constructable.classifications)
-	end
-
-	-- Is Food Preparation
-	if description["isFoodPreparation"] ~= nil and description["isFoodPreparation"] then
-		data.isFoodPreparation = true
-	end
-
-	-- Required Craft Area Groups
-	local requiredCraftAreaGroups = map(requirements.craft_area_groups, function(element)
-		return getTypeIndex(modules.craftAreaGroup.types, element, "Craft Area Group")
-	end)
-	if requiredCraftAreaGroups ~= nil then
-		data.requiredCraftAreaGroups = requiredCraftAreaGroups
-	end
-
-	-- Required Tools
-	local requiredTools = map(requirements.tools, function(element)
-		return getTypeIndex(modules.tool.types, element, "Tool")
-	end)
-	if not isEmpty(requiredTools) then
-		data.requiredTools = requiredTools
-	end
-
-	-- Required Skills
-	if #requirements.skills > 0 then
-		if modules.skill.types[requirements.skills[1] ] ~= nil then
-			data.skills = {
-				required = modules.skill.types[requirements.skills[1] ].index
-			}
-		else
-			return logMissing("Skill", requirements.skills[1], modules.skill.types)
-		end
-	end
-	if #requirements.skills > 1 then
-		if modules.skill.types[requirements.skills[2] ] ~= nil then
-			data.disabledUntilAdditionalSkillTypeDiscovered = modules.skill.types[requirements.skills[2] ].index
-		else
-			return logMissing("Skill", requirements.skills[2], modules.skill.types)
-		end
-	end
-
-	-- Outputs
-	if output.output_by_object ~= nil then
-		local outputArraysByResourceObjectType = map(output.output_by_object, function(element)
-			if gameObject.types[element.input] ~= nil then
-				return map(element.output, function(e)
-					if gameObject.types[e] ~= nil then
-						return gameObject.types[e]
-					end
-					return logMissing("Game Object", e, gameObject.types)
-				end)
-			end
-			return logMissing("Game Object", element.input, gameObject.types)
-		end)
-		if outputArraysByResourceObjectType ~= nil then
-			data.outputObjectInfo.outputArraysByResourceObjectType = outputArraysByResourceObjectType
-		end
-	end
-	
-	local buildSequenceModel = build_sequence["build_sequence_model"]
-	local buildSequence = build_sequence["build_sequence"]
-	local objectProp = build_sequence["object_prop"]
-	local resourceProp = build_sequence["resource_prop"]
-	local resourceSequence = build_sequence["resource_sequence"]
-
-	-- Build Sequence Model
-	if buildSequenceModel ~= nil then
-		data.inProgressBuildModel = buildSequenceModel
-	else
-		return log:schema(nil, "    Missing build sequence model")
-	end
-	
-	-- Build Sequence
-	if buildSequence ~= nil then
-		local steps = buildSequence["steps"]
-		if steps ~= nil then
-			-- Custom build sequence
-			-- TODO
-			logNotImplemented("Custom Build Sequence")
-		else
-			-- Standard build sequence
-			local action = buildSequence["action"]
-			local tool = buildSequence["tool"]
-			if action ~= nil then
-				if modules.actionSequence.types[action] ~= nil then
-					action = modules.actionSequence.types[action].index
-					if tool ~= nil then
-						if modules.tool.types[tool] ~= nil then
-							tool = modules.tool.types[tool].index
-						else
-							return logMissing("Tool", tool, modules.tool.types)
-						end
-					end
-					data.buildSequence = craftable:createStandardBuildSequence(action, tool)
-				else
-					return logMissing("Action Sequence", action, modules.actionSequence.types)
-				end
-			else
-				log:schema(nil, "    Missing Action Sequence")
-			end
-		end
-	else
-		log:schema(nil, "    Missing Build Sequence")
-	end
-
-	-- Object Prop
-	-- TODO
-	if objectProp ~= nil then
-		logNotImplemented("Object Props")
-	end
-
-	-- Resource Prop
-	-- TODO
-	if resourceProp ~= nil then
-		logNotImplemented("Resource Props")
-	end
-
-	-- Resource Sequence
-	if resourceSequence ~= nil then
-		for _, item in ipairs(resourceSequence) do
-			local resourceName = item["resource"]
-			local count = item["count"] or 1
-			if resource.types[resourceName] ~= nil then
-				local resourceData = {
-					type = resource.types[resourceName].index,
-					count = count
-				}
-				if item["action"] ~= nil then
-					if item["action"]["action_type"] ~= nil then
-						if modules.action.types[item["action"]["action_type"] ] ~= nil then
-							if item["action"]["duration"] ~= nil then
-								resourceData.afterAction = {}
-								resourceData.afterAction.actionTypeIndex = modules.action.types[item["action"]["action_type"] ].index
-								resourceData.afterAction.duration = item["action"]["duration"]
-								if item["action"]["duration_without_skill"] ~= nil then
-									resourceData.afterAction.durationWithoutSkill = item["action"]["duration_without_skill"]
-								else
-									resourceData.afterAction.durationWithoutSkill = item["action"]["duration"]
-								end
-							else
-								mj:schema(nil, "    Duration for action '" .. item["action"]["action_type"] .. "' cannot be nil")
-							end
-						else
-							return logMissing("Action", item["action"]["action_type"], modules.action.types)
-						end
-					end
-				end
-				table.insert(data.requiredResources, resourceData)
-			else
-				return logMissing("Resource", resourceName, resource.types)
-			end
-		end
-	else
-		log:schema(nil, "    Missing Resource Sequence")
-	end
-
-
-	]]
-	
-
+	log:schema(nil, "  " .. identifier)
 
 	local required = {
 		identifier = true,
@@ -933,29 +743,32 @@ function objectManager:generateRecipeDefinition(config)
 		iconGameObjectType = true,
 		classification = true,
 		isFoodPreperation = false,
+		
+		skills = false,
+		requiredCraftAreaGroups = false,
+		requiredTools = false,
 
 		outputObjectInfo = true,
-
-		buildSequence = true,
+		
 		inProgressBuildModel = true,
-
-		requiredTools = false,
-		skills = false,
+		buildSequence = true,
+		requiredResources = true,
 
 		-- TODO: outputDisplayCount
+		-- TODO: addGameObjectInfo
+			-- modelName
+			-- resourceTypeIndex
+			-- toolUsages {}
 	}
 
-	local data = {
+	local data = compile(required, {
 
 		-- Description
 		identifier = getField(description, "identifier", {
 			notInTypeTable = modules.craftable.types
 		}),
-
 		name = getField(description, "name"),
-
 		plural = getField(description, "plural"),
-
 		summary = getField(description, "summary"),
 
 
@@ -963,11 +776,9 @@ function objectManager:generateRecipeDefinition(config)
 		iconGameObjectType = getField(recipe, "preview_object", {
 			inTypeTable = modules.gameObject.types
 		}),
-
 		classification = getField(recipe, "classification", {
-			-- inTypeTable = modules.constructable.classifications -- Why is this crashing?
+			inTypeTable = modules.constructable.classifications -- Why is this crashing?
 		}),
-
 		isFoodPreperation = getField(recipe, "isFoodPreparation", {
 			type = "boolean"
 		}),
@@ -976,16 +787,14 @@ function objectManager:generateRecipeDefinition(config)
 		-- Output Component
 		outputObjectInfo = {
 			outputArraysByResourceObjectType = getTable(output, "output_by_object", {
-				-- Simple method that allows running code
-				-- In this case, passes the table output.output_by_object
 				with = function(tbl)
 					local result = {}
-					for _, value in pairs(tbl) do
+					for _, value in pairs(tbl) do -- Loop through all output objects
 						
-						-- Return if input isn't a gameObject
+						-- Return if input isn't a valid gameObject
 						if getTypeIndex(modules.gameObject.types, value.input, "Game Object") == nil then return end
 
-						-- The input resource's index
+						-- Get the input's resource index
 						local index = modules.gameObject.types[value.input].index
 
 						-- Convert from schema format to vanilla format
@@ -1000,12 +809,11 @@ function objectManager:generateRecipeDefinition(config)
 			}),
 		},
 
+
 		-- Requirements Component
-		--[[
 		skills = getTable(requirements, "skills", {
-			--inTypeTable = modules.skill.types,
+			inTypeTable = modules.skill.types,
 			with = function(tbl)
-				--mj:log(objectManager.modules.skill)
 				if #tbl > 0 then
 					return {
 						required = modules.skill.types[tbl[1] ].index
@@ -1013,7 +821,6 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-
 		disabledUntilAdditionalSkillTypeDiscovered = getTable(requirements, "skills", {
 			inTypeTable = modules.skill.types,
 			with = function(tbl)
@@ -1022,24 +829,23 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-
 		requiredCraftAreaGroups = getTable(requirements, "craft_area_groups", {
-			inTypeTable = modules.craftAreaGroup.types
+			map = function(e)
+				return getTypeIndex(modules.craftAreaGroup.types, e, "Craft Area Group")
+			end
 		}),
-
 		requiredTools = getTable(requirements, "tools", {
-			inTypeTable = modules.tool.types
-		}),]]
-
-		
+			map = function(e)
+				return getTypeIndex(modules.tool.types, e, "Tool")
+			end
+		}),
 
 
 		-- Build Sequence Component
 		inProgressBuildModel = getField(build_sequence, "build_sequence_model"),
-
 		buildSequence = getTable(build_sequence, "build_sequence", {
 			with = function(tbl)
-				if tbl.steps ~= nil then
+				if not isEmpty(tbl.steps) then
 					-- If steps exist, we create a custom build sequence instead a standard one
 					logNotImplemented("Custom Build Sequence") -- TODO: Implement steps
 				else
@@ -1053,7 +859,7 @@ function objectManager:generateRecipeDefinition(config)
 					if sequence ~= nil then
 
 						-- Cancel if a tool is stated but doesn't exist
-						if tbl.tool ~= nil and getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
+						if tbl.tool ~= nil and #tbl.tool > 0 and getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
 							return
 						end
 
@@ -1063,42 +869,72 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-
 		requiredResources = getTable(build_sequence, "resource_sequence", {
-			-- Return a table of resource sequences
+			-- Runs for each item and replaces item with return result
 			map = function(e)
 
-				-- Cancel if resource does not exist
-				if (getTypeIndex(modules.resource.types, e["resource"], "Resource") == nil) then return end
+				-- Get the resource
+				local res = getTypeIndex(modules.resource.types, e.resource, "Resource")
+				if (res == nil) then return end -- Cancel if resource does not exist
 
+				-- Get the count
+				local count = e.count or 1
+				if (not isType(count, "number")) then
+					return log:schema(nil, "    Resource count for " .. e.resource .. " is not a number")
+				end
 
+				if e.action ~= nil then
 
-				return e
+					-- Return if action is invalid
+					local actionType = getTypeIndex(modules.action.types, e.action.action_type, "Action")
+					if (actionType == nil) then return end
+
+					-- Return if duration is invalid
+					local duration = e.action.duration
+					if (not isType(duration, "number")) then
+						return log:schema(nil, "    Duration for " .. e.action.action_type .. " is not a number")
+					end
+
+					-- Return if duration without skill is invalid
+					local durationWithoutSkill = e.action.duration_without_skill or duration
+					if (not isType(durationWithoutSkill, "number")) then
+						return log:schema(nil, "    Duration without skill for " .. e.action.action_type .. " is not a number")
+					end
+
+					return {
+						type = res,
+						count = count,
+						afterAction = {
+							actionTypeIndex = actionType,
+							duration = duration,
+							durationWithoutSkill = durationWithoutSkill,
+						}
+					}
+				end
+				return {
+					type = res,
+					count = count,
+				}
 			end
 		})
-	}
+	})
 
 	mj:log(data)
-	--mj:log(testdata)
-
 
 
 	if data ~= nil then
-		
-	end
+		-- Add recipe
+		modules.craftable:addCraftable(identifier, data)
 
-	--[[
-	-- Add recipe
-	modules.craftable:addCraftable(identifier, data)
-
-	-- Add items in crafting panels
-	for _, group in ipairs(requiredCraftAreaGroups) do
-		local key = modules.gameObject.typeIndexMap[modules.craftAreaGroup.types[group].key]
-		if objectManager.inspectCraftPanelData[key] == nil then
-			objectManager.inspectCraftPanelData[key] = {}
+		-- Add items in crafting panels
+		for _, group in ipairs(data.requiredCraftAreaGroups) do
+			local key = modules.gameObject.typeIndexMap[modules.craftAreaGroup.types[group].key]
+			if objectManager.inspectCraftPanelData[key] == nil then
+				objectManager.inspectCraftPanelData[key] = {}
+			end
+			table.insert(objectManager.inspectCraftPanelData[key], modules.constructable.types[identifier].index)
 		end
-		table.insert(objectManager.inspectCraftPanelData[key], modules.constructable.types[identifier].index)
-	end]]
+	end
 end
 
 ---------------------------------------------------------------------------------
@@ -1110,6 +946,7 @@ function objectManager:generateMaterialDefinitions()
 
 	modules.material = mjrequire "common/material"
 
+	log:schema(nil, "")
 	log:schema(nil, "Generating Material definitions:")
 	for i, config in ipairs(objectDB.materialConfigs) do
 		objectManager:generateMaterialDefinition(config)
@@ -1147,10 +984,7 @@ function objectManager:generateMaterialDefinition(config)
 				type = "number",
 				length = 3,
 				with = function(tbl)
-					if tbl ~= nil then
-						-- Convert number table to vec3
-						return vec3(tbl[1], tbl[2], tbl[3])
-					end
+					return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
 				end
 			}),
 			
