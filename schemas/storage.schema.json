@@ -13,7 +13,7 @@
 			"properties": {
 				"description": {
 					"type": "object",
-					"description": "UNDOCUMENTED",
+					"description": "NODOCS",
 					"required": [
 						"identifier",
 						"name"
@@ -52,24 +52,24 @@
 							"properties": {
 								"preview_object": {
 									"type": "string",
-									"description": "UNDOCUMENTED"
+									"description": "NODOCS"
 								},
 								"size": {
 									"type": "array",
 									"default": [
 										0.5, 0.5, 0.5
 									],
-									"description": "UNDOCUMENTED",
+									"description": "NODOCS",
 									"minimum": 3,
 									"maximum": 3,
 									"items": {
 										"type": "number",
-										"description": "UNDOCUMENTED"
+										"description": "NODOCS"
 									}
 								},
 								"offset": {
 									"type": "array",
-									"description": "UNDOCUMENTED",
+									"description": "NODOCS",
 									"minimum": 3,
 									"maximum": 3,
 									"default": [
@@ -77,14 +77,108 @@
 									],
 									"items": {
 										"type": "number",
-										"description": "UNDOCUMENTED"
+										"description": "NODOCS"
 									}
+								},
+								"rotation": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"random_rotation_weight": {
+									"type": "number",
+									"description": "The weight that the random rotation will have on the object",
+									"default": "2"
+								},
+								"rotate_to_fit_below_surface": {
+									"type": "boolean",
+									"description": "NODOCS",
+									"default": "true"
 								}
 							}
 						},
 						"hammerstone:carry": {
 							"type": "object",
-							"description": "Describes how the object is carried"
+							"description": "Describes how the object is carried",
+							"properties": {
+								"carry_count": {
+									"type": "object",
+									"description": "NODOCS",
+									"properties": {
+										"normal": {
+											"type": "integer",
+											"description": "NODOCS"
+										},
+										"limited_ability": {
+											"type": "integer",
+											"description": "NODOCS"
+										},
+										"running": {
+											"type": "integer",
+											"description": "NODOCS"
+										}
+									}
+								},
+								"carry_type": {
+									"description": "NODOCS",
+									"type": "string",
+									"default": "standard",
+									"enum": [
+										"standard",
+										"small",
+										"high",
+										"highSmall",
+										"highMedium"
+									]
+								},
+								"stack_type": {
+									"description": "NODOCS",
+									"type": "string",
+									"default": "standard",
+									"enum": [
+										"standard",
+										"vertical"
+									]
+								},
+								"offset": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"rotation_constant": {
+									"type": "number",
+									"description": "NODOCS"
+								},
+								"rotation": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								}
+							}
 						}
 					}
 				}

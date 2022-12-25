@@ -272,11 +272,26 @@ function objectManager:generateStorageObject(config)
 
 	local identifier = utils:getField(description, "identifier")
 
+	-- TODO no local imports
+	local storage = mjrequire "common/storage"
+
 	log:log("  " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local resource = mjrequire "common/resource";
 
+	-- Prep
+	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
+		default = 2.0
+	})
+	local rotation = utils:getVec3(storageComponent, "rotation", {
+		default = vec3(0.0, 0.0, 0.0)
+	})
+
+	local carryCounts = utils:getTable(carryComponent, "carry_count", {
+		default = {} -- Allow this field to be undefined, but don't use nil
+	})
+	
 	local newStorage = {
 		key = identifier,
 		name = utils:getField(description, "name"),
@@ -286,33 +301,46 @@ function objectManager:generateStorageObject(config)
 		-- TODO: This needs to be reworked to make sure that it's possible to reference vanilla resources here (?)
 		resources = objectManager:generateResourceForStorage(identifier),
 
-		-- TODO: Add fields to customize this.
 		storageBox = {
 			size =  utils:getVec3(storageComponent, "size", {
 				default = vec3(0.5, 0.5, 0.5)
 			}),
-
+			
+			-- TODO consider giving more control here
 			rotationFunction = function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
-				local rotation = mat3Rotate(mat3Identity, randomValue * 6.282, vec3(0.0,1.0,0.0))
-				return rotation
+				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation, rotation)
+				return rot
 			end,
 
-			dontRotateToFitBelowSurface = true,
+			dontRotateToFitBelowSurface = utils:getField(storageComponent, "rotate_to_fit_below_surface", {
+				default = true,
+				type = "boolean"
+			}),
+			
 			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "offset", {
 				default = vec3(0.0, 0.0, 0.0)
 			}))
 		},
 
-		-- TODO Handle this stuff too.
-		maxCarryCount = 1,
-		maxCarryCountLimitedAbility = 1,
-		--carryRotation = mat3Rotate(mat3Rotate(mat3Identity, math.pi * 0.4, vec3(0.0, 0.0, 1.0)), math.pi * 0.1, vec3(1.0, 0.0, 0.0)),
-		carryRotation = mat3Rotate(mat3Identity, 1.2, vec3(0.0, 0.0, 1.0)),
-		carryOffset = vec3(0.1,0.1,0.0),
+		maxCarryCount = utils:getField(carryCounts, "normal", {default=1}),
+		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
+		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
+
+		carryStackType = storage.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
+		carryType = storage.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
+
+		carryOffset = utils:getVec3(carryComponent, "offset", {
+			default = vec3(0.0, 0.0, 0.0)
+		}),
+
+		carryRotation = mat3Rotate(mat3Identity,
+			utils:getField(carryComponent, "rotation_constant", { default = 1}),
+			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 0.0)})
+		),
 	}
 
-	--mj:log(newStorage)
+	-- TODO: No local imports
 	local storageModule = mjrequire "common/storage"
 	storageModule:addStorage(identifier, newStorage)
 end
