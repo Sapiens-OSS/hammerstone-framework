@@ -26,7 +26,6 @@ end
 
 --- Initializes the input manager so it can start receiving and sending input events.
 function inputManager:init()
-	mj:log("hit this")
 	eventManager:addEventListenter(inputManager.keyChanged, eventManager.keyChangedListeners)
 end
 

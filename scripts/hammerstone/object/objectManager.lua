@@ -53,7 +53,7 @@ local mat3Rotate = mjm.mat3Rotate
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
-local utils = mjrequire "hammerstone/objectUtils" -- TOOD: Are we happy name-bungling imports?
+local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
@@ -575,32 +575,32 @@ function objectManager:generateRecipeDefinition(config)
 			-- toolUsages {}
 	}
 
-	local data = compile(required, {
+	local data = utils:compile(required, {
 
 		-- Description
-		identifier = getField(description, "identifier", {
+		identifier = utils:getField(description, "identifier", {
 			notInTypeTable = modules.craftable.types
 		}),
-		name = getField(description, "name"),
-		plural = getField(description, "plural"),
-		summary = getField(description, "summary"),
+		name = utils:getField(description, "name"),
+		plural = utils:getField(description, "plural"),
+		summary = utils:getField(description, "summary"),
 
 
 		-- Recipe Component
-		iconGameObjectType = getField(recipe, "preview_object", {
+		iconGameObjectType = utils:getField(recipe, "preview_object", {
 			inTypeTable = modules.gameObject.types
 		}),
-		classification = getField(recipe, "classification", {
+		classification = utils:getField(recipe, "classification", {
 			inTypeTable = modules.constructable.classifications -- Why is this crashing?
 		}),
-		isFoodPreperation = getField(recipe, "isFoodPreparation", {
+		isFoodPreperation = utils:getField(recipe, "isFoodPreparation", {
 			type = "boolean"
 		}),
 
 
 		-- Output Component
 		outputObjectInfo = {
-			outputArraysByResourceObjectType = getTable(output, "output_by_object", {
+			outputArraysByResourceObjectType = utils:getTable(output, "output_by_object", {
 				with = function(tbl)
 					local result = {}
 					for _, value in pairs(tbl) do -- Loop through all output objects
