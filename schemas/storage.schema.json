@@ -15,7 +15,8 @@
 					"type": "object",
 					"description": "UNDOCUMENTED",
 					"required": [
-						"identifier"
+						"identifier",
+						"name"
 					],
 					"properties": {
 						"identifier": {
@@ -45,13 +46,45 @@
 						"hammerstone:storage": {
 							"type": "object",
 							"description": "Describes how the object is stored.",
+							"required": [
+								"preview_object"
+							],
 							"properties": {
 								"preview_object": {
 									"type": "string",
 									"description": "UNDOCUMENTED"
 								},
-								"size": {}
+								"size": {
+									"type": "array",
+									"default": [
+										0.5, 0.5, 0.5
+									],
+									"description": "UNDOCUMENTED",
+									"minimum": 3,
+									"maximum": 3,
+									"items": {
+										"type": "number",
+										"description": "UNDOCUMENTED"
+									}
+								},
+								"offset": {
+									"type": "array",
+									"description": "UNDOCUMENTED",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "UNDOCUMENTED"
+									}
+								}
 							}
+						},
+						"hammerstone:carry": {
+							"type": "object",
+							"description": "Describes how the object is carried"
 						}
 					}
 				}

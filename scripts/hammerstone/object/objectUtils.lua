@@ -4,10 +4,16 @@
 
 local objectUtils = {}
 
+-- Math
+local mjm = mjrequire "common/mjm"
+local vec3 = mjm.vec3
+
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
 
--- Returns result of running predicate on each item in table
+--- Returns result of running predicate on each item in table
+-- @param table
+-- @param predicate
 function objectUtils:map(tbl, predicate)
 	local data = {}
 	for i,e in ipairs(tbl) do
@@ -19,7 +25,7 @@ function objectUtils:map(tbl, predicate)
 	return data
 end
 
--- Returns data if running predicate on each item in table returns true
+--- Returns data if running predicate on each item in table returns true
 function objectUtils:all(tbl, predicate)
 	for i,e in ipairs(tbl) do
 		local value = predicate(e)
@@ -66,11 +72,11 @@ function objectUtils:logExisting(displayAlias, key, tbl)
 	log:schema(nil, "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
 end
 
-function logWrongType(key, typeName)
+function objectUtils:logWrongType(key, typeName)
 	log:schema(nil, "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
 end
 
-function logNotImplemented(featureName)
+function objectUtils:logNotImplemented(featureName)
 	log:schema(nil, "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
 
@@ -117,12 +123,16 @@ function objectUtils:isType(value, typeName)
 	return false
 end
 
+--- Applies validations when fetching from a table.
+-- @param key string - The key to fetch
+-- @param value any - The value
+-- @param options table - The options defining the validation
 function objectUtils:validate(key, value, options)
 
 	-- Make sure this field has the proper type
 	if options.type ~= nil then
 		if not objectUtils:isType(value, options.type) then
-			return logWrongType(key, options.type)
+			return objectUtils:logWrongType(key, options.type)
 		end
 	end
 
@@ -152,22 +162,56 @@ function objectUtils:validate(key, value, options)
 	return value
 end
 
-function objectUtils:getField(tbl, key, options)
-	local value = tbl[key]
-	local name = key
-
-	if value == nil then
-		return
+--- Fetches a vec3 by coercing a json array with three elements.
+function objectUtils:getVec3(tbl, key, options)
+	-- Configure inner options to match a vec3 conversion, while still allowing custom pass-through info
+	if options == nil then
+		options = {}
 	end
 
-	if options ~= nil then
-		if objectUtils:validate(key, value, options) == nil then
+	options.type = "number"
+	options.length = 3
+	options.with = function(tbl)
+		return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
+	end
+
+	return objectUtils:getTable(tbl, key, options)
+end
+
+--- Fetches a field from the table, with validation.
+-- @param tbl table - The table where the field should be fetched from
+-- @param key string - The key to fetch from the table
+-- @param options table - A table definiting the options
+-- Options:
+-- default (any)
+-- with (function)
+-- type
+-- inTypeTable
+-- notInTypeTable
+function objectUtils:getField(tbl, key, optionsOrNil)
+	local value = tbl[key]
+
+	if value == nil then
+		-- Attempt to return default, if it exists
+		if optionsOrNil ~= nil and optionsOrNil.default ~= nil then
+			return optionsOrNil.default
+		end
+
+		-- Assume required for all fields
+		-- TODO: Add an 'options key' for this.
+		log:schema(nil, "    Missing " .. key .. " in " .. tbl)
+		return nil
+	end
+
+	-- Apply the various options
+	if optionsOrNil ~= nil then
+		if objectUtils:validate(key, value, optionsOrNil) == nil then
 			return
 		end
 
-		if options.with ~= nil then
-			if type(options.with) == "function" then
-				value = options.with(value)
+		if optionsOrNil.with ~= nil then
+			if type(optionsOrNil.with) == "function" then
+				value = optionsOrNil.with(value)
 			else
 				log:schema("    ERROR: Value of with option is not function")
 			end
@@ -177,12 +221,21 @@ function objectUtils:getField(tbl, key, options)
 	return value
 end
 
+-- TODO: Make this share more stuff with `getField`
 function objectUtils:getTable(tbl, key, options)
 	local values = tbl[key]
 	local name = key
 
 	if values == nil then
-		return
+		-- Attempt to return default, if it exists
+		if options ~= nil and options.default ~= nil then
+			return options.default
+		end
+
+		-- Assume required for all fields
+		-- TODO: Add an 'options key' for this.
+		log:schema(nil, "    Missing " .. key .. " in " .. tbl)
+		return nil
 	end
 
 	if type(values) ~= "table" then

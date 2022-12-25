@@ -5,6 +5,7 @@ local mod = {
 	loadOrder = 1
 }
 
+-- Math
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 

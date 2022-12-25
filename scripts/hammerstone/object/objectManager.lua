@@ -263,35 +263,45 @@ function objectManager:generateStorageObject(config)
 	end
 
 	-- Load structured information
-	local object = config["hammerstone:storage"]
-	local description = object["description"]
-	local carryComponent = object.components["hammerstone:carry"]
-	local storageComponent = object.components["hammerstone:storage"]
+	local storageDefinition = config["hammerstone:storage_definition"]
+	local description = storageDefinition["description"]
+	local storageComponent = storageDefinition.components["hammerstone:storage"]
+	local carryComponent = storageDefinition.components["hammerstone:carry"]
 
-	local identifier = description.identifier
+	local gameObjectTypeIndexMap = typeMaps.types.gameObject
+
+	local identifier = utils:getField(description, "identifier")
 
 	log:log("  " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
-	local gameObjectTypeIndexMap = typeMaps.types.gameObject
 	local resource = mjrequire "common/resource";
 
 	local newStorage = {
 		key = identifier,
-		name = description.name,
-		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
+		name = utils:getField(description, "name"),
+
+		displayGameObjectTypeIndex = gameObjectTypeIndexMap[utils:getField(storageComponent, "preview_object")],
+		
+		-- TODO: This needs to be reworked to make sure that it's possible to reference vanilla resources here (?)
 		resources = objectManager:generateResourceForStorage(identifier),
 
 		-- TODO: Add fields to customize this.
 		storageBox = {
-			size =  vec3(0.24, 0.1, 0.24),
+			size =  utils:getVec3(storageComponent, "size", {
+				default = vec3(0.5, 0.5, 0.5)
+			}),
+
 			rotationFunction = function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
 				local rotation = mat3Rotate(mat3Identity, randomValue * 6.282, vec3(0.0,1.0,0.0))
 				return rotation
 			end,
+
 			dontRotateToFitBelowSurface = true,
-			placeObjectOffset = mj:mToP(vec3(0.0,0.4,0.0)),
+			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "offset", {
+				default = vec3(0.0, 0.0, 0.0)
+			}))
 		},
 
 		-- TODO Handle this stuff too.
@@ -786,13 +796,7 @@ function objectManager:generateMaterialDefinition(config)
 				notInTypeTable = modules.material.types
 			}),
 
-			color = utils:getTable(mat, "color", {
-				type = "number",
-				length = 3,
-				with = function(tbl)
-					return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
-				end
-			}),
+			color = utils:getVec3(mat, "color"),
 			
 			roughness = utils:getField(mat, "roughness", {
 				type = "number"
