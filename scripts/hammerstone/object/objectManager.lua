@@ -17,6 +17,9 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	storageConfigs = {},
 
+	-- Unstructured recipe configurations, read from FS
+	recipeConfigs = {},
+
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
@@ -139,7 +142,7 @@ function objectManager:loadConfig(path, type)
 	table.insert(type, configTable)
 end
 
-function addModules(modulesTable)
+local function addModules(modulesTable)
 	for k, v in pairs(modulesTable) do
 		objectManager.modules[k] = v
 	end
@@ -411,7 +414,7 @@ function objectManager:generateResourceDefinition(config)
 	local components = objectDefinition["components"]
 	local identifier = description["identifier"]
 
-	-- Resource links would prevent a *new* resource from being generated.
+	-- Resource links prevent a *new* resource from being generated.
 	local resourceLinkComponent = components["hammerstone:resource_link"]
 	if resourceLinkComponent ~= nil then
 		log:log("GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. " no unique resource created.")
@@ -544,7 +547,7 @@ function objectManager:generateStorageObject(config)
 end
 
 ---------------------------------------------------------------------------------
--- Game Object
+-- Evolving Objects
 ---------------------------------------------------------------------------------
 
 function objectManager:generateEvolvingObjects(mods)
@@ -597,6 +600,57 @@ function objectManager:generateEvolvingObject(evolvingObject, config)
 	end
 	
 	evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
+end
+
+---------------------------------------------------------------------------------
+-- Harvestable Objects
+---------------------------------------------------------------------------------
+
+function objectManager:generateHarvestableObjects(mods)
+	addModules(mods)
+
+	log:schema(nil, "")
+	log:log("Generating Harvestable Objects:")
+	for i, config in ipairs(objectDB.objectConfigs) do
+		objectManager:generateHarvestableObject(config)
+	end
+end
+
+function objectManager:generateHarvestableObject(config)
+	local harvestableModule = modules.harvestable -- This will crash until we actuall provide this
+
+	local object_definition = config["hammerstone:object_definition"]
+	local evolvingObjectComponent = object_definition.components["hammerstone:harvestable"]
+	local identifier = object_definition.description.identifier
+	
+	if evolvingObjectComponent == nil then
+		return -- This is allowed	
+	else
+		log:log("  " .. identifier)
+	end
+
+	-- TODO: Make this smart, and can handle day length OR year length.
+	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
+	local newEvolvingObject = {
+		minTime = evolvingObject.dayLength * evolvingObjectComponent.min_time,
+		categoryIndex = evolvingObject.categories[evolvingObjectComponent.category].index,
+	}
+
+	if evolvingObjectComponent.transform_to ~= nil then
+		local gameObject = mjrequire "common/gameObject"
+
+		local function generateTransformToTable(transform_to)
+			local newResource = {}
+			for i, identifier in ipairs(transform_to) do
+				table.insert(newResource, gameObject.types[identifier].index)
+			end
+			return newResource
+		end
+
+		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
+	end
+	
+	-- evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
 end
 
 ---------------------------------------------------------------------------------
