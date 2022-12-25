@@ -1,0 +1,245 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "hammerstone.object.schema",
+    "title": "Object Definition File",
+    "description": "An object definition file for registering objects using the Hammerstone Data Driven API.",
+    "type": "object",
+    "required": [
+        "hammerstone:object_definition"
+    ],
+    "properties": {
+        "hammerstone:object_definition": {
+            "type": "object",
+            "description": "Wrapper object, to make identifying object files easier.",
+            "required": [
+                "description",
+                "components"
+            ],
+            "properties": {
+                "description": {
+                    "description": "Container for global object properties.",
+                    "type": "object",
+                    "properties": {
+                        "identifier": {
+                            "type": "string",
+                            "description": "The unique identifier of your object",
+                            "examples": [
+                                "sirlich:snake_skull"
+                            ]
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "The name of the object. May be localized, or not.",
+                            "examples": [
+                                "Snake Skull",
+                                "object_snakeSkull"
+                            ]
+                        },
+                        "plural": {
+                            "type": "string",
+                            "description": "The pluralized name of the object. May be localized, or not.",
+                            "examples": [
+                                "Snake Skull",
+                                "object_snakeSkull"
+                            ]
+                        }
+                    }
+                },
+                "meta": {
+                    "description": "Container for 'metadata' related to your object. Feel free to introduce new fields.",
+                    "properties": {
+                        "author": {
+                            "type": "string",
+                            "description": "The author who created this file.",
+                            "examples": [
+                                "SirLich"
+                            ]
+                        },
+                        "sapiens_version": {
+                            "type": "string",
+                            "description": "The version of Sapiens that this object was intended to be used with.",
+                            "examples": [
+                                "0.3.6"
+                            ]
+                        },
+                        "hammerstone_version": {
+                            "type": "string",
+                            "description": "The version of Hammerstone that this object was intended to be used with.",
+                            "examples": [
+                                "1.2.5"
+                            ]
+                        }
+                    }
+                },
+                "components": {
+                    "description": "Container for object 'components', reach covering a topic or capability.",
+                    "required": [
+                        "hammerstone:object"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "hammerstone:object": {
+                            "type": "object",
+                            "description": "This component allows you to specify basic information about the object.",
+                            "properties": {
+                                "scale": {
+                                    "type": "number",
+                                    "description": "The scale of the model."
+                                },
+                                "model": {
+                                    "type": "string",
+                                    "description": "The name of the model that will represent this object.",
+                                    "examples": [
+                                        "snakeSkull"
+                                    ]
+                                },
+                                "random_rotation": {
+                                    "type": "boolean",
+                                    "description": "Whether the object will have a random initial rotation."
+                                },
+                                "physics": {
+                                    "type": "boolean",
+                                    "description": "Whether the object has physics."
+                                },
+                                "marker_positions": {
+                                    "type": "array",
+                                    "description": "The position where in-game markers will be positioned. In meters."
+                                }
+                            }
+                        },
+                        "hammerstone:evolving_object": {
+                            "type": "object",
+                            "description": "This component allows specifying how your object will rot/dry/despawn.",
+                            "required": [
+                                "min_time",
+                                "category"
+                            ],
+                            "properties": {
+                                "min_time": {
+                                    "type": "string",
+                                    "description": "The minimum time that it takes this object to evolve. Will be interpreted as lua."
+                                },
+                                "transform_to": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "Identifiers of the item you want to transform to.",
+                                        "examples": [
+                                            "sirlich:snake_skull"
+                                        ]
+                                    }
+                                },
+                                "category": {
+                                    "type": "string",
+                                    "description": "The category of transformation that is occurring.",
+                                    "anyOf": [
+                                        {
+                                            "const": "rot",
+                                            "title": "Sets that the object is rotting. i.e., becoming a rotten variation of itself."
+                                        },
+                                        {
+                                            "const": "dry",
+                                            "title": "Sets that the object is drying. i.e., becoming a dried variation of itself."
+                                        },
+                                        {
+                                            "const": "despawn",
+                                            "title": "Sets that the object is de-spawning. i.e., transforming into nothing."
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "hammerstone:resource_link": {
+                            "description": "Defines whether this object should use an existing resource. If missing, resource will be auto-generated.",
+                            "type": "object",
+                            "properties": {
+                                "resource_identifier": {
+                                    "type": "string",
+                                    "description": "The identifier of the resource.",
+                                    "examples": [
+                                        "sirlich:skulls"
+                                    ]
+                                }
+                            }
+                        },
+                        "hammerstone:food": {
+                            "type": "object",
+                            "description": "Defines that the object is edible, and specifies it's properties.",
+                            "properties": {
+                                "portions": {
+                                    "type": "integer",
+                                    "description": "The number of times this food item can be eaten before it is fully consumed."
+                                },
+                                "value": {
+                                    "type": "number",
+                                    "description": "The saturation value gained each time this food is eaten."
+                                },
+                                "food_poison_chance": {
+                                    "type": "number",
+                                    "description": "The chance your Sapien will become sick consuming this food. 0=0%, 1=100%"
+                                },
+                                "items_when_eaten": {
+                                    "type": "array",
+                                    "description": "The list of items to transform to, when this object is eaten.",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "Object identifier",
+                                        "examples": [
+                                            "sirlich:rat_skull"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "hammerstone:storage_link": {
+                            "type":"object",
+                            "description": "Specifies how this item is carried and stored.",
+                            "properties": {
+                                "identifier": {
+                                    "type": "string",
+                                    "description": "The identifier of the storage type for this object (defined in it's own file).",
+                                    "examples": [
+                                        "sirlich:skull_storage"
+                                    ]
+                                }
+                            }
+                        },
+                        "hammerstone:decoration": {
+                            "type": "object",
+                            "description": "Specifies the decoration related properties for this object.",
+                            "properties": {
+                                "enabled": {
+                                    "type":"boolean",
+                                    "description": "Whether this object can be placed in the world as a decoration"
+                                }
+                            }
+                        },
+                        "hammerstone:harvestable": {
+                            "properties": {
+                                "identifiers": {
+                                    "type": "array",
+                                    "description": "The list of resources to drop when the object is harvested. Duplicates are allowed.",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "The identifier of a single item to drop.",
+                                        "examples": [
+                                            "hs:rat_skull"
+                                        ]
+                                    }
+                                },
+                                "single_object_count": {
+                                    "type": "integer",
+                                    "description": "UNDOCUMENTED"
+                                },
+                                "completion_group_count": {
+                                    "type": "integer",
+                                    "description": "UNDOCUMENTED"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
