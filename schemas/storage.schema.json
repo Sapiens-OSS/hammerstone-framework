@@ -24,6 +24,13 @@
 							"examples": [
 								"sirlich:skull_storage"
 							]
+						},
+						"name": {
+							"type": "string",
+							"description": "The name of the storage zone.",
+							"examples": [
+								"Potato Storage"
+							]
 						}
 					}
 				},
@@ -43,7 +50,6 @@
 									"type": "string",
 									"description": "UNDOCUMENTED"
 								},
-								"name": {},
 								"size": {}
 							}
 						}

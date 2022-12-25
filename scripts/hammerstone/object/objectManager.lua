@@ -267,6 +267,7 @@ function objectManager:generateStorageObject(config)
 	local description = object["description"]
 	local carryComponent = object.components["hammerstone:carry"]
 	local storageComponent = object.components["hammerstone:storage"]
+
 	local identifier = description.identifier
 
 	log:log("  " .. identifier)
@@ -277,7 +278,7 @@ function objectManager:generateStorageObject(config)
 
 	local newStorage = {
 		key = identifier,
-		name = storageComponent.name,
+		name = description.name,
 		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
 		resources = objectManager:generateResourceForStorage(identifier),
 
@@ -765,12 +766,6 @@ function objectManager:generateMaterialDefinitions()
 end
 
 function objectManager:generateMaterialDefinition(config)
-
-	if config == nil then
-		log:schema(nil, "  Warning! Attempting to generate a material definition that is nil.")
-		return
-	end
-	
 	local materialDefinition = config["hammerstone:material_definition"]
 	local materials = materialDefinition["materials"]
 
