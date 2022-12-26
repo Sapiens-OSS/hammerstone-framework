@@ -102,12 +102,6 @@ function mod:onload(resource)
 	local super_mjInit = resource.mjInit
 	resource.mjInit = function(self)
 		super_mjInit(self)
-
-		local objectManager = mjrequire "hammerstone/object/objectManager"
-		-- Load DDAPI
-		objectManager:generateResourceDefinitions({
-			resource = resource
-		})
 	end
 end
 

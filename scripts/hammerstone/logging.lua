@@ -98,10 +98,13 @@ end
 --- @param msg string
 --- @return nil
 function logging:schema(file, msg)
+	-- Even though we have our own logging now, we still want main logs too:
+	mj:log(msg)
 
 	local logPath = getLogDirectoryPath()
 	local msgString = mj:tostring(msg, 0) .. "\n"
 
+	
 	-- Add log to specific file
 	if file ~= nil then
 		if schemaLogsByFile[file] == nil then

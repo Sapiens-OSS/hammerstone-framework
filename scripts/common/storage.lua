@@ -44,7 +44,7 @@ function mod:onload(storage)
 		return index
 	end
 
-	objectManager:generateStorageObjects(storage)
+	-- objectManager:generateStorageObjects(storage)
 end
 
 return mod

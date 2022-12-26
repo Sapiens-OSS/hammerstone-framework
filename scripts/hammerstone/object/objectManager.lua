@@ -81,6 +81,7 @@ function objectManager:init()
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
+	objectManager:generateResourceDefinitions()
 
 	-- generateMaterialDefinitions is called internally, from `material.lua`.
 	-- generateResourceDefinitions is called internally, from `resource.lua`.
@@ -104,12 +105,12 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/storage/",
 			dbTable = objectDB.storageConfigs,
-			enabled = false,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/recipes/",
 			dbTable = objectDB.recipeConfigs,
-			enabled = true,
+			enabled = false,
 		},
 		{
 			path = "/hammerstone/materials/",
@@ -119,7 +120,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/skills/",
 			dbTable = objectDB.skillConfigs,
-			enabled = true,
+			enabled = false,
 		}
 	}
 
@@ -193,11 +194,15 @@ function objectManager:generateResourceDefinitions(mods)
 			objectManager:generateResourceDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
 function objectManager:generateResourceDefinition(config)
+	if config == nil then
+		log:schema("ddapi", "WARNING: Attempting to generate a resource definition that is nil.")
+		return
+	end
 
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
@@ -249,7 +254,6 @@ function objectManager:generateResourceDefinition(config)
 		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
 	end
 
-	-- Inlined imports. Bad style. I don't care.
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
 	modules.resource:addResource(identifier, newResource)
 end
@@ -272,7 +276,7 @@ function objectManager:generateStorageObjects()
 			objectManager:generateStorageObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -301,7 +305,7 @@ function objectManager:generateStorageObject(config)
 	end
 
 	-- Load structured information
-	local storageDefinition = config["hammerstone:storage"]
+	local storageDefinition = config["hammerstone:storage_definition"]
 	local description = storageDefinition["description"]
 	local storageComponent = storageDefinition.components["hammerstone:storage"]
 	local carryComponent = storageDefinition.components["hammerstone:carry"]
@@ -314,6 +318,9 @@ function objectManager:generateStorageObject(config)
 	local storage = mjrequire "common/storage"
 
 	log:schema("ddapi", "  " .. identifier)
+
+	-- Inlined imports. Bad style. I don't care.
+	local resource = mjrequire "common/resource";
 
 	-- Prep
 	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
@@ -399,7 +406,7 @@ function objectManager:generateEvolvingObjects(mods)
 			objectManager:generateEvolvingObject(evolvingObject, config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -464,7 +471,7 @@ function objectManager:generateHarvestableObjects(mods)
 			objectManager:generateHarvestableObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -523,6 +530,9 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 		objectDB.objectsForStorage[storageIdentifier] = {}
 	end
 
+	-- Shoot me
+	local resource = mjrequire "common/resource"
+
 	-- Insert the object identifier for this storage container
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
@@ -542,7 +552,7 @@ function objectManager:generateGameObjects(mods)
 			objectManager:generateGameObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -634,7 +644,7 @@ function objectManager:generateRecipeDefinitions(mods)
 			objectManager:generateRecipeDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -879,7 +889,7 @@ function objectManager:generateMaterialDefinitions(mods)
 			objectManager:generateMaterialDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -941,7 +951,7 @@ function objectManager:generateSkillDefinitions(mods)
 			objectManager:generateSkillDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
