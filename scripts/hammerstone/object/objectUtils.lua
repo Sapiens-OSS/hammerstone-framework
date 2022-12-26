@@ -54,14 +54,14 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 		table.insert(logMissingTables, tbl)
 
 		if key == nil then
-			log:schema(nil, "    ERROR: " .. displayAlias .. " key is nil.")
-			log:schema(nil, debug.traceback())
+			log:schema("ddapi", "    ERROR: " .. displayAlias .. " key is nil.")
+			log:schema("ddapi", debug.traceback())
 		else
-			log:schema(nil, "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
+			log:schema("ddapi", "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
 
 			for k, _ in pairs(tbl) do
 				if type(k) == "string" then
-					log:schema(nil, "      " .. k)
+					log:schema("ddapi", "      " .. k)
 				end
 			end
 		end
@@ -69,15 +69,15 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 end
 
 function objectUtils:logExisting(displayAlias, key, tbl)
-	log:schema(nil, "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
+	log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
 end
 
 function objectUtils:logWrongType(key, typeName)
-	log:schema(nil, "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
+	log:schema("ddapi", "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
 end
 
 function objectUtils:logNotImplemented(featureName)
-	log:schema(nil, "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
+	log:schema("ddapi", "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
 
 -- Returns the index of a type, or nil if not found.
@@ -144,7 +144,7 @@ function objectUtils:validate(key, value, options)
 				return objectUtils:logMissing(key, value, options.inTypeTable)
 			end
 		else
-			log:schema(nil, "    ERROR: Value of inTypeTable is not table")
+			log:schema("ddapi", "    ERROR: Value of inTypeTable is not table")
 		end
 	end
 
@@ -155,7 +155,7 @@ function objectUtils:validate(key, value, options)
 				return objectUtils:logExisting(key, value, options.notInTypeTable)
 			end
 		else
-			log:schema(nil, "    ERROR: Value of notInTypeTable is not table")
+			log:schema("ddapi", "    ERROR: Value of notInTypeTable is not table")
 		end
 	end
 
@@ -184,7 +184,7 @@ end
 -- @param options table - A table definiting the options
 -- Options:
 -- default (any)
--- with (function)
+-- with (function)end
 -- type
 -- inTypeTable
 -- notInTypeTable
@@ -204,7 +204,7 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema(nil, "    Missing " .. key .. " in " .. name)
+		log:schema("ddapi", "    Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -243,7 +243,7 @@ function objectUtils:getTable(tbl, key, options)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema(nil, "    Missing " .. key .. " in " .. name)
+		log:schema("ddapi", "    Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -292,7 +292,7 @@ end
 function objectUtils:compile(req, data)
 	for k, v in pairs(req) do
 		if v and data[k] == nil then
-			log:schema(nil, "    Missing " .. k)
+			log:schema("ddapi", "    Missing " .. k)
 			return
 		end
 	end

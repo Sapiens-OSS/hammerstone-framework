@@ -73,8 +73,8 @@ function objectManager:init()
 	end
 	objectManager.loadedConfigs["init"] = true
 
-	log:schema(nil, "")
-	log:log("Initializing DDAPI...")
+	log:log("\nInitializing DDAPI...")
+	log:schema("ddapi", "\nInitializing DDAPI...")
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
@@ -90,7 +90,7 @@ end
 -- Loops over known config locations and attempts to load them
 function objectManager:loadConfigs()
 
-	log:log("Loading Configuration files:")
+	log:schema("ddapi", "Loading configuration files:")
 
 	local routes = {
 		{
@@ -140,11 +140,11 @@ function objectManager:loadConfigs()
 		end
 	end
 
-	log:log("Loaded Configs totalling: " .. count)
+	log:schema("ddapi", "Loaded configs totalling: " .. count)
 end
 
 function objectManager:loadConfig(path, type)
-	log:log("Loading DDAPI Config at " .. path)
+	log:schema("ddapi", "  " .. path)
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)
@@ -169,12 +169,10 @@ function objectManager:generateResourceDefinitions(mods)
 	if objectManager.loadedConfigs["resource"] ~= nil then return end
 	objectManager.loadedConfigs["resource"] = true
 
-mj:log("TESTING 1", mods)
-
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:log("Generating Resource definitions:")
+	log:schema("ddapi", "\nGenerating Resource definitions:")
+
 	if objectDB.objectConfigs ~= nil then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateResourceDefinition(config)
@@ -184,7 +182,7 @@ end
 
 function objectManager:generateResourceDefinition(config)
 	if config == nil then
-		log:warn("Warning! Attempting to generate a resource definition that is nil.")
+		log:schema("ddapi", "WARNING: Attempting to generate a resource definition that is nil.")
 		return
 	end
 
@@ -196,11 +194,11 @@ function objectManager:generateResourceDefinition(config)
 	-- Resource links prevent a *new* resource from being generated.
 	local resourceLinkComponent = components["hammerstone:resource_link"]
 	if resourceLinkComponent ~= nil then
-		log:log("GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. " no unique resource created.")
+		log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. ". No unique resource created.")
 		return
 	end
 
-	log:log("  " .. identifier)
+	log:schema("ddapi", "  " .. identifier)
 
 	local objectComponent = components["hammerstone:object"]
 	local name = description["name"]
@@ -253,8 +251,8 @@ function objectManager:generateStorageObjects()
 	if objectManager.loadedConfigs["storage"] ~= nil then return end
 	objectManager.loadedConfigs["storage"] = true
 
-	log:schema(nil, "")
-	log:log("Generating Storage definitions:")
+	log:schema("ddapi", "\nGenerating Storage definitions:")
+
 	if objectDB.storageConfigs ~= nil then
 		for i, config in ipairs(objectDB.storageConfigs) do
 			objectManager:generateStorageObject(config)
@@ -274,7 +272,7 @@ function objectManager:generateResourceForStorage(storageIdentifier)
 			table.insert(newResource, modules.resource.types[identifier].index)
 		end
 	else
-		log:warning("Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
+		log:schema("ddapi", "WARNING: Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
 	end
 
 	return newResource
@@ -282,7 +280,7 @@ end
 
 function objectManager:generateStorageObject(config)
 	if config == nil then
-		log:warn("Attempting to Generate nil Storage Object.")
+		log:schema("ddapi", "WARNING: Attempting to generate nil Storage Object.")
 		return
 	end
 
@@ -299,7 +297,7 @@ function objectManager:generateStorageObject(config)
 	-- TODO no local imports
 	local storage = mjrequire "common/storage"
 
-	log:log("  " .. identifier)
+	log:schema("ddapi", "  " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
 	local resource = mjrequire "common/resource";
@@ -381,8 +379,8 @@ function objectManager:generateEvolvingObjects(mods)
 	
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:log("Generating EvolvingObjects:")
+	log:schema("ddapi", "\nGenerating EvolvingObjects:")
+
 	if objectDB.objectConfigs ~= nil then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateEvolvingObject(evolvingObject, config)
@@ -392,7 +390,7 @@ end
 
 function objectManager:generateEvolvingObject(evolvingObject, config)
 	if config == nil then
-		log:warn("Attempting to generate nil EvolvingObject")
+		log:schema("ddapi", "WARNING: Attempting to generate nil EvolvingObject.")
 		return
 	end
 
@@ -405,7 +403,7 @@ function objectManager:generateEvolvingObject(evolvingObject, config)
 	if evolvingObjectComponent == nil then
 		return -- This is allowed	
 	else
-		log:log("  " .. identifier)
+		log:schema("ddapi", "  " .. identifier)
 	end
 
 	-- TODO: Make this smart, and can handle day length OR year length.
@@ -444,8 +442,8 @@ function objectManager:generateHarvestableObjects(mods)
 
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:log("Generating Harvestable Objects:")
+	log:schema("ddapi", "\nGenerating Harvestable Objects:")
+
 	if objectDB.objectConfigs ~= nil then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateHarvestableObject(config)
@@ -463,7 +461,7 @@ function objectManager:generateHarvestableObject(config)
 	if evolvingObjectComponent == nil then
 		return -- This is allowed	
 	else
-		log:log("  " .. identifier)
+		log:schema("ddapi", "  " .. identifier)
 	end
 
 	-- TODO: Make this smart, and can handle day length OR year length.
@@ -523,18 +521,18 @@ function objectManager:generateGameObjects(mods)
 
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:log("Generating Object definitions:")
+	log:schema("ddapi", "\nGenerating Object definitions:")
+
 	if objectDB.objectConfigs ~= nil then
 		for i, config in ipairs(objectDB.objectConfigs) do
-			objectManager:generateGameObject(config, gameObject)
+			objectManager:generateGameObject(config)
 		end
 	end
 end
 
-function objectManager:generateGameObject(config, gameObject)
+function objectManager:generateGameObject(config)
 	if config == nil then
-		log:warn("Attempting to generate nil GameObject")
+		log:schema("ddapi", "WARNING: Attempting to generate nil GameObject.")
 		return
 	end
 
@@ -543,7 +541,7 @@ function objectManager:generateGameObject(config, gameObject)
 	local components = object_definition["components"]
 	local objectComponent = components["hammerstone:object"]
 	local identifier = description["identifier"]
-	log:log("  " .. identifier)
+	log:schema("ddapi", "  " .. identifier)
 
 	local name = description["name"]
 	local plural = description["plural"]
@@ -613,8 +611,8 @@ function objectManager:generateRecipeDefinitions(mods)
 	modules.constructable = mjrequire "common/constructable"
 	modules.skill = mjrequire "common/skill"
 
-	log:schema(nil, "")
-	log:schema(nil, "Generating Recipe definitions:")
+	log:schema("ddapi", "\nGenerating Recipe definitions:")
+
 	if objectDB.recipeConfigs ~= nil then
 		for i, config in ipairs(objectDB.recipeConfigs) do
 			objectManager:generateRecipeDefinition(config)
@@ -625,7 +623,7 @@ end
 function objectManager:generateRecipeDefinition(config)
 
 	if config == nil then
-		log:schema(nil, "  Warning! Attempting to generate a recipe definition that is nil.")
+		log:schema("ddapi", "  Warning! Attempting to generate a recipe definition that is nil.")
 		return
 	end
 	
@@ -641,7 +639,7 @@ function objectManager:generateRecipeDefinition(config)
 	local output = components["hammerstone:output"]
 	local build_sequence = components["hammerstone:build_sequence"]
 
-	log:schema(nil, "  " .. identifier)
+	log:schema("ddapi", "  " .. identifier)
 
 	local required = {
 		identifier = true,
@@ -760,7 +758,7 @@ function objectManager:generateRecipeDefinition(config)
 				else
 					-- Cancel if action field doesn't exist
 					if tbl.action == nil then
-						return log:schema(nil, "    Missing Action Sequence")
+						return log:schema("ddapi", "    Missing Action Sequence")
 					end
 
 					-- Get the action sequence
@@ -789,7 +787,7 @@ function objectManager:generateRecipeDefinition(config)
 				-- Get the count
 				local count = e.count or 1
 				if (not utils:isType(count, "number")) then
-					return log:schema(nil, "    Resource count for " .. e.resource .. " is not a number")
+					return log:schema("ddapi", "    Resource count for " .. e.resource .. " is not a number")
 				end
 
 				if e.action ~= nil then
@@ -801,13 +799,13 @@ function objectManager:generateRecipeDefinition(config)
 					-- Return if duration is invalid
 					local duration = e.action.duration
 					if (not utils:isType(duration, "number")) then
-						return log:schema(nil, "    Duration for " .. e.action.action_type .. " is not a number")
+						return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
 					end
 
 					-- Return if duration without skill is invalid
 					local durationWithoutSkill = e.action.duration_without_skill or duration
 					if (not utils:isType(durationWithoutSkill, "number")) then
-						return log:schema(nil, "    Duration without skill for " .. e.action.action_type .. " is not a number")
+						return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
 					end
 
 					return {
@@ -856,8 +854,8 @@ function objectManager:generateMaterialDefinitions(mods)
 
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:schema(nil, "Generating Material definitions:")
+	log:schema("ddapi", "\nGenerating Material definitions:")
+
 	for i, config in ipairs(objectDB.materialConfigs) do
 		objectManager:generateMaterialDefinition(config)
 	end
@@ -869,7 +867,7 @@ function objectManager:generateMaterialDefinition(config)
 
 	for _, mat in pairs(materials) do
 
-		log:schema(nil, "  " .. mat["identifier"])
+		log:schema("ddapi", "  " .. mat["identifier"])
 
 		local required = {
 			identifier = true,
@@ -914,8 +912,8 @@ function objectManager:generateSkillDefinitions(mods)
 
 	addModules(mods)
 
-	log:schema(nil, "")
-	log:schema(nil, "Generating Skill definitions:")
+	log:schema("ddapi", "\nGenerating Skill definitions:")
+
 	for i, config in ipairs(objectDB.skillConfigs) do
 		objectManager:generateSkillDefinition(config)
 	end
@@ -924,7 +922,7 @@ end
 function objectManager:generateSkillDefinition(config)
 
 	if config == nil then
-		log:schema(nil, "  Warning! Attempting to generate a skill definition that is nil.")
+		log:schema("ddapi", "  Warning! Attempting to generate a skill definition that is nil.")
 		return
 	end
 	
@@ -936,7 +934,7 @@ function objectManager:generateSkillDefinition(config)
 		local desc = s["description"]
 		local skil = s["skill"]
 
-		log:schema(nil, "  " .. desc["identifier"])
+		log:schema("ddapi", "  " .. desc["identifier"])
 
 		local required = {
 			identifier = true,

@@ -19,7 +19,7 @@ end
 
 function logging:log(msg)
 	mj:log("[Hammerstone] ", enforceValid(msg))
-	logging:schema(nil, msg)
+	logging:schema("_main", msg)
 end
 
 --- @deprecated, use logging:warn instead
@@ -99,18 +99,8 @@ end
 --- @return nil
 function logging:schema(file, msg)
 
-	--logging:log(msg)
-
 	local logPath = getLogDirectoryPath()
 	local msgString = mj:tostring(msg, 0) .. "\n"
-	--local msgString = "[Hammerstone] " .. mj:tostring(msg, 0) .. "\n"
-
-	-- Add log to main
-	if schemaLogsByFile["_main"] == nil then
-		schemaLogsByFile["_main"] = msgString
-	else
-		schemaLogsByFile["_main"] = schemaLogsByFile["_main"] .. msgString
-	end
 
 	-- Add log to specific file
 	if file ~= nil then
