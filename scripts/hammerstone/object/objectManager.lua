@@ -17,9 +17,6 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	storageConfigs = {},
 
-	-- Unstructured recipe configurations, read from FS
-	recipeConfigs = {},
-
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
@@ -30,6 +27,9 @@ local objectDB = {
 
 	-- Unstructured storage configurations, read from FS
 	materialConfigs = {},
+
+	-- Unstructured storage configurations, read from FS
+	skillConfigs = {},
 }
 
 -- TODO: Consider using metaTables to add default values to the objectDB
@@ -112,6 +112,10 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/materials/",
 			dbTable = objectDB.materialConfigs
+		},
+		{
+			path = "/hammerstone/skills/",
+			dbTable = objectDB.skillConfigs
 		}
 	}
 
@@ -1050,6 +1054,84 @@ function objectManager:generateMaterialDefinition(config)
 
 		if data ~= nil then
 			modules.material:addMaterial(data.identifier, data.color, data.roughness, data.metal)
+		end
+	end
+end
+
+---------------------------------------------------------------------------------
+-- Skill
+---------------------------------------------------------------------------------
+
+--- Generates skill definitions based on the loaded config, and registers them.
+function objectManager:generateSkillDefinitions(mods)
+	addModules(mods)
+
+	log:schema(nil, "")
+	log:schema(nil, "Generating Skill definitions:")
+	for i, config in ipairs(objectDB.skillConfigs) do
+		objectManager:generateSkillDefinition(config)
+	end
+end
+
+function objectManager:generateSkillDefinition(config)
+
+	if config == nil then
+		log:schema(nil, "  Warning! Attempting to generate a skill definition that is nil.")
+		return
+	end
+	
+	local skillDefinition = config["hammerstone:skill_definition"]
+	local skills = skillDefinition["skills"]
+
+	for _, s in pairs(skills) do
+
+		local desc = s["description"]
+		local skil = s["skill"]
+
+		log:schema(nil, "  " .. desc["identifier"])
+
+		local required = {
+			identifier = true,
+			name = true,
+			description = true,
+			icon = true,
+
+			row = true,
+			column = true,
+			requiredSkillTypes = false,
+			startLearned = false,
+			partialCapacityWithLimitedGeneralAbility = false,
+		}
+
+		local data = compile(required, {
+
+			identifier = getField(desc, "identifier", {
+				notInTypeTable = modules.skill.types
+			}),
+			name = getField(desc, "name"),
+			description = getField(desc, "description"),
+			icon = getField(desc, "icon"),
+
+			row = getField(skil, "row", {
+				type = "number"
+			}),
+			column = getField(skil, "column", {
+				type = "number"
+			}),
+			requiredSkillTypes = getTable(desc, "requiredSkills", {
+				-- Make sure each skill exists and transform skill name to index
+				map = function(e) return getTypeIndex(modules.skill.types, e, "Skill") end
+			}),
+			startLearned = getField(skil, "startLearned", {
+				type = "boolean"
+			}),
+			partialCapacityWithLimitedGeneralAbility = getField(skil, "impactedByLimitedGeneralAbility", {
+				type = "boolean"
+			}),
+		})
+
+		if data ~= nil then
+			modules.skill:addSkill(data.identifier, data)
 		end
 	end
 end

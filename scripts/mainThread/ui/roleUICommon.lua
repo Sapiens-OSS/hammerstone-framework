@@ -7,6 +7,9 @@ local mod = {
 	loadOrder = 0
 }
 
+-- Hammerstone
+local log = mjrequire "hammerstone/logging"
+
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 local skill = mjrequire "common/skill"
@@ -16,11 +19,18 @@ function mod:onload(roleUICommon)
     local super_mjInit = roleUICommon.mjInit
     roleUICommon.mjInit = function()
         super_mjInit()
-        
-        for _, v in pairs(skill.roleUICommonSkills) do
-            roleUICommon.skillUIColumns[v.column][v.row] = {
-                skillTypeIndex = v.skillTypeIndex
-            }
+
+        if skill.roleUICommonSkills ~= nil then
+            for _, v in pairs(skill.roleUICommonSkills) do
+                if skill.types[v.skillTypeIndex] ~= nil then
+                    roleUICommon.skillUIColumns[v.column][v.row] = {
+                        skillTypeIndex = v.skillTypeIndex,
+                        requiredSkillTypes = v.requiredSkillTypes,
+                    }
+                else
+                    mj:log("Skill was not properly created")
+                end
+            end
         end
 
         roleUICommon:createDerivedTreeDependencies()
