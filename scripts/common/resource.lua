@@ -20,9 +20,12 @@ function mod:onload(resource)
 	--- @param key: The key to add, such as 'cake'
 	--- @param objectType: The object to add, containing all fields.
 	function resource:addResource(key, objectType)
-		local typeIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
+		mj:log("ADDING RESOURCE!")
+		mj:log(key)
+		mj:log(objectType)
 
-		local index = typeIndexMap[key]
+		local resourceIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
+		local index = resourceIndexMap[key]
 		if not index then
 			log:error("Attempt to add resource type that isn't in typeIndexMap:", key)
 		else
@@ -37,6 +40,11 @@ function mod:onload(resource)
 
 			-- Recache the type maps
 			resource.validTypes = typeMaps:createValidTypesArray("resource", resource.types)
+
+			-- TODO: This is a hack to ensure ordering somewhat functions
+			if resource.alphabeticallyOrderedTypes == nil then
+				resource.alphabeticallyOrderedTypes = {}
+			end
 
 			for index, value in ipairs(resource.validTypes) do
 				if value.key ~= nil and value.key == key then
@@ -91,10 +99,10 @@ function mod:onload(resource)
 		return index
 	end
 
-	-- Load DDAPI
-    objectManager:generateResourceDefinitions({
-        resource = resource
-    })
+	local super_mjInit = resource.mjInit
+	resource.mjInit = function(self)
+		super_mjInit(self)
+	end
 end
 
 return mod

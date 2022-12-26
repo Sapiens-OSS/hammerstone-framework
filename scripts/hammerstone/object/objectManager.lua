@@ -6,7 +6,7 @@
 
 local objectManager = {
 	modules = {},
-	loadedConfigs = {},
+
 	inspectCraftPanelData = {},
 }
 
@@ -32,6 +32,17 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	skillConfigs = {},
 }
+
+-- Guards against the same code being run multiple times.
+-- Takes in a unique ID to identify this code
+local runOnceGuards = {}
+local function runOnceGuard(guard)
+	if runOnceGuards[guard] == nil then
+		runOnceGuards[guard] = true
+		return false
+	end
+	return true
+end
 
 -- TODO: Consider using metaTables to add default values to the objectDB
 -- local mt = {
@@ -65,13 +76,7 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 
 -- Initialize the full Data Driven API (DDAPI).
 function objectManager:init()
-
-	-- Only do this once
-	if objectManager.loadedConfigs["init"] ~= nil then
-		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
-		return
-	end
-	objectManager.loadedConfigs["init"] = true
+	if runOnceGuard("ddapi") then return end
 
 	--local now = os.time()
 	log:schema("ddapi", os.date())
@@ -81,6 +86,7 @@ function objectManager:init()
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
+	objectManager:generateResourceDefinitions()
 
 	-- generateMaterialDefinitions is called internally, from `material.lua`.
 	-- generateResourceDefinitions is called internally, from `resource.lua`.
@@ -104,7 +110,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/storage/",
 			dbTable = objectDB.storageConfigs,
-			enabled = false,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/recipes/",
@@ -179,10 +185,7 @@ end
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
 function objectManager:generateResourceDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["resource"] ~= nil then return end
-	objectManager.loadedConfigs["resource"] = true
+	if runOnceGuard("resource") then return end
 
 	addModules(mods)
 
@@ -193,7 +196,7 @@ function objectManager:generateResourceDefinitions(mods)
 			objectManager:generateResourceDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -254,7 +257,7 @@ function objectManager:generateResourceDefinition(config)
 	end
 
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
-	resource:addResource(identifier, newResource)
+	modules.resource:addResource(identifier, newResource)
 end
 
 ---------------------------------------------------------------------------------
@@ -263,10 +266,7 @@ end
 
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
-
-	-- Only do this once
-	if objectManager.loadedConfigs["storage"] ~= nil then return end
-	objectManager.loadedConfigs["storage"] = true
+	if runOnceGuard("storage") then return end
 
 	log:schema("ddapi", "\nGenerating Storage definitions:")
 
@@ -275,7 +275,7 @@ function objectManager:generateStorageObjects()
 			objectManager:generateStorageObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -304,7 +304,7 @@ function objectManager:generateStorageObject(config)
 	end
 
 	-- Load structured information
-	local storageDefinition = config["hammerstone:storage"]
+	local storageDefinition = config["hammerstone:storage_definition"]
 	local description = storageDefinition["description"]
 	local storageComponent = storageDefinition.components["hammerstone:storage"]
 	local carryComponent = storageDefinition.components["hammerstone:carry"]
@@ -391,10 +391,7 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateEvolvingObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["evolving"] ~= nil then return end
-	objectManager.loadedConfigs["evolving"] = true
+	if runOnceGuard("evolving") then return end
 	
 	addModules(mods)
 
@@ -405,7 +402,7 @@ function objectManager:generateEvolvingObjects(mods)
 			objectManager:generateEvolvingObject(evolvingObject, config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -456,10 +453,7 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateHarvestableObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["harvestable"] ~= nil then return end
-	objectManager.loadedConfigs["harvestable"] = true
+	if runOnceGuard("harvestable") then return end
 
 	addModules(mods)
 
@@ -470,7 +464,7 @@ function objectManager:generateHarvestableObjects(mods)
 			objectManager:generateHarvestableObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -537,10 +531,7 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 end
 
 function objectManager:generateGameObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["gameObjects"] ~= nil then return end
-	objectManager.loadedConfigs["gameObjects"] = true
+	if runOnceGuard("gameObjects") then return end
 
 	addModules(mods)
 
@@ -551,7 +542,7 @@ function objectManager:generateGameObjects(mods)
 			objectManager:generateGameObject(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -621,10 +612,7 @@ end
 
 --- Generates recipe definitions based on the loaded config, and registers them.
 function objectManager:generateRecipeDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["recipe"] ~= nil then return end
-	objectManager.loadedConfigs["recipe"] = true
+	if runOnceGuard("recipe") then return end
 
 	addModules(mods)
 
@@ -643,7 +631,7 @@ function objectManager:generateRecipeDefinitions(mods)
 			objectManager:generateRecipeDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -874,10 +862,7 @@ end
 
 --- Generates material definitions based on the loaded config, and registers them.
 function objectManager:generateMaterialDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["material"] ~= nil then return end
-	objectManager.loadedConfigs["material"] = true
+	if runOnceGuard("material") then return end
 
 	addModules(mods)
 
@@ -888,7 +873,7 @@ function objectManager:generateMaterialDefinitions(mods)
 			objectManager:generateMaterialDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
@@ -936,10 +921,7 @@ end
 
 --- Generates skill definitions based on the loaded config, and registers them.
 function objectManager:generateSkillDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["skill"] ~= nil then return end
-	objectManager.loadedConfigs["skill"] = true
+	if runOnceGuard("skill") then return end
 
 	addModules(mods)
 
@@ -950,7 +932,7 @@ function objectManager:generateSkillDefinitions(mods)
 			objectManager:generateSkillDefinition(config)
 		end
 	else
-		log:schema("ddapi", "  (disabled)")
+		log:schema("ddapi", "  (none)")
 	end
 end
 
