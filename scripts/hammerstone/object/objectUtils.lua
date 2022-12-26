@@ -218,7 +218,7 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 			if type(optionsOrNil.with) == "function" then
 				value = optionsOrNil.with(value)
 			else
-				log:schema("    ERROR: Value of with option is not function")
+				log:schema("ddapi", "    ERROR: Value of with option is not function")
 			end
 		end
 	end
@@ -248,7 +248,7 @@ function objectUtils:getTable(tbl, key, options)
 	end
 
 	if type(values) ~= "table" then
-		return log:schema("    ERROR: Value type of key '" .. key .. "' is not table")
+		return log:schema("ddapi", "    ERROR: Value type of key '" .. key .. "' is not table")
 	end
 
 	if options ~= nil then
@@ -261,7 +261,7 @@ function objectUtils:getTable(tbl, key, options)
 		end
 
 		if options.length ~= nil and options.length ~= #values then
-			return log:schema("    ERROR: Value of key '" .. key .. "' requires " .. options.length .. " elements")
+			return log:schema("ddapi", "    ERROR: Value of key '" .. key .. "' requires " .. options.length .. " elements")
 		end
 
 		for k, v in pairs(options) do
@@ -269,7 +269,7 @@ function objectUtils:getTable(tbl, key, options)
 				if type(v) == "function" then
 					values = objectUtils:map(values, v)
 				else
-					log:schema("    ERROR: Value of map option is not function")
+					log:schema("ddapi", "    ERROR: Value of map option is not function")
 				end
 			end
 
@@ -280,7 +280,7 @@ function objectUtils:getTable(tbl, key, options)
 						return
 					end
 				else
-					log:schema("    ERROR: Value of with option is not function")
+					log:schema("ddapi", "    ERROR: Value of with option is not function")
 				end
 			end
 		end
