@@ -8,14 +8,15 @@ local mod = {
 
 function mod:onload(craftable)
 
+    local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("craftable", craftable)
+
     local super_load = craftable.load
     craftable.load = function(craftable_, gameObject, flora)
         super_load(craftable_, gameObject, flora)
 
         local objectManager = mjrequire "hammerstone/object/objectManager"
-        objectManager:generateRecipeDefinitions({
-            craftable = craftable
-        })
+        objectManager:generateRecipeDefinitions()
     end
 end
 

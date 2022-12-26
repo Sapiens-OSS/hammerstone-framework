@@ -12,10 +12,12 @@ local mod = {
 local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
 local log = mjrequire "hammerstone/logging"
 
 function mod:onload(resource)
+	local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("resource", resource)
+
 	--- Allows adding a resource.
 	--- @param key: The key to add, such as 'cake'
 	--- @param objectType: The object to add, containing all fields.
@@ -103,6 +105,9 @@ function mod:onload(resource)
 	resource.mjInit = function(self)
 		super_mjInit(self)
 	end
+
+	local objectManager = mjrequire "hammerstone/object/objectManager"
+	objectManager:generateResourceDefinitions()
 end
 
 return mod

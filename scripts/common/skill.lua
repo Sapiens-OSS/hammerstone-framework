@@ -17,6 +17,10 @@ local log = mjrequire "hammerstone/logging"
 local loaded = false
 
 function mod:onload(skill)
+
+    local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("skill", skill)
+
 	--- Allows adding a skill.
 	--- @param key: The key to add, such as 'stoneBuilding'
 	--- @param skillInfo: The table containing all fields required to add a skill.

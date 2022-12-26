@@ -15,6 +15,10 @@ local objectManager = mjrequire "hammerstone/object/objectManager"
 local log = mjrequire "hammerstone/logging"
 
 function mod:onload(storage)
+
+	local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("storage", storage)
+
 	--- Allows adding a storage.
 	--- @param key: The key to add, such as 'cake'
 	--- @param objectType: The object to add, containing all fields.
@@ -44,7 +48,7 @@ function mod:onload(storage)
 		return index
 	end
 
-	-- objectManager:generateStorageObjects(storage)
+	objectManager:generateStorageObjects()
 end
 
 return mod

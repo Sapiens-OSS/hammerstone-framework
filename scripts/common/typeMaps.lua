@@ -6,6 +6,10 @@ local mod = {
 }
 
 function mod:onload(typeMaps)
+
+	local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("typeMaps", typeMaps)
+	
 	--- Helper function that allows converting a key into
 	--- an index.
 	--- @param key: The key to convert, such as 'sapiens'

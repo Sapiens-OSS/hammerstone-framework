@@ -15,6 +15,9 @@ local log = mjrequire "hammerstone/logging"
 
 function mod:onload(fuel)
 
+	local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("fuel", fuel)
+
 	--- Unfortunately, fuelGroup is not exposed to us from the vanilla code, so we have to copy/paste everything from the source code for it to become modifiable...
 
 	--- Copied from vanilla fuel.lua from update b20.1

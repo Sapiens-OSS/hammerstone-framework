@@ -13,6 +13,10 @@ local vec3 = mjm.vec3
 local objectManager = mjrequire "hammerstone/object/objectManager"
 
 function mod:onload(material)
+
+    local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("material", material)
+
     --- Allows adding a material.
 	--- @param key string: The key to add, such as 'leather'.
 	--- @param color mjm.vec3: The vec3 containing rgb values, from 0 to 1.

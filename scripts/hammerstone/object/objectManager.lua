@@ -5,8 +5,6 @@
 -- @author SirLich
 
 local objectManager = {
-	modules = {},
-
 	inspectCraftPanelData = {},
 }
 
@@ -33,6 +31,8 @@ local objectDB = {
 	skillConfigs = {},
 }
 
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
+
 -- Guards against the same code being run multiple times.
 -- Takes in a unique ID to identify this code
 local runOnceGuards = {}
@@ -52,10 +52,8 @@ end
 -- }
 -- setmetatable(objectDB.objectConfigs, mt)
 
-local modules = objectManager.modules
-
 -- Sapiens
-local typeMaps = mjrequire "common/typeMaps"
+local typeMaps = moduleManager:get("typeMaps")
 local rng = mjrequire "common/randomNumberGenerator"
 
 -- Math
@@ -86,7 +84,7 @@ function objectManager:init()
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
-	objectManager:generateResourceDefinitions()
+	-- objectManager:generateResourceDefinitions()
 
 	-- generateMaterialDefinitions is called internally, from `material.lua`.
 	-- generateResourceDefinitions is called internally, from `resource.lua`.
@@ -115,7 +113,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/recipes/",
 			dbTable = objectDB.recipeConfigs,
-			enabled = true,
+			enabled = false,
 		},
 		{
 			path = "/hammerstone/materials/",
@@ -125,7 +123,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/skills/",
 			dbTable = objectDB.skillConfigs,
-			enabled = true,
+			enabled = false,
 		}
 	}
 
@@ -171,12 +169,6 @@ function objectManager:loadConfig(path, type)
 	table.insert(type, configTable)
 end
 
-local function addModules(modulesTable)
-	for k, v in pairs(modulesTable) do
-		objectManager.modules[k] = v
-	end
-end
-
 
 ---------------------------------------------------------------------------------
 -- Resource
@@ -184,11 +176,8 @@ end
 
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
-function objectManager:generateResourceDefinitions(mods)
+function objectManager:generateResourceDefinitions()
 	if runOnceGuard("resource") then return end
-
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating Resource definitions:")
 
 	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
@@ -257,7 +246,7 @@ function objectManager:generateResourceDefinition(config)
 	end
 
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
-	modules.resource:addResource(identifier, newResource)
+	moduleManager:get("resource"):addResource(identifier, newResource)
 end
 
 ---------------------------------------------------------------------------------
@@ -267,7 +256,6 @@ end
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
 	if runOnceGuard("storage") then return end
-
 	log:schema("ddapi", "\nGenerating Storage definitions:")
 
 	if objectDB.storageConfigs ~= nil and #objectDB.storageConfigs ~= 0 then
@@ -288,10 +276,12 @@ function objectManager:generateResourceForStorage(storageIdentifier)
 	local objectIdentifiers = objectDB.objectsForStorage[storageIdentifier]
 	if objectIdentifiers ~= nil then
 		for i, identifier in ipairs(objectIdentifiers) do
-			table.insert(newResource, modules.resource.types[identifier].index)
+			table.insert(newResource, moduleManager:get("resource").types[identifier].index)
 		end
 	else
 		log:schema("ddapi", "WARNING: Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
+		log:schema("ddapi", "Available data:")
+		log:schema("ddapi", objectDB.objectsForStorage)
 	end
 
 	return newResource
@@ -313,13 +303,7 @@ function objectManager:generateStorageObject(config)
 
 	local identifier = utils:getField(description, "identifier")
 
-	-- TODO no local imports
-	local storage = mjrequire "common/storage"
-
 	log:schema("ddapi", "  " .. identifier)
-
-	-- Inlined imports. Bad style. I don't care.
-	local resource = mjrequire "common/resource";
 
 	-- Prep
 	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
@@ -368,8 +352,8 @@ function objectManager:generateStorageObject(config)
 		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
 		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
 
-		carryStackType = storage.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
-		carryType = storage.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
+		carryStackType = moduleManager:get("storage").stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
+		carryType = moduleManager:get("storage").carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
 
 		carryOffset = utils:getVec3(carryComponent, "offset", {
 			default = vec3(0.0, 0.0, 0.0)
@@ -381,38 +365,33 @@ function objectManager:generateStorageObject(config)
 		),
 	}
 
-	-- TODO: No local imports
-	local storageModule = mjrequire "common/storage"
-	storageModule:addStorage(identifier, newStorage)
+	moduleManager:get("storage"):addStorage(identifier, newStorage)
 end
 
 ---------------------------------------------------------------------------------
 -- Evolving Objects
 ---------------------------------------------------------------------------------
 
-function objectManager:generateEvolvingObjects(mods)
+function objectManager:generateEvolvingObjects()
 	if runOnceGuard("evolving") then return end
-	
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating EvolvingObjects:")
 
 	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
 		for i, config in ipairs(objectDB.objectConfigs) do
-			objectManager:generateEvolvingObject(evolvingObject, config)
+			objectManager:generateEvolvingObject(config)
 		end
 	else
 		log:schema("ddapi", "  (none)")
 	end
 end
 
-function objectManager:generateEvolvingObject(evolvingObject, config)
+function objectManager:generateEvolvingObject(config)
 	if config == nil then
 		log:schema("ddapi", "WARNING: Attempting to generate nil EvolvingObject.")
 		return
 	end
 
-	local evolvingObject = modules.evolvingObject
+	local evolvingObject = moduleManager:get("evolvingObject")
 
 	local object_definition = config["hammerstone:object_definition"]
 	local evolvingObjectComponent = object_definition.components["hammerstone:evolving_object"]
@@ -432,12 +411,10 @@ function objectManager:generateEvolvingObject(evolvingObject, config)
 	}
 
 	if evolvingObjectComponent.transform_to ~= nil then
-		local gameObject = mjrequire "common/gameObject"
-
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
 			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, gameObject.types[identifier].index)
+				table.insert(newResource, moduleManager:get("gameObject").types[identifier].index)
 			end
 			return newResource
 		end
@@ -452,11 +429,8 @@ end
 -- Harvestable Objects
 ---------------------------------------------------------------------------------
 
-function objectManager:generateHarvestableObjects(mods)
+function objectManager:generateHarvestableObjects()
 	if runOnceGuard("harvestable") then return end
-
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating Harvestable Objects:")
 
 	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
@@ -469,7 +443,7 @@ function objectManager:generateHarvestableObjects(mods)
 end
 
 function objectManager:generateHarvestableObject(config)
-	local harvestableModule = modules.harvestable -- This will crash until we actuall provide this
+	local harvestableModule = moduleManager:get("harvestable") -- This will crash until we actuall provide this
 
 	local object_definition = config["hammerstone:object_definition"]
 	local evolvingObjectComponent = object_definition.components["hammerstone:harvestable"]
@@ -484,17 +458,15 @@ function objectManager:generateHarvestableObject(config)
 	-- TODO: Make this smart, and can handle day length OR year length.
 	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
 	local newEvolvingObject = {
-		minTime = evolvingObject.dayLength * evolvingObjectComponent.min_time,
-		categoryIndex = evolvingObject.categories[evolvingObjectComponent.category].index,
+		minTime = moduleManager:get("evolvingObject").dayLength * evolvingObjectComponent.min_time,
+		categoryIndex = moduleManager:get("evolvingObject").categories[evolvingObjectComponent.category].index,
 	}
 
 	if evolvingObjectComponent.transform_to ~= nil then
-		local gameObject = mjrequire "common/gameObject"
-
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
 			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, gameObject.types[identifier].index)
+				table.insert(newResource, moduleManager:get("gameObject").types[identifier].index)
 			end
 			return newResource
 		end
@@ -513,6 +485,7 @@ end
 -- @param identifier - The identifier of the object. e.g., hs:cake
 -- @param componentData - The inner-table data for `hammerstone:storage`
 function objectManager:registerObjectForStorage(identifier, componentData)
+
 	if componentData == nil then
 		return
 	end
@@ -523,18 +496,12 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 		objectDB.objectsForStorage[storageIdentifier] = {}
 	end
 
-	-- Shoot me
-	local resource = mjrequire "common/resource"
-
 	-- Insert the object identifier for this storage container
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
 end
 
-function objectManager:generateGameObjects(mods)
+function objectManager:generateGameObjects()
 	if runOnceGuard("gameObjects") then return end
-
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating Object definitions:")
 
 	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
@@ -574,8 +541,8 @@ function objectManager:generateGameObject(config)
 	end
 
 	-- If resource link doesn't exist, don't crash the game
-	--local resourceIndex = utils:getTypeIndex(modules.resource.types, resourceIdentifier, "Resource")
-	--if resourceIndex == nil then return end
+	local resourceIndex = utils:getTypeIndex(moduleManager:get("resource").types, resourceIdentifier, "Resource")
+	if resourceIndex == nil then return end
 
 	-- TODO: toolUsages
 	-- TODO: selectionGroupTypeIndexes
@@ -603,7 +570,7 @@ function objectManager:generateGameObject(config)
 	}
 
 	-- Actually register the game object
-	modules.gameObject:addGameObject(identifier, newObject)
+	moduleManager:get("gameObject"):addGameObject(identifier, newObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -611,19 +578,8 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates recipe definitions based on the loaded config, and registers them.
-function objectManager:generateRecipeDefinitions(mods)
+function objectManager:generateRecipeDefinitions()
 	if runOnceGuard("recipe") then return end
-
-	addModules(mods)
-
-	modules.action = mjrequire "common/action"
-	modules.actionSequence = mjrequire "common/actionSequence"
-	modules.tool = mjrequire "common/tool"
-	
-	modules.craftAreaGroup = mjrequire "common/craftAreaGroup"
-	modules.constructable = mjrequire "common/constructable"
-	modules.skill = mjrequire "common/skill"
-
 	log:schema("ddapi", "\nGenerating Recipe definitions:")
 
 	if objectDB.recipeConfigs ~= nil and #objectDB.recipeConfigs ~= 0 then
@@ -687,7 +643,7 @@ function objectManager:generateRecipeDefinition(config)
 
 		-- Description
 		identifier = utils:getField(description, "identifier", {
-			notInTypeTable = modules.craftable.types
+			notInTypeTable = moduleManager:get("craftable").types
 		}),
 		name = utils:getField(description, "name"),
 		plural = utils:getField(description, "plural"),
@@ -696,10 +652,10 @@ function objectManager:generateRecipeDefinition(config)
 
 		-- Recipe Component
 		iconGameObjectType = utils:getField(recipe, "preview_object", {
-			inTypeTable = modules.gameObject.types
+			inTypeTable = moduleManager:get("gameObject").types
 		}),
 		classification = utils:getField(recipe, "classification", {
-			inTypeTable = modules.constructable.classifications -- Why is this crashing?
+			inTypeTable = moduleManager:get("constructable").classifications -- Why is this crashing?
 		}),
 		isFoodPreperation = utils:getField(recipe, "isFoodPreparation", {
 			type = "boolean"
@@ -714,16 +670,16 @@ function objectManager:generateRecipeDefinition(config)
 					for _, value in pairs(tbl) do -- Loop through all output objects
 						
 						-- Return if input isn't a valid gameObject
-						if utils:getTypeIndex(modules.gameObject.types, value.input, "Game Object") == nil then return end
+						if utils:getTypeIndex(moduleManager:get("gameObject").types, value.input, "Game Object") == nil then return end
 
 						-- Get the input's resource index
-						local index = modules.gameObject.types[value.input].index
+						local index = moduleManager:get("gameObject").types[value.input].index
 
 						-- Convert from schema format to vanilla format
 						-- If the predicate returns nil for any element, map returns nil
 						-- In this case, log an error and return if any output item does not exist in gameObject.types
 						result[index] = utils:map(value.output, function(e)
-							return utils:getTypeIndex(modules.gameObject.types, e, "Game Object")
+							return utils:getTypeIndex(moduleManager:get("gameObject").types, e, "Game Object")
 						end)
 					end
 					return result
@@ -734,31 +690,31 @@ function objectManager:generateRecipeDefinition(config)
 
 		-- Requirements Component
 		skills = utils:getTable(requirements, "skills", {
-			inTypeTable = modules.skill.types,
+			inTypeTable = moduleManager:get("skill").types,
 			with = function(tbl)
 				if #tbl > 0 then
 					return {
-						required = modules.skill.types[tbl[1] ].index
+						required = moduleManager:get("skill").types[tbl[1] ].index
 					}
 				end
 			end
 		}),
 		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirements, "skills", {
-			inTypeTable = modules.skill.types,
+			inTypeTable = moduleManager:get("skill").types,
 			with = function(tbl)
 				if #tbl > 1 then
-					return modules.skill.types[tbl[2] ].index
+					return moduleManager:get("skill").types[tbl[2] ].index
 				end
 			end
 		}),
 		requiredCraftAreaGroups = utils:getTable(requirements, "craft_area_groups", {
 			map = function(e)
-				return utils:getTypeIndex(modules.craftAreaGroup.types, e, "Craft Area Group")
+				return utils:getTypeIndex(moduleManager:get("craftAreaGroup").types, e, "Craft Area Group")
 			end
 		}),
 		requiredTools = utils:getTable(requirements, "tools", {
 			map = function(e)
-				return utils:getTypeIndex(modules.tool.types, e, "Tool")
+				return utils:getTypeIndex(moduleManager:get("tool").types, e, "Tool")
 			end
 		}),
 
@@ -777,16 +733,16 @@ function objectManager:generateRecipeDefinition(config)
 					end
 
 					-- Get the action sequence
-					local sequence = utils:getTypeIndex(modules.actionSequence.types, tbl.action, "Action Sequence")
+					local sequence = utils:getTypeIndex(moduleManager:get("actionSequence").types, tbl.action, "Action Sequence")
 					if sequence ~= nil then
 
 						-- Cancel if a tool is stated but doesn't exist
-						if tbl.tool ~= nil and #tbl.tool > 0 and utils:getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
+						if tbl.tool ~= nil and #tbl.tool > 0 and utils:getTypeIndex(moduleManager:get("tool").types, tbl.tool, "Tool") == nil then
 							return
 						end
 
 						-- Return the standard build sequence constructor
-						return modules.craftable:createStandardBuildSequence(sequence, tbl.tool)
+						return moduleManager:get("craftable"):createStandardBuildSequence(sequence, tbl.tool)
 					end
 				end
 			end
@@ -796,7 +752,7 @@ function objectManager:generateRecipeDefinition(config)
 			map = function(e)
 
 				-- Get the resource
-				local res = utils:getTypeIndex(modules.resource.types, e.resource, "Resource")
+				local res = utils:getTypeIndex(moduleManager:get("resource").types, e.resource, "Resource")
 				if (res == nil) then return end -- Cancel if resource does not exist
 
 				-- Get the count
@@ -808,7 +764,7 @@ function objectManager:generateRecipeDefinition(config)
 				if e.action ~= nil then
 
 					-- Return if action is invalid
-					local actionType = utils:getTypeIndex(modules.action.types, e.action.action_type, "Action")
+					local actionType = utils:getTypeIndex(moduleManager:get("action").types, e.action.action_type, "Action")
 					if (actionType == nil) then return end
 
 					-- Return if duration is invalid
@@ -843,15 +799,15 @@ function objectManager:generateRecipeDefinition(config)
 
 	if data ~= nil then
 		-- Add recipe
-		modules.craftable:addCraftable(identifier, data)
+		moduleManager:get("craftable"):addCraftable(identifier, data)
 
 		-- Add items in crafting panels
 		for _, group in ipairs(data.requiredCraftAreaGroups) do
-			local key = modules.gameObject.typeIndexMap[modules.craftAreaGroup.types[group].key]
+			local key = moduleManager:get("gameObject").typeIndexMap[moduleManager:get("craftAreaGroup").types[group].key]
 			if objectManager.inspectCraftPanelData[key] == nil then
 				objectManager.inspectCraftPanelData[key] = {}
 			end
-			table.insert(objectManager.inspectCraftPanelData[key], modules.constructable.types[identifier].index)
+			table.insert(objectManager.inspectCraftPanelData[key], moduleManager:get("constructable").types[identifier].index)
 		end
 	end
 end
@@ -861,11 +817,8 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates material definitions based on the loaded config, and registers them.
-function objectManager:generateMaterialDefinitions(mods)
+function objectManager:generateMaterialDefinitions()
 	if runOnceGuard("material") then return end
-
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating Material definitions:")
 
 	if objectDB.materialConfigs ~= nil and #objectDB.materialConfigs ~= 0 then
@@ -895,7 +848,7 @@ function objectManager:generateMaterialDefinition(config)
 		local data = utils:compile(required, {
 
 			identifier = utils:getField(mat, "identifier", {
-				notInTypeTable = modules.material.types
+				notInTypeTable = moduleManager:get("material").types
 			}),
 
 			color = utils:getVec3(mat, "color"),
@@ -910,7 +863,7 @@ function objectManager:generateMaterialDefinition(config)
 		})
 
 		if data ~= nil then
-			modules.material:addMaterial(data.identifier, data.color, data.roughness, data.metal)
+			moduleManager:get("material"):addMaterial(data.identifier, data.color, data.roughness, data.metal)
 		end
 	end
 end
@@ -920,11 +873,8 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates skill definitions based on the loaded config, and registers them.
-function objectManager:generateSkillDefinitions(mods)
+function objectManager:generateSkillDefinitions()
 	if runOnceGuard("skill") then return end
-
-	addModules(mods)
-
 	log:schema("ddapi", "\nGenerating Skill definitions:")
 
 	if objectDB.skillConfigs ~= nil and #objectDB.skillConfigs ~= 0 then
@@ -969,7 +919,7 @@ function objectManager:generateSkillDefinition(config)
 		local data = utils:compile(required, {
 
 			identifier = utils:getField(desc, "identifier", {
-				notInTypeTable = modules.skill.types
+				notInTypeTable = moduleManager:get("skill").types
 			}),
 			name = utils:getField(desc, "name"),
 			description = utils:getField(desc, "description"),
@@ -983,7 +933,7 @@ function objectManager:generateSkillDefinition(config)
 			}),
 			requiredSkillTypes = utils:getTable(skil, "requiredSkills", {
 				-- Make sure each skill exists and transform skill name to index
-				map = function(e) return utils:getTypeIndex(modules.skill.types, e, "Skill") end
+				map = function(e) return utils:getTypeIndex(moduleManager:get("skill").types, e, "Skill") end
 			}),
 			startLearned = utils:getField(skil, "startLearned", {
 				type = "boolean"
@@ -994,7 +944,7 @@ function objectManager:generateSkillDefinition(config)
 		})
 
 		if data ~= nil then
-			modules.skill:addSkill(data.identifier, data)
+			moduleManager:get("skill"):addSkill(data.identifier, data)
 		end
 	end
 end

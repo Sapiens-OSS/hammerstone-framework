@@ -15,6 +15,10 @@ local gameObject = mjrequire "common/gameObject"
 local log = mjrequire "hammerstone/logging"
 
 function mod:onload(evolvingObject)
+
+	local moduleManager = mjrequire "hammerstone/state/moduleManager"
+	moduleManager:addModule("evolvingObject", evolvingObject)
+
 	--- Allows adding an evolvingObject.
 	-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
 	-- @param objectData: The object to add, containing all fields.
