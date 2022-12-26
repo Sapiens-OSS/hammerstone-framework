@@ -6,7 +6,7 @@
 
 local objectManager = {
 	modules = {},
-	loadedConfigs = {},
+
 	inspectCraftPanelData = {},
 }
 
@@ -32,6 +32,17 @@ local objectDB = {
 	-- Unstructured storage configurations, read from FS
 	skillConfigs = {},
 }
+
+-- Guards against the same code being run multiple times.
+-- Takes in a unique ID to identify this code
+local runOnceGuards = {}
+local function runOnceGuard(guard)
+	if runOnceGuards[guard] == nil then
+		runOnceGuards[guard] = true
+		return false
+	end
+	return true
+end
 
 -- TODO: Consider using metaTables to add default values to the objectDB
 -- local mt = {
@@ -110,7 +121,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/recipes/",
 			dbTable = objectDB.recipeConfigs,
-			enabled = false,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/materials/",
@@ -120,7 +131,7 @@ function objectManager:loadConfigs()
 		{
 			path = "/hammerstone/skills/",
 			dbTable = objectDB.skillConfigs,
-			enabled = false,
+			enabled = true,
 		}
 	}
 
@@ -180,10 +191,7 @@ end
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
 function objectManager:generateResourceDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["resource"] ~= nil then return end
-	objectManager.loadedConfigs["resource"] = true
+	if runOnceGuard("resource") then return end
 
 	addModules(mods)
 
@@ -264,10 +272,7 @@ end
 
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
-
-	-- Only do this once
-	if objectManager.loadedConfigs["storage"] ~= nil then return end
-	objectManager.loadedConfigs["storage"] = true
+	if runOnceGuard("storage") then return end
 
 	log:schema("ddapi", "\nGenerating Storage definitions:")
 
@@ -392,10 +397,7 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateEvolvingObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["evolving"] ~= nil then return end
-	objectManager.loadedConfigs["evolving"] = true
+	if runOnceGuard("evolving") then return end
 	
 	addModules(mods)
 
@@ -457,10 +459,7 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateHarvestableObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["harvestable"] ~= nil then return end
-	objectManager.loadedConfigs["harvestable"] = true
+	if runOnceGuard("harvestable") then return end
 
 	addModules(mods)
 
@@ -538,10 +537,7 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 end
 
 function objectManager:generateGameObjects(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["gameObjects"] ~= nil then return end
-	objectManager.loadedConfigs["gameObjects"] = true
+	if runOnceGuard("gameObjects") then return end
 
 	addModules(mods)
 
@@ -622,10 +618,7 @@ end
 
 --- Generates recipe definitions based on the loaded config, and registers them.
 function objectManager:generateRecipeDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["recipe"] ~= nil then return end
-	objectManager.loadedConfigs["recipe"] = true
+	if runOnceGuard("recipe") then return end
 
 	addModules(mods)
 
@@ -875,10 +868,7 @@ end
 
 --- Generates material definitions based on the loaded config, and registers them.
 function objectManager:generateMaterialDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["material"] ~= nil then return end
-	objectManager.loadedConfigs["material"] = true
+	if runOnceGuard("material") then return end
 
 	addModules(mods)
 
@@ -937,10 +927,7 @@ end
 
 --- Generates skill definitions based on the loaded config, and registers them.
 function objectManager:generateSkillDefinitions(mods)
-
-	-- Only do this once
-	if objectManager.loadedConfigs["skill"] ~= nil then return end
-	objectManager.loadedConfigs["skill"] = true
+	if runOnceGuard("skill") then return end
 
 	addModules(mods)
 
