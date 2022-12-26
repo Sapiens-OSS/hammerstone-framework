@@ -44,8 +44,7 @@ function mod:onload(storage)
 		return index
 	end
 
--- TODO: Ordering is wrong
-	-- objectManager:generateStorageObjects(storage)
+	objectManager:generateStorageObjects(storage)
 end
 
 return mod

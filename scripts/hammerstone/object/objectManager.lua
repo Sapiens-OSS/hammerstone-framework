@@ -198,10 +198,6 @@ function objectManager:generateResourceDefinitions(mods)
 end
 
 function objectManager:generateResourceDefinition(config)
-	if config == nil then
-		log:schema("ddapi", "WARNING: Attempting to generate a resource definition that is nil.")
-		return
-	end
 
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
@@ -253,8 +249,9 @@ function objectManager:generateResourceDefinition(config)
 		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
 	end
 
+	-- Inlined imports. Bad style. I don't care.
 	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
-	resource:addResource(identifier, newResource)
+	modules.resource:addResource(identifier, newResource)
 end
 
 ---------------------------------------------------------------------------------
@@ -317,9 +314,6 @@ function objectManager:generateStorageObject(config)
 	local storage = mjrequire "common/storage"
 
 	log:schema("ddapi", "  " .. identifier)
-
-	-- Inlined imports. Bad style. I don't care.
-	local resource = mjrequire "common/resource";
 
 	-- Prep
 	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
@@ -528,9 +522,6 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	if objectDB.objectsForStorage[storageIdentifier] == nil then
 		objectDB.objectsForStorage[storageIdentifier] = {}
 	end
-
-	-- Shoot me
-	local resource = mjrequire "common/resource"
 
 	-- Insert the object identifier for this storage container
 	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
