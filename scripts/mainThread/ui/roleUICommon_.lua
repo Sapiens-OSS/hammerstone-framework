@@ -27,8 +27,9 @@ function mod:onload(roleUICommon)
                         skillTypeIndex = v.skillTypeIndex,
                         requiredSkillTypes = v.requiredSkillTypes,
                     }
+                    log:schema("ddapi", "    Skill created")
                 else
-                    mj:log("Skill was not properly created")
+                    log:schema("ddapi", "    Skill was not properly created")
                 end
             end
         end

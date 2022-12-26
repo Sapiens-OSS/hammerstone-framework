@@ -73,6 +73,9 @@ function objectManager:init()
 	end
 	objectManager.loadedConfigs["init"] = true
 
+	--local now = os.time()
+	log:schema("ddapi", os.date())
+
 	log:log("\nInitializing DDAPI...")
 	log:schema("ddapi", "\nInitializing DDAPI...")
 
@@ -123,7 +126,7 @@ function objectManager:loadConfigs()
 	-- Loads files at path to dbTable for each active mod
 	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
-	local count = 0;
+	local count = 0; local disabledCount = 0
 
 	for i, mod in ipairs(mods) do
 		for _, route in pairs(routes) do
@@ -136,11 +139,23 @@ function objectManager:loadConfigs()
 
 					objectManager:loadConfig(fullPath, route.dbTable)
 				end
+			else
+				disabledCount = disabledCount + 1
 			end
 		end
 	end
 
 	log:schema("ddapi", "Loaded configs totalling: " .. count)
+
+	if disabledCount ~= 0 then
+		log:schema("ddapi", "Disabled configs totalling: " .. disabledCount)
+		log:schema("ddapi", "Disabled configs:")
+		for _, route in pairs(routes) do
+			if not route.enabled then
+				log:schema("ddapi", "  " .. route.path)
+			end
+		end
+	end
 end
 
 function objectManager:loadConfig(path, type)
@@ -173,10 +188,12 @@ function objectManager:generateResourceDefinitions(mods)
 
 	log:schema("ddapi", "\nGenerating Resource definitions:")
 
-	if objectDB.objectConfigs ~= nil then
+	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateResourceDefinition(config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -253,10 +270,12 @@ function objectManager:generateStorageObjects()
 
 	log:schema("ddapi", "\nGenerating Storage definitions:")
 
-	if objectDB.storageConfigs ~= nil then
+	if objectDB.storageConfigs ~= nil and #objectDB.storageConfigs ~= 0 then
 		for i, config in ipairs(objectDB.storageConfigs) do
 			objectManager:generateStorageObject(config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -381,10 +400,12 @@ function objectManager:generateEvolvingObjects(mods)
 
 	log:schema("ddapi", "\nGenerating EvolvingObjects:")
 
-	if objectDB.objectConfigs ~= nil then
+	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateEvolvingObject(evolvingObject, config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -444,10 +465,12 @@ function objectManager:generateHarvestableObjects(mods)
 
 	log:schema("ddapi", "\nGenerating Harvestable Objects:")
 
-	if objectDB.objectConfigs ~= nil then
+	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateHarvestableObject(config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -523,10 +546,12 @@ function objectManager:generateGameObjects(mods)
 
 	log:schema("ddapi", "\nGenerating Object definitions:")
 
-	if objectDB.objectConfigs ~= nil then
+	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
 		for i, config in ipairs(objectDB.objectConfigs) do
 			objectManager:generateGameObject(config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -613,10 +638,12 @@ function objectManager:generateRecipeDefinitions(mods)
 
 	log:schema("ddapi", "\nGenerating Recipe definitions:")
 
-	if objectDB.recipeConfigs ~= nil then
+	if objectDB.recipeConfigs ~= nil and #objectDB.recipeConfigs ~= 0 then
 		for i, config in ipairs(objectDB.recipeConfigs) do
 			objectManager:generateRecipeDefinition(config)
 		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -856,8 +883,12 @@ function objectManager:generateMaterialDefinitions(mods)
 
 	log:schema("ddapi", "\nGenerating Material definitions:")
 
-	for i, config in ipairs(objectDB.materialConfigs) do
-		objectManager:generateMaterialDefinition(config)
+	if objectDB.materialConfigs ~= nil and #objectDB.materialConfigs ~= 0 then
+		for i, config in ipairs(objectDB.materialConfigs) do
+			objectManager:generateMaterialDefinition(config)
+		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
@@ -914,8 +945,12 @@ function objectManager:generateSkillDefinitions(mods)
 
 	log:schema("ddapi", "\nGenerating Skill definitions:")
 
-	for i, config in ipairs(objectDB.skillConfigs) do
-		objectManager:generateSkillDefinition(config)
+	if objectDB.skillConfigs ~= nil and #objectDB.skillConfigs ~= 0 then
+		for i, config in ipairs(objectDB.skillConfigs) do
+			objectManager:generateSkillDefinition(config)
+		end
+	else
+		log:schema("ddapi", "  (disabled)")
 	end
 end
 
