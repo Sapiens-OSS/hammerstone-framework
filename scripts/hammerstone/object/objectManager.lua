@@ -76,13 +76,7 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 
 -- Initialize the full Data Driven API (DDAPI).
 function objectManager:init()
-
-	-- Only do this once
-	if objectManager.loadedConfigs["init"] ~= nil then
-		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
-		return
-	end
-	objectManager.loadedConfigs["init"] = true
+	if runOnceGuard("ddapi") then return end
 
 	--local now = os.time()
 	log:schema("ddapi", os.date())
