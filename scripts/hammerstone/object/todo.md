@@ -7,7 +7,6 @@
  - Item groups
  - Medicine
  - Localization wrapping for name/plural.
- - Harvestable
  - Buildable
  - Research
  - Sapien traits
@@ -21,6 +20,7 @@
  - Materials
     - Add variants
  - Skill
+ - Harvestable
 
 # Done
  - Resources

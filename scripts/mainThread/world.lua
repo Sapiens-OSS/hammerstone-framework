@@ -12,8 +12,8 @@ function mod:onload(world)
 
 	-- Shadow setBridge
 	local super_setBridge = world.setBridge
-	world.setBridge = function(self, bridge, serverClientState, isVR)
-		super_setBridge(self, bridge, serverClientState, isVR)
+	world.setBridge = function(_, bridge, serverClientState, isVR)
+		super_setBridge(_, bridge, serverClientState, isVR)
 		gameState.worldBridge = bridge
 	end
 end

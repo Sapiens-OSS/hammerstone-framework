@@ -1,0 +1,188 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "hammerstone.storage.schema",
+    "title": "Storage Definition File",
+    "description": "A file which describes how objects are stored/carried",
+    "type": "object",
+    "required": [
+        "hammerstone:storage_definition"
+    ],
+	"properties": {
+		"hammerstone:storage_definition": {
+			"description": "A wrapper object to make storage files easier to identify.",
+			"properties": {
+				"description": {
+					"type": "object",
+					"description": "NODOCS",
+					"required": [
+						"identifier",
+						"name"
+					],
+					"properties": {
+						"identifier": {
+							"type": "string",
+							"description": "The name of the storage zone",
+							"examples": [
+								"sirlich:skull_storage"
+							]
+						},
+						"name": {
+							"type": "string",
+							"description": "The name of the storage zone.",
+							"examples": [
+								"Potato Storage"
+							]
+						}
+					}
+				},
+				"components": {
+					"type": "object",
+					"description": "A list of components controlling this storage zone.",
+					"required": [
+						"hammerstone:storage",
+						"hammerstone:carry"
+					],
+					"properties": {
+						"hammerstone:storage": {
+							"type": "object",
+							"description": "Describes how the object is stored.",
+							"required": [
+								"preview_object"
+							],
+							"properties": {
+								"preview_object": {
+									"type": "string",
+									"description": "NODOCS"
+								},
+								"size": {
+									"type": "array",
+									"default": [
+										0.5, 0.5, 0.5
+									],
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"offset": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"rotation": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"random_rotation_weight": {
+									"type": "number",
+									"description": "The weight that the random rotation will have on the object",
+									"default": "2"
+								},
+								"rotate_to_fit_below_surface": {
+									"type": "boolean",
+									"description": "NODOCS",
+									"default": "true"
+								}
+							}
+						},
+						"hammerstone:carry": {
+							"type": "object",
+							"description": "Describes how the object is carried",
+							"properties": {
+								"carry_count": {
+									"type": "object",
+									"description": "NODOCS",
+									"properties": {
+										"normal": {
+											"type": "integer",
+											"description": "NODOCS"
+										},
+										"limited_ability": {
+											"type": "integer",
+											"description": "NODOCS"
+										},
+										"running": {
+											"type": "integer",
+											"description": "NODOCS"
+										}
+									}
+								},
+								"carry_type": {
+									"description": "NODOCS",
+									"type": "string",
+									"default": "standard",
+									"enum": [
+										"standard",
+										"small",
+										"high",
+										"highSmall",
+										"highMedium"
+									]
+								},
+								"stack_type": {
+									"description": "NODOCS",
+									"type": "string",
+									"default": "standard",
+									"enum": [
+										"standard",
+										"vertical"
+									]
+								},
+								"offset": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								},
+								"rotation_constant": {
+									"type": "number",
+									"description": "NODOCS"
+								},
+								"rotation": {
+									"type": "array",
+									"description": "NODOCS",
+									"minimum": 3,
+									"maximum": 3,
+									"default": [
+										0.0, 0.0, 0.0
+									],
+									"items": {
+										"type": "number",
+										"description": "NODOCS"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

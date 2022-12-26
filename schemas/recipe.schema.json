@@ -1,0 +1,336 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "hammerstone.recipe.schema",
+    "title": "Recipe Definition File",
+    "description": "A config file for registering recipes using the Hammerstone Data Driven API.",
+    "type": "object",
+    "required": [
+        "hammerstone:recipe_definition"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "Allow matching your file with a schema definition"
+        },
+        "hammerstone:recipe_definition": {
+            "type": "object",
+            "description": "Wrapper object, to make identifying object files easier.",
+            "required": [
+                "description",
+                "components"
+            ],
+            "properties": {
+                "description": {
+                    "description": "Container for global object properties.",
+                    "type": "object",
+                    "properties": {
+                        "identifier": {
+                            "type": "string",
+                            "description": "The unique identifier of your object",
+                            "examples": [
+                                "sirlich:snake_skull"
+                            ]
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "The name of the object. May be localized, or not.",
+                            "examples": [
+                                "Snake Skull",
+                                "object_snakeSkull"
+                            ]
+                        },
+                        "plural": {
+                            "type": "string",
+                            "description": "The pluralized name of the object. May be localized, or not.",
+                            "examples": [
+                                "Snake Skull",
+                                "object_snakeSkull"
+                            ]
+                        }
+                    }
+                },
+                "meta": {
+                    "description": "Container for 'metadata' related to your object. Feel free to introduce new fields.",
+                    "properties": {
+                        "author": {
+                            "type": "string",
+                            "description": "The author who created this file.",
+                            "examples": [
+                                "SirLich"
+                            ]
+                        },
+                        "sapiens_version": {
+                            "type": "string",
+                            "description": "The version of Sapiens that this object was intended to be used with.",
+                            "examples": [
+                                "0.3.6"
+                            ]
+                        },
+                        "hammerstone_version": {
+                            "type": "string",
+                            "description": "The version of Hammerstone that this object was intended to be used with.",
+                            "examples": [
+                                "1.2.5"
+                            ]
+                        }
+                    }
+                },
+                "components": {
+                    "description": "Container for object 'components', reach covering a topic or capability.",
+                    "required": [
+                        "hammerstone:recipe"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "hammerstone:recipe": {
+                            "type": "object",
+                            "description": "This component allows you to specify basic information about the recipe.",
+                            "properties": {
+                                "preview_object": {
+                                    "type": "string",
+                                    "description": "The object which will be used as the preview for this crafting recipe."
+                                },
+                                "classification": {
+                                    "type": "string",
+                                    "description": "The classification for this recipe",
+                                    "enum": [
+                                        "craft"
+                                    ]
+                                }
+                            }
+                        },
+                        "hammerstone:requirements": {
+                            "type": "object",
+                            "description": "Specify the required skills, tools, and areas used to craft this recipe.",
+                            "properties": {
+                                "skills": {
+                                    "type": "array",
+                                    "description": "The skill IDs which must be used to craft this item. Maximum of two.",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "Skill ID",
+                                        "examples": [
+                                            "campfireCooking"
+                                        ]
+                                    }
+                                },
+                                "craft_area_groups": {
+                                    "type": "array",
+                                    "description": "The craft area group IDs which are used to craft this item.",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "Craft area ID",
+                                        "examples": [
+                                            "campfire"
+                                        ]
+                                    }
+                                },
+                                "tools": {
+                                    "type": "array",
+                                    "description": "The tool IDs which are required to craft this item.",
+                                    "items": {
+                                        "type": "string",
+                                        "description": "Tool ID",
+                                        "examples": [
+                                            "grinding"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "hammerstone:output": {
+                            "type": "object",
+                            "description": "Specify the output from this recipe.",
+                            "properties": {
+                                "output_by_object": {
+                                    "type": "array",
+                                    "description": "Controls what items will be returned from this recipe.",
+                                    "items": {
+                                        "type": "object",
+                                        "description": "A single object configuration, which maps an input object, into possible output objects.",
+                                        "properties": {
+                                            "input": {
+                                                "type": "string",
+                                                "description": "The ID of the input objects.",
+                                                "examples": [
+                                                    "orange"
+                                                ]
+                                            },
+                                            "output": {
+                                                "type": "array",
+                                                "description": "The IDs of the output objects",
+                                                "items": {
+                                                    "type": "string",
+                                                    "description": "The ID of a single object",
+                                                    "examples": [
+                                                        "orangeJuice"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "hammerstone:build_sequence": {
+                            "type": "object",
+                            "description": "Specify the required resources and actions taken to craft this recipe.",
+                            "properties": {
+                                "build_sequence_model": {
+                                    "type": "string",
+                                    "description": "A model with placeholders used while crafting. For example, you can define positions for resources or tools that appear on the ground.",
+                                    "examples": [
+                                        "fireStickCook"
+                                    ]
+                                },
+                                "build_sequence": {
+                                    "type": "object",
+                                    "description": "Specify the sapien logic and animation.",
+                                    "properties": {
+                                        "action": {
+                                            "type": "string",
+                                            "description": "The actionSequence type to use during the crafting animation.",
+                                            "examples": [
+                                                "chop",
+                                                "mine",
+                                                "eat",
+                                                "fireStickCook"
+                                            ]
+                                        },
+                                        "tool": {
+                                            "type": "string",
+                                            "description": "The tool type to use during the crafting animation.",
+                                            "examples": [
+                                                "treeChop",
+                                                "mine",
+                                                "grinding",
+                                                "carving"
+                                            ]
+                                        },
+                                        "steps": {
+                                            "type": "array",
+                                            "description": "(Optional, see schema for more details)\nBy default, Hammerstone will keep your build sequence generic. Add steps here to overwrite these defaults. build_sequence's action and tool properties will be ignored.",
+                                            "examples": [
+                                                {
+                                                    "type": "clearIncorrectResources"
+                                                },
+                                                {
+                                                    "type": "clearObjects"
+                                                },
+                                                {
+                                                    "type": "bringResources"
+                                                },
+                                                {
+                                                    "type": "bringTools"
+                                                },
+                                                {
+                                                    "type": "moveComponents"
+                                                },
+                                                {
+                                                    "type": "actionSequence",
+                                                    "action": "dig",
+                                                    "tool": "dig",
+                                                    "repeatCount": 7,
+                                                    "skillRequiredToComplete": true,
+                                                    "submodelEnabledOnComplete": {
+                                                        "placeholderKey": "mound",
+                                                        "modelName": "plantHole"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "object_prop": {
+                                    "description": "An object to temporarily use as a tool for this recipe.",
+                                    "type": "object",
+                                    "properties": {
+                                        "object": {
+                                            "type": "string",
+                                            "description": "The identifier of the object to use.",
+                                            "examples": [
+                                                "stick"
+                                            ]
+                                        },
+                                        "offset": {},
+                                        "rotation": {}
+                                    }
+                                },
+                                "resource_prop": {
+                                    "description": "A resource to temporarily attach to your hand for this recipe.",
+                                    "type": "object",
+                                    "properties": {
+                                        "resource_index": {
+                                            "type": "integer",
+                                            "description": "The index of the resource to use from resource_sequence.",
+                                            "examples": [
+                                                1
+                                            ]
+                                        },
+                                        "offset": {},
+                                        "rotation": {}
+                                    }
+                                },
+                                "resource_sequence": {
+                                    "type": "array",
+                                    "description": "The sequence of items and actions to craft this recipe.",
+                                    "items": {
+                                        "type": "object",
+                                        "description": "An individual sequence event, controlling the use/application of a single item.",
+                                        "required": [
+                                            "resource"
+                                        ],
+                                        "properties": {
+                                            "resource": {
+                                                "type": "string",
+                                                "description": "The identifier of a resource ingredient.",
+                                                "examples": [
+                                                    "orange"
+                                                ]
+                                            },
+                                            "count": {
+                                                "type": "integer",
+                                                "description": "The number of resource ingredients to use.",
+                                                "examples": [
+                                                    1
+                                                ]
+                                            },
+                                            "action": {
+                                                "type": "object",
+                                                "description": "The action to perform after placing the item. Used so that the recipe takes time.",
+                                                "properties": {
+                                                    "action_type": {
+                                                        "type": "string",
+                                                        "description": "The action/animation identifier",
+                                                        "examples": [
+                                                            "inspect"
+                                                        ]
+                                                    },
+                                                    "duration": {
+                                                        "type":"number",
+                                                        "description": "The duration of the action animation.",
+                                                        "examples": [
+                                                            0.5
+                                                        ]
+                                                    },
+                                                    "duration_without_skill": {
+                                                        "type": "number",
+                                                        "description": "The duration of the action, given that the sapien performing the action is missing the required skill.",
+                                                        "examples": [
+                                                            15
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

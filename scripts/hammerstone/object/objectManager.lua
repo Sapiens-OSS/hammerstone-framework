@@ -23,9 +23,6 @@ local objectDB = {
 	objectsForStorage = {},
 
 	-- Unstructured storage configurations, read from FS
-	recipeConfigs = {},
-
-	-- Unstructured storage configurations, read from FS
 	materialConfigs = {},
 
 	-- Unstructured storage configurations, read from FS
@@ -56,6 +53,7 @@ local mat3Rotate = mjm.mat3Rotate
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
+local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
@@ -150,244 +148,6 @@ local function addModules(modulesTable)
 	for k, v in pairs(modulesTable) do
 		objectManager.modules[k] = v
 	end
-end
-
----------------------------------------------------------------------------------
--- Utilities (very temporary stuff, testing phase)
----------------------------------------------------------------------------------
-
--- Returns result of running predicate on each item in table
-function map(tbl, predicate)
-	local data = {}
-	for i,e in ipairs(tbl) do
-		local value = predicate(e)
-		if value ~= nil then
-			table.insert(data, value)
-		end
-	end
-	return data
-end
-
--- Returns data if running predicate on each item in table returns true
-function all(tbl, predicate)
-	for i,e in ipairs(tbl) do
-		local value = predicate(e)
-		if value == nil or value == false then
-			return false
-		end
-	end
-	return tbl
-end
-
--- Returns items that have returned true for predicate
-function where(tbl, predicate)
-	local data = {}
-	for i,e in ipairs(tbl) do
-		if predicate(e) then
-			table.insert(data, e)
-		end
-	end
-	return data
-end
-
-local logMissingTables = {}
-
-function logMissing(displayAlias, key, tbl)
-	if logMissingTables[tbl] == nil then
-		table.insert(logMissingTables, tbl)
-
-		if key == nil then
-			log:schema(nil, "    ERROR: " .. displayAlias .. " key is nil.")
-			log:schema(nil, debug.traceback())
-		else
-			log:schema(nil, "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
-
-			for k, _ in pairs(tbl) do
-				if type(k) == "string" then
-					log:schema(nil, "      " .. k)
-				end
-			end
-		end
-	end
-end
-
-function logExisting(displayAlias, key, tbl)
-	log:schema(nil, "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
-end
-
-function logWrongType(key, typeName)
-	log:schema(nil, "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
-end
-
-function logNotImplemented(featureName)
-	log:schema(nil, "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
-end
-
--- Returns the index of a type, or nil if not found.
-function getTypeIndex(tbl, key, displayAlias)
-	if tbl[key] ~= nil then
-		return tbl[key].index
-	end
-	return logMissing(displayAlias, key, tbl)
-end
-
--- Returns the key of a type, or nil if not found.
---- @param tbl table
---- @param key string
---- @param displayAlias string
-function getTypeKey(tbl, key, displayAlias)
-	if tbl[key] ~= nil then
-		return tbl[key].key
-	end
-	return logMissing(displayAlias, key, tbl)
-end
-
--- Return true if a table has key.
-function hasKey(tbl, key)
-	return tbl ~= nil and tbl[key] ~= nil
-end
-
--- Return true if a table is null or empty.
-function isEmpty(tbl)
-	return tbl == nil or next(tbl) == nil
-end
-
--- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
-function isType(value, typeName)
-	if type(value) == typeName then
-		return true
-	end
-	if typeName == "number" then
-		return tonumber(value)
-	end
-	if typeName == "boolean" then
-		return value == "true"
-	end
-	return false
-end
-
-function validate(key, value, options)
-
-	-- Make sure this field has the proper type
-	if options.type ~= nil then
-		if not isType(value, options.type) then
-			return logWrongType(key, options.type)
-		end
-	end
-
-	-- Make sure this field value has a valid type
-	if options.inTypeTable ~= nil then
-		--mj:log("inTypeTable " .. key, options.inTypeTable)
-		if type(options.inTypeTable) == "table" then
-			if not hasKey(options.inTypeTable, value) then
-				return logMissing(key, value, options.inTypeTable)
-			end
-		else
-			log:schema(nil, "    ERROR: Value of inTypeTable is not table")
-		end
-	end
-
-	-- Make sure this field value is a unique type
-	if options.notInTypeTable ~= nil then
-		if type(options.notInTypeTable) == "table" then
-			if hasKey(options.notInTypeTable, value) then
-				return logExisting(key, value, options.notInTypeTable)
-			end
-		else
-			log:schema(nil, "    ERROR: Value of notInTypeTable is not table")
-		end
-	end
-
-	return value
-end
-
-function getField(tbl, key, options)
-	local value = tbl[key]
-	local name = key
-
-	if value == nil then
-		return
-	end
-
-	if options ~= nil then
-		if validate(key, value, options) == nil then
-			return
-		end
-
-		if options.with ~= nil then
-			if type(options.with) == "function" then
-				value = options.with(value)
-			else
-				log:schema("    ERROR: Value of with option is not function")
-			end
-		end
-	end
-
-	return value
-end
-
-function getTable(tbl, key, options)
-	local values = tbl[key]
-	local name = key
-
-	if values == nil then
-		return
-	end
-
-	if type(values) ~= "table" then
-		return log:schema("    ERROR: Value type of key '" .. key .. "' is not table")
-	end
-
-	if options ~= nil then
-
-		-- Run basic validation on all elements in the table
-		for k, v in pairs(values) do
-			if validate(key, v, options) == nil then
-				return
-			end
-		end
-
-		if options.displayName ~= nil then
-			name = options.displayName
-		end
-
-		if options.length ~= nil and options.length ~= #values then
-			return log:schema("    ERROR: Value of key '" .. key .. "' requires " .. options.length .. " elements")
-		end
-
-		for k, v in pairs(options) do
-			if k == "map" then
-				if type(v) == "function" then
-					values = map(values, v)
-				else
-					log:schema("    ERROR: Value of map option is not function")
-				end
-			end
-
-			if k == "with" then
-				if type(v) == "function" then
-					values = v(values)
-					if values == nil then
-						return
-					end
-				else
-					log:schema("    ERROR: Value of with option is not function")
-				end
-			end
-		end
-	end
-
-	return values
-end
-
-function compile(req, data)
-	for k, v in pairs(req) do
-		if v and data[k] == nil then
-			log:schema(nil, "    Missing " .. k)
-			return
-		end
-	end
-	return data
 end
 
 
@@ -507,45 +267,84 @@ function objectManager:generateStorageObject(config)
 	end
 
 	-- Load structured information
-	local object = config["hammerstone:storage"]
-	local description = object["description"]
-	local carryComponent = object.components["hammerstone:carry"]
-	local storageComponent = object.components["hammerstone:storage"]
-	local identifier = description.identifier
+	local storageDefinition = config["hammerstone:storage_definition"]
+	local description = storageDefinition["description"]
+	local storageComponent = storageDefinition.components["hammerstone:storage"]
+	local carryComponent = storageDefinition.components["hammerstone:carry"]
+
+	local gameObjectTypeIndexMap = typeMaps.types.gameObject
+
+	local identifier = utils:getField(description, "identifier")
+
+	-- TODO no local imports
+	local storage = mjrequire "common/storage"
 
 	log:log("  " .. identifier)
 
 	-- Inlined imports. Bad style. I don't care.
-	local gameObjectTypeIndexMap = typeMaps.types.gameObject
 	local resource = mjrequire "common/resource";
 
+	-- Prep
+	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
+		default = 2.0
+	})
+	local rotation = utils:getVec3(storageComponent, "rotation", {
+		default = vec3(0.0, 0.0, 0.0)
+	})
+
+	local carryCounts = utils:getTable(carryComponent, "carry_count", {
+		default = {} -- Allow this field to be undefined, but don't use nil
+	})
+	
 	local newStorage = {
 		key = identifier,
-		name = storageComponent.name,
-		displayGameObjectTypeIndex = gameObjectTypeIndexMap[storageComponent.preview_object], -- TODO will this work?
+		name = utils:getField(description, "name"),
+
+		displayGameObjectTypeIndex = gameObjectTypeIndexMap[utils:getField(storageComponent, "preview_object")],
+		
+		-- TODO: This needs to be reworked to make sure that it's possible to reference vanilla resources here (?)
 		resources = objectManager:generateResourceForStorage(identifier),
 
-		-- TODO: Add fields to customize this.
 		storageBox = {
-			size =  vec3(0.24, 0.1, 0.24),
+			size =  utils:getVec3(storageComponent, "size", {
+				default = vec3(0.5, 0.5, 0.5)
+			}),
+			
+			-- TODO consider giving more control here
 			rotationFunction = function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
-				local rotation = mat3Rotate(mat3Identity, randomValue * 6.282, vec3(0.0,1.0,0.0))
-				return rotation
+				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation, rotation)
+				return rot
 			end,
-			dontRotateToFitBelowSurface = true,
-			placeObjectOffset = mj:mToP(vec3(0.0,0.4,0.0)),
+
+			dontRotateToFitBelowSurface = utils:getField(storageComponent, "rotate_to_fit_below_surface", {
+				default = true,
+				type = "boolean"
+			}),
+			
+			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "offset", {
+				default = vec3(0.0, 0.0, 0.0)
+			}))
 		},
 
-		-- TODO Handle this stuff too.
-		maxCarryCount = 1,
-		maxCarryCountLimitedAbility = 1,
-		--carryRotation = mat3Rotate(mat3Rotate(mat3Identity, math.pi * 0.4, vec3(0.0, 0.0, 1.0)), math.pi * 0.1, vec3(1.0, 0.0, 0.0)),
-		carryRotation = mat3Rotate(mat3Identity, 1.2, vec3(0.0, 0.0, 1.0)),
-		carryOffset = vec3(0.1,0.1,0.0),
+		maxCarryCount = utils:getField(carryCounts, "normal", {default=1}),
+		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
+		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
+
+		carryStackType = storage.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
+		carryType = storage.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
+
+		carryOffset = utils:getVec3(carryComponent, "offset", {
+			default = vec3(0.0, 0.0, 0.0)
+		}),
+
+		carryRotation = mat3Rotate(mat3Identity,
+			utils:getField(carryComponent, "rotation_constant", { default = 1}),
+			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 0.0)})
+		),
 	}
 
-	--mj:log(newStorage)
+	-- TODO: No local imports
 	local storageModule = mjrequire "common/storage"
 	storageModule:addStorage(identifier, newStorage)
 end
@@ -819,38 +618,38 @@ function objectManager:generateRecipeDefinition(config)
 			-- toolUsages {}
 	}
 
-	local data = compile(required, {
+	local data = utils:compile(required, {
 
 		-- Description
-		identifier = getField(description, "identifier", {
+		identifier = utils:getField(description, "identifier", {
 			notInTypeTable = modules.craftable.types
 		}),
-		name = getField(description, "name"),
-		plural = getField(description, "plural"),
-		summary = getField(description, "summary"),
+		name = utils:getField(description, "name"),
+		plural = utils:getField(description, "plural"),
+		summary = utils:getField(description, "summary"),
 
 
 		-- Recipe Component
-		iconGameObjectType = getField(recipe, "preview_object", {
+		iconGameObjectType = utils:getField(recipe, "preview_object", {
 			inTypeTable = modules.gameObject.types
 		}),
-		classification = getField(recipe, "classification", {
+		classification = utils:getField(recipe, "classification", {
 			inTypeTable = modules.constructable.classifications -- Why is this crashing?
 		}),
-		isFoodPreperation = getField(recipe, "isFoodPreparation", {
+		isFoodPreperation = utils:getField(recipe, "isFoodPreparation", {
 			type = "boolean"
 		}),
 
 
 		-- Output Component
 		outputObjectInfo = {
-			outputArraysByResourceObjectType = getTable(output, "output_by_object", {
+			outputArraysByResourceObjectType = utils:getTable(output, "output_by_object", {
 				with = function(tbl)
 					local result = {}
 					for _, value in pairs(tbl) do -- Loop through all output objects
 						
 						-- Return if input isn't a valid gameObject
-						if getTypeIndex(modules.gameObject.types, value.input, "Game Object") == nil then return end
+						if utils:getTypeIndex(modules.gameObject.types, value.input, "Game Object") == nil then return end
 
 						-- Get the input's resource index
 						local index = modules.gameObject.types[value.input].index
@@ -858,8 +657,8 @@ function objectManager:generateRecipeDefinition(config)
 						-- Convert from schema format to vanilla format
 						-- If the predicate returns nil for any element, map returns nil
 						-- In this case, log an error and return if any output item does not exist in gameObject.types
-						result[index] = map(value.output, function(e)
-							return getTypeIndex(modules.gameObject.types, e, "Game Object")
+						result[index] = utils:map(value.output, function(e)
+							return utils:getTypeIndex(modules.gameObject.types, e, "Game Object")
 						end)
 					end
 					return result
@@ -869,7 +668,7 @@ function objectManager:generateRecipeDefinition(config)
 
 
 		-- Requirements Component
-		skills = getTable(requirements, "skills", {
+		skills = utils:getTable(requirements, "skills", {
 			inTypeTable = modules.skill.types,
 			with = function(tbl)
 				if #tbl > 0 then
@@ -879,7 +678,7 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		disabledUntilAdditionalSkillTypeDiscovered = getTable(requirements, "skills", {
+		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirements, "skills", {
 			inTypeTable = modules.skill.types,
 			with = function(tbl)
 				if #tbl > 1 then
@@ -887,23 +686,23 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		requiredCraftAreaGroups = getTable(requirements, "craft_area_groups", {
+		requiredCraftAreaGroups = utils:getTable(requirements, "craft_area_groups", {
 			map = function(e)
-				return getTypeIndex(modules.craftAreaGroup.types, e, "Craft Area Group")
+				return utils:getTypeIndex(modules.craftAreaGroup.types, e, "Craft Area Group")
 			end
 		}),
-		requiredTools = getTable(requirements, "tools", {
+		requiredTools = utils:getTable(requirements, "tools", {
 			map = function(e)
-				return getTypeIndex(modules.tool.types, e, "Tool")
+				return utils:getTypeIndex(modules.tool.types, e, "Tool")
 			end
 		}),
 
 
 		-- Build Sequence Component
-		inProgressBuildModel = getField(build_sequence, "build_sequence_model"),
-		buildSequence = getTable(build_sequence, "build_sequence", {
+		inProgressBuildModel = utils:getField(build_sequence, "build_sequence_model"),
+		buildSequence = utils:getTable(build_sequence, "build_sequence", {
 			with = function(tbl)
-				if not isEmpty(tbl.steps) then
+				if not utils:isEmpty(tbl.steps) then
 					-- If steps exist, we create a custom build sequence instead a standard one
 					logNotImplemented("Custom Build Sequence") -- TODO: Implement steps
 				else
@@ -913,11 +712,11 @@ function objectManager:generateRecipeDefinition(config)
 					end
 
 					-- Get the action sequence
-					local sequence = getTypeIndex(modules.actionSequence.types, tbl.action, "Action Sequence")
+					local sequence = utils:getTypeIndex(modules.actionSequence.types, tbl.action, "Action Sequence")
 					if sequence ~= nil then
 
 						-- Cancel if a tool is stated but doesn't exist
-						if tbl.tool ~= nil and #tbl.tool > 0 and getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
+						if tbl.tool ~= nil and #tbl.tool > 0 and utils:getTypeIndex(modules.tool.types, tbl.tool, "Tool") == nil then
 							return
 						end
 
@@ -927,35 +726,35 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		requiredResources = getTable(build_sequence, "resource_sequence", {
+		requiredResources = utils:getTable(build_sequence, "resource_sequence", {
 			-- Runs for each item and replaces item with return result
 			map = function(e)
 
 				-- Get the resource
-				local res = getTypeIndex(modules.resource.types, e.resource, "Resource")
+				local res = utils:getTypeIndex(modules.resource.types, e.resource, "Resource")
 				if (res == nil) then return end -- Cancel if resource does not exist
 
 				-- Get the count
 				local count = e.count or 1
-				if (not isType(count, "number")) then
+				if (not utils:isType(count, "number")) then
 					return log:schema(nil, "    Resource count for " .. e.resource .. " is not a number")
 				end
 
 				if e.action ~= nil then
 
 					-- Return if action is invalid
-					local actionType = getTypeIndex(modules.action.types, e.action.action_type, "Action")
+					local actionType = utils:getTypeIndex(modules.action.types, e.action.action_type, "Action")
 					if (actionType == nil) then return end
 
 					-- Return if duration is invalid
 					local duration = e.action.duration
-					if (not isType(duration, "number")) then
+					if (not utils:isType(duration, "number")) then
 						return log:schema(nil, "    Duration for " .. e.action.action_type .. " is not a number")
 					end
 
 					-- Return if duration without skill is invalid
 					local durationWithoutSkill = e.action.duration_without_skill or duration
-					if (not isType(durationWithoutSkill, "number")) then
+					if (not utils:isType(durationWithoutSkill, "number")) then
 						return log:schema(nil, "    Duration without skill for " .. e.action.action_type .. " is not a number")
 					end
 
@@ -1009,12 +808,6 @@ function objectManager:generateMaterialDefinitions()
 end
 
 function objectManager:generateMaterialDefinition(config)
-
-	if config == nil then
-		log:schema(nil, "  Warning! Attempting to generate a material definition that is nil.")
-		return
-	end
-	
 	local materialDefinition = config["hammerstone:material_definition"]
 	local materials = materialDefinition["materials"]
 
@@ -1029,25 +822,19 @@ function objectManager:generateMaterialDefinition(config)
 			metal = false,
 		}
 
-		local data = compile(required, {
+		local data = utils:compile(required, {
 
-			identifier = getField(mat, "identifier", {
+			identifier = utils:getField(mat, "identifier", {
 				notInTypeTable = modules.material.types
 			}),
 
-			color = getTable(mat, "color", {
-				type = "number",
-				length = 3,
-				with = function(tbl)
-					return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
-				end
-			}),
+			color = utils:getVec3(mat, "color"),
 			
-			roughness = getField(mat, "roughness", {
+			roughness = utils:getField(mat, "roughness", {
 				type = "number"
 			}),
 
-			metal = getField(mat, "metal", {
+			metal = utils:getField(mat, "metal", {
 				type = "number"
 			})
 		})
