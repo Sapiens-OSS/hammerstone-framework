@@ -91,8 +91,10 @@ function mod:onload(resource)
 		return index
 	end
 
-	-- TODO: Ordering is wrong
-	-- objectManager:generateResourceDefinitions(resource)
+	-- Load DDAPI
+    objectManager:generateResourceDefinitions({
+        resource = resource
+    })
 end
 
 return mod

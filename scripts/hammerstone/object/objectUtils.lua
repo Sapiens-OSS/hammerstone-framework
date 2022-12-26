@@ -190,6 +190,11 @@ end
 -- notInTypeTable
 function objectUtils:getField(tbl, key, optionsOrNil)
 	local value = tbl[key]
+	local name = key
+
+	if optionsOrNil ~= nil and optionsOrNil.displayName ~= nil then
+		name = optionsOrNil.displayName
+	end
 
 	if value == nil then
 		-- Attempt to return default, if it exists
@@ -199,7 +204,7 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema(nil, "    Missing " .. key .. " in " .. tbl)
+		log:schema(nil, "    Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -226,6 +231,10 @@ function objectUtils:getTable(tbl, key, options)
 	local values = tbl[key]
 	local name = key
 
+	if options ~= nil and options.displayName ~= nil then
+		name = options.displayName
+	end
+
 	if values == nil then
 		-- Attempt to return default, if it exists
 		if options ~= nil and options.default ~= nil then
@@ -234,7 +243,7 @@ function objectUtils:getTable(tbl, key, options)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema(nil, "    Missing " .. key .. " in " .. tbl)
+		log:schema(nil, "    Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -249,10 +258,6 @@ function objectUtils:getTable(tbl, key, options)
 			if objectUtils:validate(key, v, options) == nil then
 				return
 			end
-		end
-
-		if options.displayName ~= nil then
-			name = options.displayName
 		end
 
 		if options.length ~= nil and options.length ~= #values then

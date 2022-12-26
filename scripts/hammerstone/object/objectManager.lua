@@ -6,6 +6,7 @@
 
 local objectManager = {
 	modules = {},
+	loadedConfigs = {},
 	inspectCraftPanelData = {},
 }
 
@@ -21,6 +22,9 @@ local objectDB = {
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
 	objectsForStorage = {},
+
+	-- Unstructured storage configurations, read from FS
+	recipeConfigs = {},
 
 	-- Unstructured storage configurations, read from FS
 	materialConfigs = {},
@@ -60,28 +64,23 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 ---------------------------------------------------------------------------------
 
 -- Initialize the full Data Driven API (DDAPI).
-local initialized = false
 function objectManager:init()
 
-	-- Initialization guard to prevent infinite looping
-	if initialized then
+	-- Only do this once
+	if objectManager.loadedConfigs["init"] ~= nil then
 		mj:warn("Attempting to re-initialize objectManager DDAPI! Skipping.")
 		return
-	else
-		log:schema(nil, "")
-		log:log("Initializing DDAPI...")
-		initialized = true
 	end
+	objectManager.loadedConfigs["init"] = true
 
-	-- Expose
-	modules.resource = mjrequire "common/resource"
+	log:schema(nil, "")
+	log:log("Initializing DDAPI...")
 
 	-- Load configs from FS
 	objectManager:loadConfigs()
 
-	-- Register items, in the order the game expects!
-	objectManager:generateMaterialDefinitions()
-	objectManager:generateResourceDefinitions()
+	-- generateMaterialDefinitions is called internally, from `material.lua`.
+	-- generateResourceDefinitions is called internally, from `resource.lua`.
 	-- generateGameObjects is called internally, from `gameObject.lua`.
 	-- generateStorageObjects is called internally, from `gameObject.lua`.
 	-- generateEvolvingObjects is called internally, from `evolvingObject.lua`.
@@ -89,7 +88,6 @@ function objectManager:init()
 end
 
 -- Loops over known config locations and attempts to load them
--- TODO: Call this method from the correct location
 function objectManager:loadConfigs()
 
 	log:log("Loading Configuration files:")
@@ -97,23 +95,28 @@ function objectManager:loadConfigs()
 	local routes = {
 		{
 			path = "/hammerstone/objects/",
-			dbTable = objectDB.objectConfigs
+			dbTable = objectDB.objectConfigs,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/storage/",
-			dbTable = objectDB.storageConfigs
+			dbTable = objectDB.storageConfigs,
+			enabled = false,
 		},
 		{
 			path = "/hammerstone/recipes/",
-			dbTable = objectDB.recipeConfigs
+			dbTable = objectDB.recipeConfigs,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/materials/",
-			dbTable = objectDB.materialConfigs
+			dbTable = objectDB.materialConfigs,
+			enabled = true,
 		},
 		{
 			path = "/hammerstone/skills/",
-			dbTable = objectDB.skillConfigs
+			dbTable = objectDB.skillConfigs,
+			enabled = true,
 		}
 	}
 
@@ -124,12 +127,15 @@ function objectManager:loadConfigs()
 
 	for i, mod in ipairs(mods) do
 		for _, route in pairs(routes) do
-			local objectConfigDir = mod.path .. route.path
-			local configs = fileUtils.getDirectoryContents(objectConfigDir)
-			for j, config in ipairs(configs) do
-				local fullPath =  objectConfigDir .. config
-				count = count + 1;
-				objectManager:loadConfig(fullPath, route.dbTable)
+			if route.enabled then
+				local objectConfigDir = mod.path .. route.path
+				local configs = fileUtils.getDirectoryContents(objectConfigDir)
+				for j, config in ipairs(configs) do
+					local fullPath =  objectConfigDir .. config
+					count = count + 1;
+
+					objectManager:loadConfig(fullPath, route.dbTable)
+				end
 			end
 		end
 	end
@@ -157,11 +163,22 @@ end
 
 --- Generates resource definitions based on the loaded config, and registers them.
 -- @param resource - Module definition of resource.lua
-function objectManager:generateResourceDefinitions()
+function objectManager:generateResourceDefinitions(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["resource"] ~= nil then return end
+	objectManager.loadedConfigs["resource"] = true
+
+mj:log("TESTING 1", mods)
+
+	addModules(mods)
+
 	log:schema(nil, "")
 	log:log("Generating Resource definitions:")
-	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateResourceDefinition(config)
+	if objectDB.objectConfigs ~= nil then
+		for i, config in ipairs(objectDB.objectConfigs) do
+			objectManager:generateResourceDefinition(config)
+		end
 	end
 end
 
@@ -170,8 +187,6 @@ function objectManager:generateResourceDefinition(config)
 		log:warn("Warning! Attempting to generate a resource definition that is nil.")
 		return
 	end
-
-	local resource = mjrequire "common/resource"
 
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
@@ -233,25 +248,30 @@ end
 
 --- Generates DDAPI storage objects.
 function objectManager:generateStorageObjects()
+
+	-- Only do this once
+	if objectManager.loadedConfigs["storage"] ~= nil then return end
+	objectManager.loadedConfigs["storage"] = true
+
 	log:schema(nil, "")
 	log:log("Generating Storage definitions:")
-	for i, config in ipairs(objectDB.storageConfigs) do
-		objectManager:generateStorageObject(config)
+	if objectDB.storageConfigs ~= nil then
+		for i, config in ipairs(objectDB.storageConfigs) do
+			objectManager:generateStorageObject(config)
+		end
 	end
 end
 
 --- Special helper function to generate the resource IDs that a storage should use, once they are available.
 --- This is a workaround :L
 function objectManager:generateResourceForStorage(storageIdentifier)
-	-- Shoot me
-	local resource = mjrequire "common/resource"
 
 	local newResource = {}
 
 	local objectIdentifiers = objectDB.objectsForStorage[storageIdentifier]
 	if objectIdentifiers ~= nil then
 		for i, identifier in ipairs(objectIdentifiers) do
-			table.insert(newResource, resource.types[identifier].index)
+			table.insert(newResource, modules.resource.types[identifier].index)
 		end
 	else
 		log:warning("Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
@@ -267,7 +287,7 @@ function objectManager:generateStorageObject(config)
 	end
 
 	-- Load structured information
-	local storageDefinition = config["hammerstone:storage_definition"]
+	local storageDefinition = config["hammerstone:storage"]
 	local description = storageDefinition["description"]
 	local storageComponent = storageDefinition.components["hammerstone:storage"]
 	local carryComponent = storageDefinition.components["hammerstone:carry"]
@@ -354,12 +374,19 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateEvolvingObjects(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["evolving"] ~= nil then return end
+	objectManager.loadedConfigs["evolving"] = true
+	
 	addModules(mods)
 
 	log:schema(nil, "")
 	log:log("Generating EvolvingObjects:")
-	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateEvolvingObject(evolvingObject, config)
+	if objectDB.objectConfigs ~= nil then
+		for i, config in ipairs(objectDB.objectConfigs) do
+			objectManager:generateEvolvingObject(evolvingObject, config)
+		end
 	end
 end
 
@@ -410,12 +437,19 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateHarvestableObjects(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["harvestable"] ~= nil then return end
+	objectManager.loadedConfigs["harvestable"] = true
+
 	addModules(mods)
 
 	log:schema(nil, "")
 	log:log("Generating Harvestable Objects:")
-	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateHarvestableObject(config)
+	if objectDB.objectConfigs ~= nil then
+		for i, config in ipairs(objectDB.objectConfigs) do
+			objectManager:generateHarvestableObject(config)
+		end
 	end
 end
 
@@ -482,12 +516,19 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 end
 
 function objectManager:generateGameObjects(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["gameObjects"] ~= nil then return end
+	objectManager.loadedConfigs["gameObjects"] = true
+
 	addModules(mods)
 
 	log:schema(nil, "")
 	log:log("Generating Object definitions:")
-	for i, config in ipairs(objectDB.objectConfigs) do
-		objectManager:generateGameObject(config, gameObject)
+	if objectDB.objectConfigs ~= nil then
+		for i, config in ipairs(objectDB.objectConfigs) do
+			objectManager:generateGameObject(config, gameObject)
+		end
 	end
 end
 
@@ -518,6 +559,10 @@ function objectManager:generateGameObject(config, gameObject)
 		resourceIdentifier = resourceLinkComponent["identifier"]
 	end
 
+	-- If resource link doesn't exist, don't crash the game
+	--local resourceIndex = utils:getTypeIndex(modules.resource.types, resourceIdentifier, "Resource")
+	--if resourceIndex == nil then return end
+
 	-- TODO: toolUsages
 	-- TODO: selectionGroupTypeIndexes
 	-- TODO: Implement eatByProducts
@@ -533,7 +578,7 @@ function objectManager:generateGameObject(config, gameObject)
 		modelName = model,
 		scale = scale,
 		hasPhysics = physics,
-		resourceTypeIndex = modules.resource.types[resourceIdentifier].index,
+		resourceTypeIndex = resourceIndex,
 
 		-- TODO: Implement marker positions
 		markerPositions = {
@@ -553,6 +598,11 @@ end
 
 --- Generates recipe definitions based on the loaded config, and registers them.
 function objectManager:generateRecipeDefinitions(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["recipe"] ~= nil then return end
+	objectManager.loadedConfigs["recipe"] = true
+
 	addModules(mods)
 
 	modules.action = mjrequire "common/action"
@@ -565,8 +615,10 @@ function objectManager:generateRecipeDefinitions(mods)
 
 	log:schema(nil, "")
 	log:schema(nil, "Generating Recipe definitions:")
-	for i, config in ipairs(objectDB.recipeConfigs) do
-		objectManager:generateRecipeDefinition(config)
+	if objectDB.recipeConfigs ~= nil then
+		for i, config in ipairs(objectDB.recipeConfigs) do
+			objectManager:generateRecipeDefinition(config)
+		end
 	end
 end
 
@@ -796,9 +848,13 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates material definitions based on the loaded config, and registers them.
-function objectManager:generateMaterialDefinitions()
+function objectManager:generateMaterialDefinitions(mods)
 
-	modules.material = mjrequire "common/material"
+	-- Only do this once
+	if objectManager.loadedConfigs["material"] ~= nil then return end
+	objectManager.loadedConfigs["material"] = true
+
+	addModules(mods)
 
 	log:schema(nil, "")
 	log:schema(nil, "Generating Material definitions:")
@@ -851,6 +907,11 @@ end
 
 --- Generates skill definitions based on the loaded config, and registers them.
 function objectManager:generateSkillDefinitions(mods)
+
+	-- Only do this once
+	if objectManager.loadedConfigs["skill"] ~= nil then return end
+	objectManager.loadedConfigs["skill"] = true
+
 	addModules(mods)
 
 	log:schema(nil, "")
@@ -890,29 +951,29 @@ function objectManager:generateSkillDefinition(config)
 			partialCapacityWithLimitedGeneralAbility = false,
 		}
 
-		local data = compile(required, {
+		local data = utils:compile(required, {
 
-			identifier = getField(desc, "identifier", {
+			identifier = utils:getField(desc, "identifier", {
 				notInTypeTable = modules.skill.types
 			}),
-			name = getField(desc, "name"),
-			description = getField(desc, "description"),
-			icon = getField(desc, "icon"),
+			name = utils:getField(desc, "name"),
+			description = utils:getField(desc, "description"),
+			icon = utils:getField(desc, "icon"),
 
-			row = getField(skil, "row", {
+			row = utils:getField(skil, "row", {
 				type = "number"
 			}),
-			column = getField(skil, "column", {
+			column = utils:getField(skil, "column", {
 				type = "number"
 			}),
-			requiredSkillTypes = getTable(desc, "requiredSkills", {
+			requiredSkillTypes = utils:getTable(skil, "requiredSkills", {
 				-- Make sure each skill exists and transform skill name to index
-				map = function(e) return getTypeIndex(modules.skill.types, e, "Skill") end
+				map = function(e) return utils:getTypeIndex(modules.skill.types, e, "Skill") end
 			}),
-			startLearned = getField(skil, "startLearned", {
+			startLearned = utils:getField(skil, "startLearned", {
 				type = "boolean"
 			}),
-			partialCapacityWithLimitedGeneralAbility = getField(skil, "impactedByLimitedGeneralAbility", {
+			partialCapacityWithLimitedGeneralAbility = utils:getField(skil, "impactedByLimitedGeneralAbility", {
 				type = "boolean"
 			}),
 		})

@@ -9,6 +9,9 @@ local mod = {
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 
+-- Hammerstone
+local objectManager = mjrequire "hammerstone/object/objectManager"
+
 function mod:onload(material)
     --- Allows adding a material.
 	--- @param key string: The key to add, such as 'leather'.
@@ -26,8 +29,10 @@ function mod:onload(material)
     end
 
     -- Load DDAPI
-    local objectManager = mjrequire "hammerstone/object/objectManager"
     objectManager:init()
+    objectManager:generateMaterialDefinitions({
+        material = material
+    })
 end
 
 return mod
