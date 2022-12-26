@@ -72,6 +72,13 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 -- Configuation and Loading
 ---------------------------------------------------------------------------------
 
+local function newModuleAdded(modules)
+	mj:log("NEW MODULES:")
+	-- mj:log(modules)
+end
+
+moduleManager:bind(newModuleAdded)
+
 -- Initialize the full Data Driven API (DDAPI).
 function objectManager:init()
 	if runOnceGuard("ddapi") then return end
