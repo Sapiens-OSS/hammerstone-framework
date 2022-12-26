@@ -204,7 +204,7 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema("ddapi", "    Missing " .. key .. " in " .. name)
+		log:schema("ddapi", "    ERROR: Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -243,7 +243,7 @@ function objectUtils:getTable(tbl, key, options)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema("ddapi", "    Missing " .. key .. " in " .. name)
+		log:schema("ddapi", "    ERROR: Missing " .. key .. " in " .. name)
 		return nil
 	end
 
@@ -292,7 +292,7 @@ end
 function objectUtils:compile(req, data)
 	for k, v in pairs(req) do
 		if v and data[k] == nil then
-			log:schema("ddapi", "    Missing " .. k)
+			log:schema("ddapi", "    ERROR: Missing " .. k)
 			return
 		end
 	end

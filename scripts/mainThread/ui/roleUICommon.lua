@@ -23,13 +23,19 @@ function mod:onload(roleUICommon)
         if skill.roleUICommonSkills ~= nil then
             for _, v in pairs(skill.roleUICommonSkills) do
                 if skill.types[v.skillTypeIndex] ~= nil then
-                    roleUICommon.skillUIColumns[v.column][v.row] = {
-                        skillTypeIndex = v.skillTypeIndex,
-                        requiredSkillTypes = v.requiredSkillTypes,
-                    }
-                    log:schema("ddapi", "    Skill created")
+                    if roleUICommon.skillUIColumns[v.column][v.row] == nil
+                        and roleUICommon.skillUIColumns[v.column][v.row].skillTypeIndex == nil then
+                        
+                        roleUICommon.skillUIColumns[v.column][v.row] = {
+                            skillTypeIndex = v.skillTypeIndex,
+                            requiredSkillTypes = v.requiredSkillTypes,
+                        }
+                    else
+                        local existingSkill = skill.types[roleUICommon.skillUIColumns[v.column][v.row].skillTypeIndex].key
+                        log:schema("ddapi", "ERROR: Position at (" .. v.row .. ", " .. v.column .. ") is already used by: " .. existingSkill)
+                    end
                 else
-                    log:schema("ddapi", "    Skill was not properly created")
+                    log:schema("ddapi", "ERROR: Skill was not properly created")
                 end
             end
         end
