@@ -6,88 +6,34 @@
 
 local objectManager = {
 	inspectCraftPanelData = {},
-}
-
--- Local database of config information
-local objectDB = {
-	-- Unstructured game object definitions , read from FS
-	objectConfigs = {},
-
-	-- Unstructured storage configurations, read from FS
-	storageConfigs = {},
 
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
 	objectsForStorage = {},
-
-	-- Unstructured storage configurations, read from FS
-	recipeConfigs = {},
-
-	-- Unstructured storage configurations, read from FS
-	materialConfigs = {},
-
-	-- Unstructured storage configurations, read from FS
-	skillConfigs = {},
 }
+
+-- Sapiens
+local rng = mjrequire "common/randomNumberGenerator"
+
+-- Math
+local mjm = mjrequire "common/mjm"
+local vec2 = mjm.vec2
+local vec3 = mjm.vec3
+local mat3Identity = mjm.mat3Identity
+local mat3Rotate = mjm.mat3Rotate
 
 -- Hammerstone
+local log = mjrequire "hammerstone/logging"
+local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
+local configLoader = mjrequire "hammerstone/object/configLoader"
+local objectDB = configLoader.configs
 
--- TODO: Make this flag less idiotic
-local configsLoadedFromFS = false
 
---- Data structure which defines how a config is loaded, and in which order. 
--- @field path - The path of the object, relative to the mod-root
--- @field dbTable - The table containing the loaded configs
--- @field enabled - Whether to load/process this type of config. Useful for debugging/testing
--- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
--- @field loaded - Whether the route has already been loaded
--- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
-
--- DNE: This module doesn't exist, it's just a quick testing hack
-local routes = {
-	gameObject = {
-		path = "/hammerstone/objects/",
-		dbTable = objectDB.objectConfigs,
-		enabled = true,
-		loaded = false,
-		moduleDependencies = {
-			"dne"
-		}
-	},
-	storage = {
-		path = "/hammerstone/storage/",
-		dbTable = objectDB.storageConfigs,
-		enabled = true,
-		loaded = false,
-		moduleDependencies = {
-			"storage"
-		},
-		loadFunction = "generateStorageObject" -- TODO: Strings as functions :()
-	},
-	recipe = {
-		path = "/hammerstone/recipes/",
-		dbTable = objectDB.recipeConfigs,
-		enabled = false,
-		loaded = false,
-		moduleDependencies = {"dne"}
-	},
-	material = {
-		path = "/hammerstone/materials/",
-		dbTable = objectDB.materialConfigs,
-		enabled = true,
-		loaded = false,
-		moduleDependencies = {"dne"}
-	},
-	skill = {
-		path = "/hammerstone/skills/",
-		dbTable = objectDB.skillConfigs,
-		enabled = false,
-		loaded = false,
-		moduleDependencies = {"dne"}
-	}
-}
+---------------------------------------------------------------------------------
+-- Configuation and Loading
+---------------------------------------------------------------------------------
 
 -- Guards against the same code being run multiple times.
 -- Takes in a unique ID to identify this code
@@ -100,33 +46,32 @@ local function runOnceGuard(guard)
 	return true
 end
 
--- TODO: Consider using metaTables to add default values to the objectDB
--- local mt = {
--- 	__index = function ()
--- 		return "10"
--- 	end
--- }
--- setmetatable(objectDB.objectConfigs, mt)
-
--- Sapiens
-local typeMaps = moduleManager:get("typeMaps")
-local rng = mjrequire "common/randomNumberGenerator"
-
--- Math
-local mjm = mjrequire "common/mjm"
-local vec2 = mjm.vec2
-local vec3 = mjm.vec3
-local mat3Identity = mjm.mat3Identity
-local mat3Rotate = mjm.mat3Rotate
-
--- Hammerstone
-local json = mjrequire "hammerstone/utils/json"
-local log = mjrequire "hammerstone/logging"
-local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
-
----------------------------------------------------------------------------------
--- Configuation and Loading
----------------------------------------------------------------------------------
+--- Data structure which defines how a config is loaded, and in which order. 
+-- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
+-- @field loaded - Whether the route has already been loaded
+-- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
+-- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
+local objectLoader = {
+	storage = {
+		configSource = objectDB.storageConfigs,
+		loaded = false,
+		waitingForStart = false,
+		moduleDependencies = {
+			"storage"
+		},
+		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
+	},
+	evolvingObject = {
+		configSource = objectDB.objectConfigs,
+		loaded = false,
+		waitingForStart = false,
+		moduleDependencies = {
+			"evolvingObject",
+			"gameObject"
+		},
+		loadFunction = "generateEvolvingObject"
+	}
+}
 
 local function newModuleAdded(modules)
 	objectManager:tryLoadObjectDefinitions()
@@ -138,119 +83,72 @@ moduleManager:bind(newModuleAdded)
 function objectManager:init()
 	if runOnceGuard("ddapi") then return end
 
-	--local now = os.time()
 	log:schema("ddapi", os.date())
-
-	log:log("\nInitializing DDAPI...")
 	log:schema("ddapi", "\nInitializing DDAPI...")
 
 	-- Load configs from FS
-	objectManager:loadConfigs()
-	-- objectManager:generateResourceDefinitions()
-
-	-- generateMaterialDefinitions is called internally, from `material.lua`.
-	-- generateResourceDefinitions is called internally, from `resource.lua`.
-	-- generateGameObjects is called internally, from `gameObject.lua`.
-	-- generateStorageObjects is called internally, from `gameObject.lua`.
-	-- generateEvolvingObjects is called internally, from `evolvingObject.lua`.
-	-- generateRecipeDefinitions is called internally, from `craftable.lua`.
-end
-
--- Loops over known config locations and attempts to load them
-function objectManager:loadConfigs()
-	configsLoadedFromFS = true
-	log:schema("ddapi", "Loading configuration files:")
-
-	-- Loads files at path to dbTable for each active mod
-	local modManager = mjrequire "common/modManager"
-	local mods = modManager.enabledModDirNamesAndVersionsByType.world
-	local count = 0; local disabledCount = 0
-
-	for i, mod in ipairs(mods) do
-		for _, route in pairs(routes) do
-			if route.enabled then
-				local objectConfigDir = mod.path .. route.path
-				local configs = fileUtils.getDirectoryContents(objectConfigDir)
-				for j, config in ipairs(configs) do
-					local fullPath =  objectConfigDir .. config
-					count = count + 1;
-
-					objectManager:loadConfig(fullPath, route.dbTable)
-				end
-			else
-				disabledCount = disabledCount + 1
-			end
-		end
-	end
-
-	log:schema("ddapi", "Loaded configs totalling: " .. count)
-
-	if disabledCount ~= 0 then
-		log:schema("ddapi", "Disabled configs totalling: " .. disabledCount)
-		log:schema("ddapi", "Disabled configs:")
-		for _, route in pairs(routes) do
-			if not route.enabled then
-				log:schema("ddapi", "  " .. route.path)
-			end
-		end
-	end
-end
-
---- Loads a single config from the filesystem and decodes it from json to lua
--- @param path
--- @param type
-function objectManager:loadConfig(path, type)
-	log:schema("ddapi", "  " .. path)
-	local configString = fileUtils.getFileContents(path)
-	local configTable = json:decode(configString)
-	table.insert(type, configTable)
+	configLoader:loadConfigs()
 end
 
 
-local function canLoadObjectType(routeName, route)
+local function canLoadObjectType(objectName, objectData)
 	-- Wait for configs to be loaded from the FS
-	if configsLoadedFromFS == false then
+	if configLoader.isInitialized == false then
+		return false
+	end
+
+	-- Some routes wait for custom start logic. Don't start these until triggered!
+	if objectData.waitingForStart == true then
 		return false
 	end
 
 	-- Don't double-load objects
-	if route.loaded == true then
+	if objectData.loaded == true then
 		return false
 	end
 
 	-- Don't load until all dependencies are satisfied.
-	for i, moduleDependency in pairs(route.moduleDependencies) do
+	for i, moduleDependency in pairs(objectData.moduleDependencies) do
 		if moduleManager.modules[moduleDependency] == nil then
 			return false
 		end
 	end
 
 	-- If checks pass, then we can load the object
-	route.loaded = true
+	objectData.loaded = true
 	return true
 end
 
---- Attempts to load all object definitions
--- Prevents duplicates
+--- Marks an object type as ready to load. 
+-- @param configName the name of the config which is being marked as ready to load
+function objectManager:markObjectAsReadyToLoad(configName)
+	log:schema("ddapi", "Object is now ready to start loading: " .. configName)
+	objectLoader[configName].waitingForStart = false
+	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
+end
+
+--- Attempts to load object definitions from the objectLoader
 function objectManager:tryLoadObjectDefinitions()
 	mj:log("Attempting to load new object definitions:")
-	for routeName, route in pairs(routes) do
-		if canLoadObjectType(routeName, route) then
-			objectManager:loadObjectDefinition(routeName, route)
+	for key, value in pairs(objectLoader) do
+		if canLoadObjectType(key, value) then
+			objectManager:loadObjectDefinition(key, value)
 		end
 	end
 end
 
 -- Loads a single object
-function objectManager:loadObjectDefinition(routeName, route)
-	log:schema("ddapi", "\nGenerating " .. routeName .. " definitions:")
+function objectManager:loadObjectDefinition(objectName, objectData)
+	log:schema("ddapi", "\nGenerating " .. objectName .. " definitions:")
 
-	local configs = route.dbTable
-	if configs ~= nil and #route.dbTable ~= 0 then
-		for i, config in ipairs(route.dbTable) do
-			mj:log(route)
-			mj:log(config)
-			objectManager[route.loadFunction](self, config) --Wtf oh my god
+	local configs = objectData.configSource
+	if configs ~= nil and #configs ~= 0 then
+		for i, config in ipairs(configs) do
+			if config then
+				objectManager[objectData.loadFunction](self, config) --Wtf oh my god
+			else
+				log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
+			end
 		end
 	else
 		log:schema("ddapi", "  (none)")
@@ -277,10 +175,9 @@ function objectManager:generateResourceDefinitions()
 end
 
 function objectManager:generateResourceDefinition(config)
-	if config == nil then
-		log:schema("ddapi", "WARNING: Attempting to generate a resource definition that is nil.")
-		return
-	end
+	-- TODO: Does this work?
+	-- Modules
+	local typeMapsModule = moduleManager:get("typeMaps")
 
 	local objectDefinition = config["hammerstone:object_definition"]
 	local description = objectDefinition["description"]
@@ -304,7 +201,7 @@ function objectManager:generateResourceDefinition(config)
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = typeMaps.types.gameObject[identifier],
+		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[identifier],
 	}
 
 	-- Handle Food
@@ -340,48 +237,27 @@ end
 -- Storage
 ---------------------------------------------------------------------------------
 
---- Generates DDAPI storage objects.
-function objectManager:generateStorageObjects()
-	if runOnceGuard("storage") then return end
-	log:schema("ddapi", "\nGenerating Storage definitions:")
-
-	if objectDB.storageConfigs ~= nil and #objectDB.storageConfigs ~= 0 then
-		for i, config in ipairs(objectDB.storageConfigs) do
-			objectManager:generateStorageObject(config)
-		end
-	else
-		log:schema("ddapi", "  (none)")
-	end
-end
-
 --- Special helper function to generate the resource IDs that a storage should use, once they are available.
---- This is a workaround :L
 function objectManager:generateResourceForStorage(storageIdentifier)
 
 	local newResource = {}
 
-	local objectIdentifiers = objectDB.objectsForStorage[storageIdentifier]
+	local objectIdentifiers = objectManager.objectsForStorage[storageIdentifier]
 	if objectIdentifiers ~= nil then
 		for i, identifier in ipairs(objectIdentifiers) do
 			table.insert(newResource, moduleManager:get("resource").types[identifier].index)
 		end
 	else
 		log:schema("ddapi", "WARNING: Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
-		log:schema("ddapi", "Available data:")
-		log:schema("ddapi", objectDB.objectsForStorage)
 	end
 
 	return newResource
 end
 
 function objectManager:generateStorageObject(config)
-	if config == nil then
-		log:schema("ddapi", "WARNING: Attempting to generate nil StorageObject!")
-		return
-	end
-
 	-- Modules
 	local storageModule = moduleManager:get("storage")
+	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Load structured information
 	local storageDefinition = config["hammerstone:storage_definition"]
@@ -389,7 +265,7 @@ function objectManager:generateStorageObject(config)
 	local storageComponent = storageDefinition.components["hammerstone:storage"]
 	local carryComponent = storageDefinition.components["hammerstone:carry"]
 
-	local gameObjectTypeIndexMap = typeMaps.types.gameObject
+	local gameObjectTypeIndexMap = typeMapsModule.types.gameObject
 
 	local identifier = utils:getField(description, "identifier")
 
@@ -462,31 +338,18 @@ end
 -- Evolving Objects
 ---------------------------------------------------------------------------------
 
-function objectManager:generateEvolvingObjects()
-	if runOnceGuard("evolving") then return end
-	log:schema("ddapi", "\nGenerating EvolvingObjects:")
-
-	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
-		for i, config in ipairs(objectDB.objectConfigs) do
-			objectManager:generateEvolvingObject(config)
-		end
-	else
-		log:schema("ddapi", "  (none)")
-	end
-end
-
+--- Generates evolving object definitions. For example an orange rotting into a rotten orange.
 function objectManager:generateEvolvingObject(config)
-	if config == nil then
-		log:schema("ddapi", "WARNING: Attempting to generate nil EvolvingObject.")
-		return
-	end
+	-- Modules
+	local evolvingObjectModule = moduleManager:get("evolvingObject")
+	local gameObjectModule =  moduleManager:get("gameObject")
 
-	local evolvingObject = moduleManager:get("evolvingObject")
-
+	-- Setup
 	local object_definition = config["hammerstone:object_definition"]
 	local evolvingObjectComponent = object_definition.components["hammerstone:evolving_object"]
 	local identifier = object_definition.description.identifier
 	
+	-- If the component doesn't exist, then simply don't register an evolving object.
 	if evolvingObjectComponent == nil then
 		return -- This is allowed	
 	else
@@ -496,75 +359,23 @@ function objectManager:generateEvolvingObject(config)
 	-- TODO: Make this smart, and can handle day length OR year length.
 	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
 	local newEvolvingObject = {
-		minTime = evolvingObject.dayLength * evolvingObjectComponent.min_time,
-		categoryIndex = evolvingObject.categories[evolvingObjectComponent.category].index,
+		minTime = evolvingObjectModule.dayLength * evolvingObjectComponent.min_time,
+		categoryIndex = evolvingObjectModule.categories[evolvingObjectComponent.category].index,
 	}
 
 	if evolvingObjectComponent.transform_to ~= nil then
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
 			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, moduleManager:get("gameObject").types[identifier].index)
+				table.insert(newResource, gameObjectModule.types[identifier].index)
 			end
 			return newResource
 		end
 
 		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
 	end
-	
-	evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
-end
 
----------------------------------------------------------------------------------
--- Harvestable Objects
----------------------------------------------------------------------------------
-
-function objectManager:generateHarvestableObjects()
-	if runOnceGuard("harvestable") then return end
-	log:schema("ddapi", "\nGenerating Harvestable Objects:")
-
-	if objectDB.objectConfigs ~= nil and #objectDB.objectConfigs ~= 0 then
-		for i, config in ipairs(objectDB.objectConfigs) do
-			objectManager:generateHarvestableObject(config)
-		end
-	else
-		log:schema("ddapi", "  (none)")
-	end
-end
-
-function objectManager:generateHarvestableObject(config)
-	local harvestableModule = moduleManager:get("harvestable") -- This will crash until we actuall provide this
-
-	local object_definition = config["hammerstone:object_definition"]
-	local evolvingObjectComponent = object_definition.components["hammerstone:harvestable"]
-	local identifier = object_definition.description.identifier
-	
-	if evolvingObjectComponent == nil then
-		return -- This is allowed	
-	else
-		log:schema("ddapi", "  " .. identifier)
-	end
-
-	-- TODO: Make this smart, and can handle day length OR year length.
-	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
-	local newEvolvingObject = {
-		minTime = moduleManager:get("evolvingObject").dayLength * evolvingObjectComponent.min_time,
-		categoryIndex = moduleManager:get("evolvingObject").categories[evolvingObjectComponent.category].index,
-	}
-
-	if evolvingObjectComponent.transform_to ~= nil then
-		local function generateTransformToTable(transform_to)
-			local newResource = {}
-			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, moduleManager:get("gameObject").types[identifier].index)
-			end
-			return newResource
-		end
-
-		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
-	end
-	
-	-- evolvingObject:addEvolvingObject(identifier, newEvolvingObject)
+	evolvingObjectModule:addEvolvingObject(identifier, newEvolvingObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -582,8 +393,8 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 
 	-- Initialize this storage container, if this is the first item we're adding.
 	local storageIdentifier = componentData.identifier
-	if objectDB.objectsForStorage[storageIdentifier] == nil then
-		objectDB.objectsForStorage[storageIdentifier] = {}
+	if objectManager.objectsForStorage[storageIdentifier] == nil then
+		objectManager.objectsForStorage[storageIdentifier] = {}
 	end
 
 	-- Insert the object identifier for this storage container

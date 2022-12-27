@@ -11,8 +11,8 @@ local mod = {
 local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
 local log = mjrequire "hammerstone/logging"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 function mod:onload(storage)
 	--- Allows adding a storage.
@@ -43,12 +43,8 @@ function mod:onload(storage)
 
 		return index
 	end
-	
-	local moduleManager = mjrequire "hammerstone/state/moduleManager"
-	moduleManager:addModule("storage", storage)
 
-	-- TODO: Delete this. It's been moved into the module-manager manager :P
-	-- objectManager:generateStorageObjects()
+	moduleManager:addModule("storage", storage)
 end
 
 return mod

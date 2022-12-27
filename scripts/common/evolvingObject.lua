@@ -13,12 +13,10 @@ local gameObject = mjrequire "common/gameObject"
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
+local objectManager = mjrequire "hammerstone/object/objectManager"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 function mod:onload(evolvingObject)
-
-	local moduleManager = mjrequire "hammerstone/state/moduleManager"
-	moduleManager:addModule("evolvingObject", evolvingObject)
-
 	--- Allows adding an evolvingObject.
 	-- @param key: The key to add, which must correspond to a gameObject key, such as 'palmFrond'.
 	-- @param objectData: The object to add, containing all fields.
@@ -41,11 +39,10 @@ function mod:onload(evolvingObject)
 		evolvingObject.yearLength = yearLength
 		super_init(evolvingObject, dayLength, yearLength)
 		
-		local objectManager = mjrequire "hammerstone/object/objectManager"
-		objectManager:generateEvolvingObjects({
-			evolvingObject = evolvingObject
-		})
+		objectManager:markObjectAsReadyToLoad("evolvingObject")
 	end
+
+	moduleManager:addModule("evolvingObject", evolvingObject)
 end
 
 return mod

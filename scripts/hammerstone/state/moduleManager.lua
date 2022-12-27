@@ -40,7 +40,12 @@ function moduleManager:addModules(modulesTable)
 end
 
 function moduleManager:get(moduleName)
-	return moduleManager.modules[moduleName]
+	local moduleToReturn = moduleManager.modules[moduleName]
+	if moduleToReturn == nil then
+		log:schema("ddapi", "ERROR: Module not available yet: " .. moduleName)
+	end
+
+	return moduleToReturn
 end
 
 -- Allows you to bind to the module manager, and recieve callback every time
