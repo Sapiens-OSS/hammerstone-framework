@@ -2,7 +2,7 @@
 -- This module controlls the registration of all Data Driven API objects. 
 -- It will search the filesystem for mod files which should be loaded, and then
 -- interact with Sapiens to create the objects.
--- @author SirLich
+-- @author SirLich, earmuffs
 
 local objectManager = {
 	inspectCraftPanelData = {},
@@ -31,7 +31,63 @@ local objectDB = {
 	skillConfigs = {},
 }
 
+-- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
+
+-- TODO: Make this flag less idiotic
+local configsLoadedFromFS = false
+
+--- Data structure which defines how a config is loaded, and in which order. 
+-- @field path - The path of the object, relative to the mod-root
+-- @field dbTable - The table containing the loaded configs
+-- @field enabled - Whether to load/process this type of config. Useful for debugging/testing
+-- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
+-- @field loaded - Whether the route has already been loaded
+-- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
+
+-- DNE: This module doesn't exist, it's just a quick testing hack
+local routes = {
+	gameObject = {
+		path = "/hammerstone/objects/",
+		dbTable = objectDB.objectConfigs,
+		enabled = true,
+		loaded = false,
+		moduleDependencies = {
+			"dne"
+		}
+	},
+	storage = {
+		path = "/hammerstone/storage/",
+		dbTable = objectDB.storageConfigs,
+		enabled = true,
+		loaded = false,
+		moduleDependencies = {
+			"storage"
+		},
+		loadFunction = "generateStorageObject" -- TODO: Strings as functions :()
+	},
+	recipe = {
+		path = "/hammerstone/recipes/",
+		dbTable = objectDB.recipeConfigs,
+		enabled = false,
+		loaded = false,
+		moduleDependencies = {"dne"}
+	},
+	material = {
+		path = "/hammerstone/materials/",
+		dbTable = objectDB.materialConfigs,
+		enabled = true,
+		loaded = false,
+		moduleDependencies = {"dne"}
+	},
+	skill = {
+		path = "/hammerstone/skills/",
+		dbTable = objectDB.skillConfigs,
+		enabled = false,
+		loaded = false,
+		moduleDependencies = {"dne"}
+	}
+}
 
 -- Guards against the same code being run multiple times.
 -- Takes in a unique ID to identify this code
@@ -73,8 +129,7 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 ---------------------------------------------------------------------------------
 
 local function newModuleAdded(modules)
-	mj:log("NEW MODULES:")
-	-- mj:log(modules)
+	objectManager:tryLoadObjectDefinitions()
 end
 
 moduleManager:bind(newModuleAdded)
@@ -103,36 +158,8 @@ end
 
 -- Loops over known config locations and attempts to load them
 function objectManager:loadConfigs()
-
+	configsLoadedFromFS = true
 	log:schema("ddapi", "Loading configuration files:")
-
-	local routes = {
-		{
-			path = "/hammerstone/objects/",
-			dbTable = objectDB.objectConfigs,
-			enabled = true,
-		},
-		{
-			path = "/hammerstone/storage/",
-			dbTable = objectDB.storageConfigs,
-			enabled = true,
-		},
-		{
-			path = "/hammerstone/recipes/",
-			dbTable = objectDB.recipeConfigs,
-			enabled = false,
-		},
-		{
-			path = "/hammerstone/materials/",
-			dbTable = objectDB.materialConfigs,
-			enabled = true,
-		},
-		{
-			path = "/hammerstone/skills/",
-			dbTable = objectDB.skillConfigs,
-			enabled = false,
-		}
-	}
 
 	-- Loads files at path to dbTable for each active mod
 	local modManager = mjrequire "common/modManager"
@@ -169,6 +196,9 @@ function objectManager:loadConfigs()
 	end
 end
 
+--- Loads a single config from the filesystem and decodes it from json to lua
+-- @param path
+-- @param type
 function objectManager:loadConfig(path, type)
 	log:schema("ddapi", "  " .. path)
 	local configString = fileUtils.getFileContents(path)
@@ -176,6 +206,56 @@ function objectManager:loadConfig(path, type)
 	table.insert(type, configTable)
 end
 
+
+local function canLoadObjectType(routeName, route)
+	-- Wait for configs to be loaded from the FS
+	if configsLoadedFromFS == false then
+		return false
+	end
+
+	-- Don't double-load objects
+	if route.loaded == true then
+		return false
+	end
+
+	-- Don't load until all dependencies are satisfied.
+	for i, moduleDependency in pairs(route.moduleDependencies) do
+		if moduleManager.modules[moduleDependency] == nil then
+			return false
+		end
+	end
+
+	-- If checks pass, then we can load the object
+	route.loaded = true
+	return true
+end
+
+--- Attempts to load all object definitions
+-- Prevents duplicates
+function objectManager:tryLoadObjectDefinitions()
+	mj:log("Attempting to load new object definitions:")
+	for routeName, route in pairs(routes) do
+		if canLoadObjectType(routeName, route) then
+			objectManager:loadObjectDefinition(routeName, route)
+		end
+	end
+end
+
+-- Loads a single object
+function objectManager:loadObjectDefinition(routeName, route)
+	log:schema("ddapi", "\nGenerating " .. routeName .. " definitions:")
+
+	local configs = route.dbTable
+	if configs ~= nil and #route.dbTable ~= 0 then
+		for i, config in ipairs(route.dbTable) do
+			mj:log(route)
+			mj:log(config)
+			objectManager[route.loadFunction](self, config) --Wtf oh my god
+		end
+	else
+		log:schema("ddapi", "  (none)")
+	end
+end
 
 ---------------------------------------------------------------------------------
 -- Resource
@@ -296,9 +376,12 @@ end
 
 function objectManager:generateStorageObject(config)
 	if config == nil then
-		log:schema("ddapi", "WARNING: Attempting to generate nil Storage Object.")
+		log:schema("ddapi", "WARNING: Attempting to generate nil StorageObject!")
 		return
 	end
+
+	-- Modules
+	local storageModule = moduleManager:get("storage")
 
 	-- Load structured information
 	local storageDefinition = config["hammerstone:storage_definition"]
@@ -359,8 +442,8 @@ function objectManager:generateStorageObject(config)
 		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
 		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
 
-		carryStackType = moduleManager:get("storage").stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
-		carryType = moduleManager:get("storage").carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
+		carryStackType = storageModule.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
+		carryType = storageModule.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
 
 		carryOffset = utils:getVec3(carryComponent, "offset", {
 			default = vec3(0.0, 0.0, 0.0)
@@ -372,7 +455,7 @@ function objectManager:generateStorageObject(config)
 		),
 	}
 
-	moduleManager:get("storage"):addStorage(identifier, newStorage)
+	storageModule:addStorage(identifier, newStorage)
 end
 
 ---------------------------------------------------------------------------------

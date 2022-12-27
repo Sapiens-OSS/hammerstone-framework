@@ -12,6 +12,7 @@ local moduleManager = {
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
 
+--- Call any functions that are interested in the module changes. 
 local function callBindings()
 	for i, f in ipairs(moduleManager.bindings) do
 		f(moduleManager.modules)
@@ -20,9 +21,14 @@ end
 
 -- Adds a single module into the module manager
 function moduleManager:addModule(moduleName, module)
-	log:schema("ddapi", "New Module Available: " .. moduleName)
-	moduleManager.modules[moduleName] = module
+	-- Don't allow double registration
+	-- TODO: Should we log here?
+	if moduleManager.modules[moduleName] ~= nil then
+		return
+	end
 
+	moduleManager.modules[moduleName] = module
+	log:schema("ddapi", "New Module Available: " .. moduleName)
 	callBindings()
 end
 
