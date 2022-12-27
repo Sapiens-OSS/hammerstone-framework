@@ -22,23 +22,23 @@ local configLoader = {
 local routes = {
 	gameObject = {
 		path = "/hammerstone/objects/",
-		dbTable = configLoader.objectConfigs
+		dbTable = configLoader.configs.objectConfigs
 	},
 	storage = {
 		path = "/hammerstone/storage/",
-		dbTable = configLoader.storageConfigs
+		dbTable = configLoader.configs.storageConfigs
 	},
 	recipe = {
 		path = "/hammerstone/recipes/",
-		dbTable = configLoader.recipeConfigs
+		dbTable = configLoader.configs.recipeConfigs
 	},
 	material = {
 		path = "/hammerstone/materials/",
-		dbTable = configLoader.materialConfigs
+		dbTable = configLoader.configs.materialConfigs
 	},
 	skill = {
 		path = "/hammerstone/skills/",
-		dbTable = configLoader.skillConfigs
+		dbTable = configLoader.configs.skillConfigs
 	}
 }
 
@@ -54,36 +54,25 @@ function configLoader:loadConfigs()
 	-- Loads files at path to dbTable for each active mod
 	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
-	local count = 0; local disabledCount = 0
-
+	local count = 0;
+	
 	for i, mod in ipairs(mods) do
-		for _, route in pairs(routes) do
-			if route.enabled then
-				local objectConfigDir = mod.path .. route.path
-				local configs = fileUtils.getDirectoryContents(objectConfigDir)
-				for j, config in ipairs(configs) do
-					local fullPath =  objectConfigDir .. config
-					count = count + 1;
+		for routeName, route in pairs(routes) do
+			local objectConfigDir = mod.path .. route.path
+			local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
+			for j, configPath in ipairs(configPaths) do
+				local fullPath =  objectConfigDir .. configPath
+				count = count + 1;
 
-					configLoader:loadConfig(fullPath, route.dbTable)
-				end
-			else
-				disabledCount = disabledCount + 1
+				mj:log("LOOK HERE")
+				mj:log(fullPath)
+				mj:log(route)
+				configLoader:loadConfig(fullPath, route.dbTable)
 			end
 		end
 	end
 
 	log:schema("ddapi", "Loaded configs totalling: " .. count)
-
-	if disabledCount ~= 0 then
-		log:schema("ddapi", "Disabled configs totalling: " .. disabledCount)
-		log:schema("ddapi", "Disabled configs:")
-		for _, route in pairs(routes) do
-			if not route.enabled then
-				log:schema("ddapi", "  " .. route.path)
-			end
-		end
-	end
 end
 
 --- Loads a single config from the filesystem and decodes it from json to lua
@@ -91,6 +80,7 @@ end
 -- @param type
 function configLoader:loadConfig(path, type)
 	log:schema("ddapi", "  " .. path)
+
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
 	table.insert(type, configTable)

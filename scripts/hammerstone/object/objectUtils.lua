@@ -14,7 +14,7 @@ local log = mjrequire "hammerstone/logging"
 -- Guards against the same code being run multiple times.
 -- Takes in a unique ID to identify this code
 local runOnceGuards = {}
-local function runOnceGuard(guard)
+function objectUtils:runOnceGuard(guard)
 	if runOnceGuards[guard] == nil then
 		runOnceGuards[guard] = true
 		return false

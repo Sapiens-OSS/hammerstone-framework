@@ -413,7 +413,7 @@ function objectManager:registerObjectForStorage(identifier, componentData)
 	end
 
 	-- Insert the object identifier for this storage container
-	table.insert(objectDB.objectsForStorage[storageIdentifier], identifier)
+	table.insert(objectManager.objectsForStorage[storageIdentifier], identifier)
 end
 
 ---------------------------------------------------------------------------------
