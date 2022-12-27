@@ -291,7 +291,7 @@ function objectManager:generateStorageObject(config)
 	log:schema("ddapi", "  " .. identifier)
 
 	-- Prep
-	local random_rotation = utils:getField(storageComponent, "random_rotation_weight", {
+	local random_rotation_weight = utils:getField(storageComponent, "random_rotation_weight", {
 		default = 2.0
 	})
 	local rotation = utils:getVec3(storageComponent, "rotation", {
@@ -319,7 +319,7 @@ function objectManager:generateStorageObject(config)
 			-- TODO consider giving more control here
 			rotationFunction = function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
-				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation, rotation)
+				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation_weight, rotation)
 				return rot
 			end,
 
