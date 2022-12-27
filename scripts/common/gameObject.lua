@@ -6,21 +6,18 @@ local mod = {
 }
 
 -- Hammerstone
+local objectManager = mjrequire "hammerstone/object/objectManager"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 function mod:onload(gameObject)
 
-	local moduleManager = mjrequire "hammerstone/state/moduleManager"
-	moduleManager:addModule("gameObject", gameObject)
-
 	local super_mjInit = gameObject.mjInit
 	gameObject.mjInit = function(self)
-
-		local objectManager = mjrequire "hammerstone/object/objectManager"
-		objectManager:generateGameObjects()
-		
+		objectManager:markObjectAsReadyToLoad("gameObject")
 		super_mjInit(self)
 	end
-end
 
+	moduleManager:addModule("gameObject", gameObject)
+end
 
 return mod

@@ -11,6 +11,17 @@ local vec3 = mjm.vec3
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
 
+-- Guards against the same code being run multiple times.
+-- Takes in a unique ID to identify this code
+local runOnceGuards = {}
+local function runOnceGuard(guard)
+	if runOnceGuards[guard] == nil then
+		runOnceGuards[guard] = true
+		return false
+	end
+	return true
+end
+
 --- Returns result of running predicate on each item in table
 -- @param table
 -- @param predicate

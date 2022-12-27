@@ -13,14 +13,10 @@ local typeMaps = mjrequire "common/typeMaps"
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/object/objectManager"
 local log = mjrequire "hammerstone/logging"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
-local loaded = false
 
 function mod:onload(skill)
-
-    local moduleManager = mjrequire "hammerstone/state/moduleManager"
-	moduleManager:addModule("skill", skill)
-
 	--- Allows adding a skill.
 	--- @param key: The key to add, such as 'stoneBuilding'
 	--- @param skillInfo: The table containing all fields required to add a skill.
@@ -74,9 +70,7 @@ function mod:onload(skill)
 		return index
 	end
 
-    objectManager:generateSkillDefinitions({
-        skill = skill
-    })
+    moduleManager:addModule("skill", skill)
 end
 
 return mod
