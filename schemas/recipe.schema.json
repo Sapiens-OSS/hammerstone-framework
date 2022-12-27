@@ -1,4 +1,5 @@
 {
+    "__url": "https://raw.githubusercontent.com/Sapiens-OSS/hammerstone-framework/feature/data-driven-api/schemas/recipe.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "hammerstone.recipe.schema",
     "title": "Recipe Definition File",
@@ -110,6 +111,7 @@
                                     "items": {
                                         "type": "string",
                                         "description": "Skill ID",
+                                        "maximum": 2,
                                         "examples": [
                                             "campfireCooking"
                                         ]

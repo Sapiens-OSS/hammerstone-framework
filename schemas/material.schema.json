@@ -1,4 +1,5 @@
 {
+    "__url": "https://raw.githubusercontent.com/Sapiens-OSS/hammerstone-framework/feature/data-driven-api/schemas/material.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "hammerstone.material.schema",
     "title": "Material Definition File",
