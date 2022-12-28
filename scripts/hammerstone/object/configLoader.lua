@@ -16,38 +16,12 @@ local configLoader = {
 	}
 }
 
--- The routest, directing how the configs are read from the FS. 
--- Each route here maps to a FILE TYPE. The fact that multiple *objects* can be generated from the same
--- file type has no impact herre.
-local routes = {
-	gameObject = {
-		path = "/hammerstone/objects/",
-		dbTable = configLoader.configs.objectConfigs
-	},
-	storage = {
-		path = "/hammerstone/storage/",
-		dbTable = configLoader.configs.storageConfigs
-	},
-	recipe = {
-		path = "/hammerstone/recipes/",
-		dbTable = configLoader.configs.recipeConfigs
-	},
-	material = {
-		path = "/hammerstone/materials/",
-		dbTable = configLoader.configs.materialConfigs
-	},
-	skill = {
-		path = "/hammerstone/skills/",
-		dbTable = configLoader.configs.skillConfigs
-	}
-}
-
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
 
 -- Loops over known config locations and attempts to load them
-function configLoader:loadConfigs()
+function configLoader:loadConfigs(objectLoader)
 	configLoader.isInitialized = true
 	log:schema("ddapi", "Loading configuration files from FileSystem:")
 
@@ -57,14 +31,17 @@ function configLoader:loadConfigs()
 	local count = 0;
 	
 	for i, mod in ipairs(mods) do
-		for routeName, route in pairs(routes) do
-			local objectConfigDir = mod.path .. route.path
-			local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
-			for j, configPath in ipairs(configPaths) do
-				local fullPath =  objectConfigDir .. configPath
-				count = count + 1;
-				configLoader:loadConfig(fullPath, route.dbTable)
+		for routeName, config in pairs(objectLoader) do
+			if config["configPath"] ~= nil then
+				local objectConfigDir = mod.path .. config.configPath
+				local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
+				for j, configPath in ipairs(configPaths) do
+					local fullPath =  objectConfigDir .. configPath
+					count = count + 1;
+					configLoader:loadConfig(fullPath, config.configSource)
+				end
 			end
+			
 		end
 	end
 

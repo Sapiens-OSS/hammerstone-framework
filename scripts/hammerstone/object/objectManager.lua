@@ -36,18 +36,25 @@ local objectDB = configLoader.configs
 ---------------------------------------------------------------------------------
 
 --- Data structure which defines how a config is loaded, and in which order. 
+-- @field configSource - Table to store loaded config data.
+-- @field configPath - Path to the folder where the config files can be read. Multiple objects can be generated from the same file.
+-- Each route here maps to a FILE TYPE. The fact that 
+-- file type has no impact herre.
 -- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
 -- @field loaded - Whether the route has already been loaded
 -- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
 local objectLoader = {
+
 	storage = {
 		configSource = objectDB.storageConfigs,
+		configPath = "/hammerstone/storage/",
 		moduleDependencies = {
 			"storage"
 		},
 		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
 	},
+
 	evolvingObject = {
 		configSource = objectDB.objectConfigs,
 		waitingForStart = true,
@@ -57,13 +64,16 @@ local objectLoader = {
 		},
 		loadFunction = "generateEvolvingObject"
 	},
+
 	material = {
 		configSource = objectDB.materialConfigs,
+		configPath = "/hammerstone/materials/",
 		moduleDependencies = {
 			"material"
 		},
 		loadFunction = "generateMaterialDefinition"
 	},
+
 	resource = {
 		configSource = objectDB.objectConfigs,
 		moduleDependencies = {
@@ -72,8 +82,10 @@ local objectLoader = {
 		},
 		loadFunction = "generateResourceDefinition"
 	},
+
 	gameObject = {
 		configSource = objectDB.objectConfigs,
+		configPath = "/hammerstone/objects/",
 		waitingForStart = true,
 		moduleDependencies = {
 			"resource",
@@ -81,9 +93,11 @@ local objectLoader = {
 		},
 		loadFunction = "generateGameObject"
 	},
+
 	recipe = {
 		configSource = objectDB.recipeConfigs,
-		disabled = false,
+		configPath = "/hammerstone/recipes/",
+		disabled = true,
 		waitingForStart = true,
 		moduleDependencies = {
 			"gameObject",
@@ -98,8 +112,11 @@ local objectLoader = {
 		},
 		loadFunction = "generateRecipeDefinition"
 	},
+
 	skill = {
 		configSource = objectDB.skillConfigs,
+		configPath = "/hammerstone/skills/",
+		disabled = true,
 		moduleDependencies = {
 			"skill"
 		},
@@ -122,7 +139,7 @@ function objectManager:init()
 	log:schema("ddapi", "\nInitializing DDAPI...")
 
 	-- Load configs from FS
-	configLoader:loadConfigs()
+	configLoader:loadConfigs(objectLoader)
 end
 
 
