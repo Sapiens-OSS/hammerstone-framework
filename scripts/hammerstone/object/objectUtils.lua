@@ -7,6 +7,7 @@ local objectUtils = {}
 -- Math
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
+local json = mjrequire "hammerstone/utils/json"
 
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
@@ -97,6 +98,27 @@ function objectUtils:getTypeIndex(tbl, key, displayAlias)
 		return tbl[key].index
 	end
 	return objectUtils:logMissing(displayAlias, key, tbl)
+end
+
+-- Ceorces a value into something safe for string concatination
+-- I deserve to be shot for this implementation
+function objectUtils:coerceToString(value)
+	if value == nil then
+		return "nil"
+	end
+
+	if type(value) == table then
+		local valueAsString = json:encode(value)
+		local maxStringLen = math.min(20, valueAsString.len)
+		local new_string = ""
+		for i in maxStringLen do
+			new_string = new_string .. valueAsString[i]
+		end
+
+		return new_string
+	end
+
+	return value
 end
 
 -- Returns the key of a type, or nil if not found.
@@ -201,12 +223,8 @@ end
 -- notInTypeTable
 function objectUtils:getField(tbl, key, optionsOrNil)
 	-- Sanitize
-	if key == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
-		return nil
-	elseif tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
-		return nil
+	if key == nil or tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
 
 	local value = tbl[key]
@@ -251,14 +269,10 @@ end
 function objectUtils:getTable(tbl, key, options)
 
 	-- Sanitize
-	if key == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
-		return nil
-	elseif tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
-		return nil
+	if key == nil or tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
-
+	
 	local values = tbl[key]
 	local name = key
 

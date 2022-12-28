@@ -509,41 +509,14 @@ function objectManager:generateRecipeDefinition(config)
 	local components = objectDefinition["components"]
 
 	-- Components
-	local recipe = components["hammerstone:recipe"]
-	local requirements = components["hammerstone:requirements"]
-	local output = components["hammerstone:output"]
-	local build_sequence = components["hammerstone:build_sequence"]
+	local recipeComponent = components["hammerstone:recipe"]
+	local requirementsComponent = components["hammerstone:requirements"]
+	local outputComponent = components["hammerstone:output"]
+	local buildSequenceComponent = components["hammerstone:build_sequence"]
 
 	log:schema("ddapi", "  " .. identifier)
 
-	local required = {
-		identifier = true,
-		name = true,
-		plural = true,
-		summary = true,
-
-		iconGameObjectType = true,
-		classification = true,
-		isFoodPreperation = false,
-		
-		skills = false,
-		requiredCraftAreaGroups = false,
-		requiredTools = false,
-
-		outputObjectInfo = true,
-		
-		inProgressBuildModel = true,
-		buildSequence = true,
-		requiredResources = true,
-
-		-- TODO: outputDisplayCount
-		-- TODO: addGameObjectInfo
-			-- modelName
-			-- resourceTypeIndex
-			-- toolUsages {}
-	}
-
-	local data = utils:compile(required, {
+	local data = {
 
 		-- Description
 		identifier = utils:getField(description, "identifier", {
@@ -555,21 +528,22 @@ function objectManager:generateRecipeDefinition(config)
 
 
 		-- Recipe Component
-		iconGameObjectType = utils:getField(recipe, "preview_object", {
+		iconGameObjectType = utils:getField(recipeComponent, "preview_object", {
 			inTypeTable = moduleManager:get("gameObject").types
 		}),
-		classification = utils:getField(recipe, "classification", {
-			inTypeTable = constructableModule.classifications -- Why is this crashing?
+		classification = utils:getField(recipeComponent, "classification", {
+			inTypeTable = constructableModule.classifications,
+			default = "craft"
 		}),
-		isFoodPreperation = utils:getField(recipe, "is_food_prep", {
+		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", {
 			type = "boolean",
 			default = false
 		}),
 
-
-		-- Output Component
+		
+		-- TODO: If the component doesn't exist, then set `hasNoOutput` instead.
 		outputObjectInfo = {
-			outputArraysByResourceObjectType = utils:getTable(output, "output_by_object", {
+			outputArraysByResourceObjectType = utils:getTable(outputComponent, "output_by_object", {
 				with = function(tbl)
 					local result = {}
 					for _, value in pairs(tbl) do -- Loop through all output objects
@@ -594,7 +568,7 @@ function objectManager:generateRecipeDefinition(config)
 
 
 		-- Requirements Component
-		skills = utils:getTable(requirements, "skills", {
+		skills = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
 			with = function(tbl)
 				if #tbl > 0 then
@@ -604,7 +578,7 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirements, "skills", {
+		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
 			with = function(tbl)
 				if #tbl > 1 then
@@ -612,12 +586,12 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		requiredCraftAreaGroups = utils:getTable(requirements, "craft_area_groups", {
+		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
 			map = function(e)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
 		}),
-		requiredTools = utils:getTable(requirements, "tools", {
+		requiredTools = utils:getTable(requirementsComponent, "tools", {
 			map = function(e)
 				return utils:getTypeIndex(toolModule.types, e, "Tool")
 			end
@@ -625,8 +599,8 @@ function objectManager:generateRecipeDefinition(config)
 
 
 		-- Build Sequence Component
-		inProgressBuildModel = utils:getField(build_sequence, "build_sequence_model"),
-		buildSequence = utils:getTable(build_sequence, "build_sequence", {
+		inProgressBuildModel = utils:getField(buildSequenceComponent, "build_sequence_model"),
+		buildSequence = utils:getTable(buildSequenceComponent, "build_sequence", {
 			with = function(tbl)
 				if not utils:isEmpty(tbl.steps) then
 					-- If steps exist, we create a custom build sequence instead a standard one
@@ -652,7 +626,7 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
-		requiredResources = utils:getTable(build_sequence, "resource_sequence", {
+		requiredResources = utils:getTable(buildSequenceComponent, "craft_sequence", {
 			-- Runs for each item and replaces item with return result
 			map = function(e)
 
@@ -661,10 +635,7 @@ function objectManager:generateRecipeDefinition(config)
 				if (res == nil) then return end -- Cancel if resource does not exist
 
 				-- Get the count
-				local count = e.count or 1
-				if (not utils:isType(count, "number")) then
-					return log:schema("ddapi", "    Resource count for " .. e.resource .. " is not a number")
-				end
+				local count = utils:getField(e, "count", {default=1, type="number"})
 
 				if e.action ~= nil then
 
@@ -700,7 +671,7 @@ function objectManager:generateRecipeDefinition(config)
 				}
 			end
 		})
-	})
+	}
 
 	if data ~= nil then
 		-- Add recipe
