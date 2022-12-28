@@ -219,12 +219,13 @@ end
 -- default (any)
 -- with (function)end
 -- type
+-- optional
 -- inTypeTable
 -- notInTypeTable
 function objectUtils:getField(tbl, key, optionsOrNil)
 	-- Sanitize
 	if key == nil or tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
+		log:schema("ddapi", "    ERROR: Failed to get table-field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
 
 	local value = tbl[key]
@@ -238,6 +239,10 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 		-- Attempt to return default, if it exists
 		if optionsOrNil ~= nil and optionsOrNil.default ~= nil then
 			return optionsOrNil.default
+		end
+
+		if optionsOrNil ~= nil and optionsOrNil.optional == true then
+			return nil -- no error
 		end
 
 		-- Assume required for all fields
@@ -272,7 +277,7 @@ function objectUtils:getTable(tbl, key, options)
 	if key == nil or tbl == nil then
 		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
-	
+
 	local values = tbl[key]
 	local name = key
 
@@ -284,6 +289,10 @@ function objectUtils:getTable(tbl, key, options)
 		-- Attempt to return default, if it exists
 		if options ~= nil and options.default ~= nil then
 			return options.default
+		end
+
+		if options ~= nil and options.optional == true then
+			return nil -- no error
 		end
 
 		-- Assume required for all fields
@@ -314,7 +323,7 @@ function objectUtils:getTable(tbl, key, options)
 				if type(v) == "function" then
 					values = objectUtils:map(values, v)
 				else
-					log:schema("ddapi", "    ERROR: Value of map option is not function")
+					log:schema("ddapi", "    ERROR: Value of map option is not function.")
 				end
 			end
 
@@ -325,7 +334,7 @@ function objectUtils:getTable(tbl, key, options)
 						return
 					end
 				else
-					log:schema("ddapi", "    ERROR: Value of with option is not function")
+					log:schema("ddapi", "    ERROR: Value of with option is not function.")
 				end
 			end
 		end

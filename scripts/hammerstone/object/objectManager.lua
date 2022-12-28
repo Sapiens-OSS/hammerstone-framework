@@ -30,6 +30,11 @@ local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
 local objectDB = configLoader.configs
 
+---------------------------------------------------------------------------------
+-- Globals
+---------------------------------------------------------------------------------
+
+local crashes = true
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
@@ -97,7 +102,7 @@ local objectLoader = {
 	recipe = {
 		configSource = objectDB.recipeConfigs,
 		configPath = "/hammerstone/recipes/",
-		disabled = true,
+		disabled = false,
 		waitingForStart = true,
 		moduleDependencies = {
 			"gameObject",
@@ -201,7 +206,19 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 	if configs ~= nil and #configs ~= 0 then
 		for i, config in ipairs(configs) do
 			if config then
-				objectManager[objectData.loadFunction](self, config) --Wtf oh my god
+
+				-- Happy path
+
+				local status, error = pcall(objectManager[objectData.loadFunction], self, config)
+				if status then
+					-- 
+				else -- Exception Path
+					log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
+					log:schema("ddapi", error)
+					if crashes then
+						os.exit()
+					end
+				end
 			else
 				log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
 			end
@@ -526,7 +543,7 @@ function objectManager:generateRecipeDefinition(config)
 	local components = objectDefinition["components"]
 
 	-- Components
-	local recipeComponent = components["hammerstone:recipe"]
+	local recipeComponent = utils:getTable(components, "hammerstone:recipe")
 	local requirementsComponent = components["hammerstone:requirements"]
 	local outputComponent = components["hammerstone:output"]
 	local buildSequenceComponent = components["hammerstone:build_sequence"]
@@ -587,6 +604,7 @@ function objectManager:generateRecipeDefinition(config)
 		-- Requirements Component
 		skills = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
+			optional = true,
 			with = function(tbl)
 				if #tbl > 0 then
 					return {
@@ -604,11 +622,13 @@ function objectManager:generateRecipeDefinition(config)
 			end
 		}),
 		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
+			optional = true,
 			map = function(e)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
 		}),
 		requiredTools = utils:getTable(requirementsComponent, "tools", {
+			optional = true,
 			map = function(e)
 				return utils:getTypeIndex(toolModule.types, e, "Tool")
 			end
