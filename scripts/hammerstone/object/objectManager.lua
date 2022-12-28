@@ -184,7 +184,7 @@ end
 --- Marks an object type as ready to load. 
 -- @param configName the name of the config which is being marked as ready to load
 function objectManager:markObjectAsReadyToLoad(configName)
-	log:schema("ddapi", "Object is now ready to start loading: " .. configName)
+	-- log:schema("ddapi", "Object is now ready to start loading: " .. configName)
 	objectLoader[configName].waitingForStart = false
 	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
 end

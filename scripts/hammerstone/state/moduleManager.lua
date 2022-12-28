@@ -28,7 +28,7 @@ function moduleManager:addModule(moduleName, module)
 	end
 
 	moduleManager.modules[moduleName] = module
-	log:schema("ddapi", "New Module Available: " .. moduleName)
+	-- log:schema("ddapi", "New Module Available: " .. moduleName)
 	callBindings()
 end
 
