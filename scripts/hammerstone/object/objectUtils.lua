@@ -274,7 +274,7 @@ function objectUtils:getTable(tbl, key, options)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this called "optional" or something, to disable warning.
-		log:schema("ddapi", "    ERROR: Missing required field: " .. name .. " in " .. tbl)
+		log:schema("ddapi", "    ERROR: Missing required field: " .. key .. " in table " .. name)
 		return nil
 	end
 
