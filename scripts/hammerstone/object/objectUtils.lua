@@ -200,6 +200,15 @@ end
 -- inTypeTable
 -- notInTypeTable
 function objectUtils:getField(tbl, key, optionsOrNil)
+	-- Sanitize
+	if key == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
+		return nil
+	elseif tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
+		return nil
+	end
+
 	local value = tbl[key]
 	local name = key
 
@@ -215,7 +224,8 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 
 		-- Assume required for all fields
 		-- TODO: Add an 'options key' for this.
-		log:schema("ddapi", "    ERROR: Missing " .. key .. " in " .. name)
+		log:schema("ddapi", "    ERROR: Missing required field: " .. name .. " in table: ")
+		log:schema("ddapi", tbl)
 		return nil
 	end
 
@@ -239,6 +249,16 @@ end
 
 -- TODO: Make this share more stuff with `getField`
 function objectUtils:getTable(tbl, key, options)
+
+	-- Sanitize
+	if key == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
+		return nil
+	elseif tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
+		return nil
+	end
+
 	local values = tbl[key]
 	local name = key
 
@@ -253,8 +273,8 @@ function objectUtils:getTable(tbl, key, options)
 		end
 
 		-- Assume required for all fields
-		-- TODO: Add an 'options key' for this.
-		log:schema("ddapi", "    ERROR: Missing " .. key .. " in " .. name)
+		-- TODO: Add an 'options key' for this called "optional" or something, to disable warning.
+		log:schema("ddapi", "    ERROR: Missing required field: " .. name .. " in " .. tbl)
 		return nil
 	end
 

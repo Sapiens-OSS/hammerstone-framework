@@ -63,10 +63,6 @@ function configLoader:loadConfigs()
 			for j, configPath in ipairs(configPaths) do
 				local fullPath =  objectConfigDir .. configPath
 				count = count + 1;
-
-				mj:log("LOOK HERE")
-				mj:log(fullPath)
-				mj:log(route)
 				configLoader:loadConfig(fullPath, route.dbTable)
 			end
 		end

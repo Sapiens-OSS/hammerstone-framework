@@ -21,10 +21,6 @@ function mod:onload(resource)
 	--- @param key: The key to add, such as 'cake'
 	--- @param objectType: The object to add, containing all fields.
 	function resource:addResource(key, objectType)
-		mj:log("ADDING RESOURCE!")
-		mj:log(key)
-		mj:log(objectType)
-
 		local resourceIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
 		local index = resourceIndexMap[key]
 		if not index then

@@ -12,11 +12,11 @@
     "properties": {
         "$schema": {
             "type": "string",
-            "description": "Allow matching your file with a schema definition"
+            "description": "Allow matching your file with a schema definition."
         },
         "hammerstone:recipe_definition": {
             "type": "object",
-            "description": "Wrapper object, to make identifying object files easier.",
+            "description": "Wrapper object which identifies this file as a recipe definition.",
             "required": [
                 "description",
                 "components"
@@ -25,6 +25,10 @@
                 "description": {
                     "description": "Container for global object properties.",
                     "type": "object",
+                    "required": [
+                        "identifier",
+                        "summary"
+                    ],
                     "properties": {
                         "identifier": {
                             "type": "string",
@@ -48,11 +52,16 @@
                                 "Snake Skull",
                                 "object_snakeSkull"
                             ]
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "A short description of the recipe. Generally includes what it will create, and how to make it."
                         }
                     }
                 },
                 "meta": {
-                    "description": "Container for 'metadata' related to your object. Feel free to introduce new fields.",
+                    "description": "Container for 'metadata' related to your object. All fields are optional. You may also introduce new fields here.",
+                    "additionalProperties": true,
                     "properties": {
                         "author": {
                             "type": "string",
@@ -78,26 +87,39 @@
                     }
                 },
                 "components": {
-                    "description": "Container for object 'components', reach covering a topic or capability.",
+                    "type": "object",
+                    "description": "Container that stores 'components'. Each component defines a topic or capability that a recipe can have.",
+                    "additionalProperties": false,
                     "required": [
                         "hammerstone:recipe"
                     ],
-                    "additionalProperties": false,
                     "properties": {
                         "hammerstone:recipe": {
                             "type": "object",
                             "description": "This component allows you to specify basic information about the recipe.",
+                            "required": [
+                                "preview_object"
+                            ],
                             "properties": {
                                 "preview_object": {
                                     "type": "string",
-                                    "description": "The object which will be used as the preview for this crafting recipe."
+                                    "description": "The object which will be used as the preview for this crafting recipe. Normally you would choose a representative output. i.e., the result of the crafting.",
+                                    "examples": [
+                                        "sirlich:orangeJuice"
+                                    ]
                                 },
                                 "classification": {
                                     "type": "string",
                                     "description": "The classification for this recipe",
+                                    "default": "craft",
                                     "enum": [
                                         "craft"
                                     ]
+                                },
+                                "is_food_prep": {
+                                    "type": "string",
+                                    "default": false, 
+                                    "description": "Describes whether this recipe is 'food preparation'. Used for internal game logic."
                                 }
                             }
                         },
@@ -143,7 +165,28 @@
                         },
                         "hammerstone:output": {
                             "type": "object",
-                            "description": "Specify the output from this recipe.",
+                            "description": "Specify the output items from the recipe.\n\nItems that are not listed will be 'consumed', so you should return tools explicitly.",
+                            "required": [
+                                "output_by_object"
+                            ],
+                            "examples": [
+                                {
+                                    "output_by_object": [
+                                        {
+                                            "input": "firedCookingPot",
+                                            "output": [
+                                                "firedCookingPot"
+                                            ]
+                                        },
+                                        {
+                                            "input": "orange",
+                                            "output": [
+                                                "orange_juice"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
                             "properties": {
                                 "output_by_object": {
                                     "type": "array",
@@ -151,17 +194,21 @@
                                     "items": {
                                         "type": "object",
                                         "description": "A single object configuration, which maps an input object, into possible output objects.",
+                                        "required": [
+                                            "input",
+                                            "output"
+                                        ],
                                         "properties": {
                                             "input": {
                                                 "type": "string",
-                                                "description": "The ID of the input objects.",
+                                                "description": "The identifier of the input object.",
                                                 "examples": [
                                                     "orange"
                                                 ]
                                             },
                                             "output": {
                                                 "type": "array",
-                                                "description": "The IDs of the output objects",
+                                                "description": "A list of output object identifiers. Duplicates allow you to drop multiple items of the same type.",
                                                 "items": {
                                                     "type": "string",
                                                     "description": "The ID of a single object",

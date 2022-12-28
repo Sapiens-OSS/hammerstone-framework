@@ -83,6 +83,7 @@ local objectLoader = {
 	},
 	recipe = {
 		configSource = objectDB.recipeConfigs,
+		disabled = false,
 		waitingForStart = true,
 		moduleDependencies = {
 			"gameObject",
@@ -135,6 +136,11 @@ local function canLoadObjectType(objectName, objectData)
 	if objectData.waitingForStart == true then
 		return false
 	end
+	
+	-- Don't enable disabled modules
+	if objectData.disabled then
+		return false
+	end
 
 	-- Don't double-load objects
 	if objectData.loaded == true then
@@ -163,7 +169,6 @@ end
 
 --- Attempts to load object definitions from the objectLoader
 function objectManager:tryLoadObjectDefinitions()
-	mj:log("Attempting to load new object definitions:")
 	for key, value in pairs(objectLoader) do
 		if canLoadObjectType(key, value) then
 			objectManager:loadObjectDefinition(key, value)
@@ -556,8 +561,9 @@ function objectManager:generateRecipeDefinition(config)
 		classification = utils:getField(recipe, "classification", {
 			inTypeTable = constructableModule.classifications -- Why is this crashing?
 		}),
-		isFoodPreperation = utils:getField(recipe, "isFoodPreparation", {
-			type = "boolean"
+		isFoodPreperation = utils:getField(recipe, "is_food_prep", {
+			type = "boolean",
+			default = false
 		}),
 
 
