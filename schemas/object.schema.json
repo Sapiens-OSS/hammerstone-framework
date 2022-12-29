@@ -100,26 +100,67 @@
                             "properties": {
                                 "scale": {
                                     "type": "number",
-                                    "description": "The scale of the model."
+                                    "description": "The scale of the model.",
+                                    "default": 1
                                 },
                                 "model": {
                                     "type": "string",
-                                    "description": "The name of the model that will represent this object.",
+                                    "description": "The name of the model that will represent this object.\n- Field: modelName",
                                     "examples": [
                                         "snakeSkull"
                                     ]
                                 },
                                 "random_rotation": {
                                     "type": "boolean",
+                                    "default": true,
                                     "description": "Whether the object will have a random initial rotation."
                                 },
                                 "physics": {
                                     "type": "boolean",
-                                    "description": "Whether the object has physics."
+                                    "default": true,
+                                    "description": "Whether the object has physics.\n- Field: hasPhysics"
                                 },
                                 "marker_positions": {
                                     "type": "array",
                                     "description": "The position where in-game markers will be positioned. In meters."
+                                }
+                            }
+                        },
+                        "hammerstone:tool": {
+                            "type": "object",
+                            "description": "Describes the ways in which this item can be used as a tool.",
+                            "properties": {
+                                "tool_usage": {
+                                    "type": "array",
+                                    "description": "List of tool configurations.",
+                                    "items": {
+                                        "type": "object",
+                                        "description": "A single configuration, defining this items usage for a single tool type.",
+                                        "required": [
+                                            "tool_type"
+                                        ],
+                                        "properties": {
+                                            "tool_type": {
+                                                "type": "string",
+                                                "description": "The ID of the tool type.\n- See: tool.lua",
+                                                "examples": [
+                                                    "weaponBasic"
+                                                ]
+                                            },
+                                            "damage": {
+                                                "type": "number",
+                                                "default": 1
+                                            },
+                                            "durability": {
+                                                "type": "number",
+                                                "default": 1
+                                            },
+                                            "speed": {
+                                                "type": "number",
+                                                "default": 1
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },

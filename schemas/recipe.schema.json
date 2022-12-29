@@ -318,7 +318,7 @@
                             "type": "object",
                             "description": "Specify the required resources and actions taken to craft this recipe.",
                             "required": [
-                                "craft_sequence"
+                                "action_sequence"
                             ],
                             "properties": {
                                 "action_sequence": {

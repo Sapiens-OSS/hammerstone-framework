@@ -474,15 +474,10 @@ function objectManager:generateGameObject(config)
 	local description = object_definition["description"]
 	local components = object_definition["components"]
 	local objectComponent = components["hammerstone:object"]
+	local toolComponent = components["hammerstone:tool"]
 	local identifier = description["identifier"]
-	log:schema("ddapi", "  " .. identifier)
 
-	local name = description["name"]
-	local plural = description["plural"]
-	local scale = objectComponent["scale"]
-	local model = objectComponent["model"]
-	local physics = objectComponent["physics"]
-	local marker_positions = objectComponent["marker_positions"]
+	log:schema("ddapi", "  " .. identifier)
 	
 	-- Allow resource linking
 	local resourceIdentifier = identifier
@@ -490,10 +485,6 @@ function objectManager:generateGameObject(config)
 	if resourceLinkComponent ~= nil then
 		resourceIdentifier = resourceLinkComponent["identifier"]
 	end
-
-	-- If resource link doesn't exist, don't crash the game
-	local resourceIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
-	if resourceIndex == nil then return end
 
 	-- TODO: toolUsages
 	-- TODO: selectionGroupTypeIndexes
@@ -504,14 +495,22 @@ function objectManager:generateGameObject(config)
 	-- randomMaxScale = 1.5,
 	-- randomShiftDownMin = -1.0,
 	-- randomShiftUpMax = 0.5,
-	local newObject = {
-		name = name,
-		plural = plural,
-		modelName = model,
-		scale = scale,
-		hasPhysics = physics,
-		resourceTypeIndex = resourceIndex,
 
+	local toolUsage = utils:getTable(toolComponent, "tool_usage", {
+		optional = true,
+		map = function (tbl)
+
+		end
+	})
+
+	local newGameObject = {
+		name = utils:getField(description, "name"),
+		plural = utils:getField(description, "plural"),
+		modelName = utils:getField(objectComponent, "model"),
+		scale = utils:getField(objectComponent, "scale", {default = 1}),
+		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
+		resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource"),
+		toolUsage = toolUsage,
 		-- TODO: Implement marker positions
 		markerPositions = {
 			{
@@ -521,7 +520,7 @@ function objectManager:generateGameObject(config)
 	}
 
 	-- Actually register the game object
-	gameObjectModule:addGameObject(identifier, newObject)
+	gameObjectModule:addGameObject(identifier, newGameObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -738,33 +737,33 @@ function objectManager:generateMaterialDefinition(config)
 	local materialModule = moduleManager:get("material")
 
 	-- Setup
-	local materialDefinition = config["hammerstone:material_definition"]
-	local materials = materialDefinition["materials"]
+	local materialDefinition = utils:getField(config, "hammerstone:material_definition")
+	local materials = utils:getField(materialDefinition, "materials")
 
-	for _, mat in pairs(materials) do
+	for _, material in pairs(materials) do
 
-		log:schema("ddapi", "  " .. mat["identifier"])
+		log:schema("ddapi", "  " .. material["identifier"])
 
 		local data = {
 
-			identifier = utils:getField(mat, "identifier", {
+			identifier = utils:getField(material, "identifier", {
 				notInTypeTable = moduleManager:get("material").types
 			}),
 
-			color = utils:getVec3(mat, "color"),
+			color = utils:getVec3(material, "color"),
 			
-			roughness = utils:getField(mat, "roughness", {
+			roughness = utils:getField(material, "roughness", {
+				default = 1,
 				type = "number"
 			}),
 
-			metal = utils:getField(mat, "metal", {
+			metal = utils:getField(material, "metal", {
+				default = 0,
 				type = "number"
 			})
 		}
 
-		if data ~= nil then
-			materialModule:addMaterial(data.identifier, data.color, data.roughness, data.metal)
-		end
+		materialModule:addMaterial(data.identifier, data.color, data.roughness, data.metal)
 	end
 end
 

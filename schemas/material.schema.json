@@ -84,12 +84,14 @@
                                 },
                                 "roughness": {
                                     "type": "number",
+                                    "default": 1,
                                     "description": "Glossiness. A value between 0 and 1.",
                                     "minimum": 0,
                                     "maximum": 1
                                 },
                                 "metal": {
                                     "type": "number",
+                                    "default": 0,
                                     "description": "Shininess. A value between 0 and 1.",
                                     "minimum": 0,
                                     "maximum": 1
