@@ -12,20 +12,21 @@ local json = mjrequire "hammerstone/utils/json"
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
 
--- Guards against the same code being run multiple times.
--- Takes in a unique ID to identify this code
+
 local runOnceGuards = {}
-function objectUtils:runOnceGuard(guard)
-	if runOnceGuards[guard] == nil then
-		runOnceGuards[guard] = true
+--- Guards against the same code being run multiple times.
+-- @param id string - The unique identifier for this guard.
+function objectUtils:runOnceGuard(id)
+	if runOnceGuards[id] == nil then
+		runOnceGuards[id] = true
 		return false
 	end
 	return true
 end
 
 --- Returns result of running predicate on each item in table
--- @param table
--- @param predicate
+-- @param tbl table - The table to process
+-- @param predicate function - Function to run
 function objectUtils:map(tbl, predicate)
 	local data = {}
 	for i,e in ipairs(tbl) do
@@ -38,6 +39,8 @@ function objectUtils:map(tbl, predicate)
 end
 
 --- Returns data if running predicate on each item in table returns true
+-- @param tbl table - The table to process
+-- @param predicate function - Function to run
 function objectUtils:all(tbl, predicate)
 	for i,e in ipairs(tbl) do
 		local value = predicate(e)
@@ -48,7 +51,9 @@ function objectUtils:all(tbl, predicate)
 	return tbl
 end
 
--- Returns items that have returned true for predicate
+--- Returns items that have returned true for predicate
+-- @param tbl table - The table to process
+-- @param predicate function - Function to run
 function objectUtils:where(tbl, predicate)
 	local data = {}
 	for i,e in ipairs(tbl) do
@@ -60,7 +65,6 @@ function objectUtils:where(tbl, predicate)
 end
 
 local logMissingTables = {}
-
 function objectUtils:logMissing(displayAlias, key, tbl)
 	if logMissingTables[tbl] == nil then
 		table.insert(logMissingTables, tbl)
@@ -85,7 +89,7 @@ function objectUtils:logExisting(displayAlias, key, tbl)
 end
 
 function objectUtils:logWrongType(key, typeName)
-	log:schema("ddapi", "    ERROR: " .. key .. " should be of type " .. typeName .. ", not " .. type(key))
+	log:schema("ddapi", "    ERROR: key='" .. key .. "' should be of type '" .. typeName .. "', not '" .. type(key) .. "'")
 end
 
 function objectUtils:logNotImplemented(featureName)
@@ -121,10 +125,30 @@ function objectUtils:coerceToString(value)
 	return value
 end
 
--- Returns the key of a type, or nil if not found.
---- @param tbl table
---- @param key string
---- @param displayAlias string
+function objectUtils:ceorceToTable(value)
+	if value == nil then
+		return {}
+	end
+	
+	return value
+end
+
+function objectUtils:merge(t1, t2)
+    for k, v in pairs(t2) do
+        if (type(v) == "table") and (type(t1[k] or false) == "table") then
+            objectUtils:merge(t1[k], t2[k])
+        else
+            t1[k] = v
+        end
+    end
+    return t1
+end
+
+
+--- Returns the key of a type, or nil if not found.
+-- @param tbl table
+-- @param key string
+-- @param displayAlias string
 function objectUtils:getTypeKey(tbl, key, displayAlias)
 	if tbl[key] ~= nil then
 		return tbl[key].key
@@ -198,17 +222,33 @@ end
 --- Fetches a vec3 by coercing a json array with three elements.
 function objectUtils:getVec3(tbl, key, options)
 	-- Configure inner options to match a vec3 conversion, while still allowing custom pass-through info
-	if options == nil then
-		options = {}
-	end
-
-	options.type = "number"
-	options.length = 3
-	options.with = function(tbl)
-		return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
-	end
+	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
+		type = "number",
+		length = 3,
+		with = function(tbl)
+			return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
+		end
+	})
 
 	return objectUtils:getTable(tbl, key, options)
+end
+
+
+--- Returns whether it's possible to get a field directly
+local function canGetField(tbl, key)
+	if tbl == nil then
+		return false
+	end
+
+	if key == nil then
+		return false
+	end
+
+	if tbl[key] == nil then
+		return false
+	end
+
+	return true
 end
 
 --- Fetches a field from the table, with validation.
@@ -222,48 +262,45 @@ end
 -- optional
 -- inTypeTable
 -- notInTypeTable
-function objectUtils:getField(tbl, key, optionsOrNil)
+function objectUtils:getField(tbl, key, options)
+	-- Protect against nil options
+	options = objectUtils:ceorceToTable(options)
+
+	-- Handle 
+	if canGetField(tbl, key) == false then
+		-- Attempt to return default, if it exists
+		if options.default ~= nil then
+			return options.default
+		end
+
+		-- Optional fields silently coerce to nil
+		if options.optional == true then
+			return nil -- no error
+		end
+
+		-- If field wasn't explicitally marked as optional, we throw an error at this point.
+		log:schema("ddapi", "    ERROR: Missing required field: " .. key .. " in table: ")
+		log:schema("ddapi", tbl)
+		os.exit(1)
+		return nil
+	end
+
 	-- Sanitize
 	if key == nil or tbl == nil then
 		log:schema("ddapi", "    ERROR: Failed to get table-field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
 
 	local value = tbl[key]
-	local name = key
 
-	if optionsOrNil ~= nil and optionsOrNil.displayName ~= nil then
-		name = optionsOrNil.displayName
+	if objectUtils:validate(key, value, options) == nil then
+		return
 	end
 
-	if value == nil then
-		-- Attempt to return default, if it exists
-		if optionsOrNil ~= nil and optionsOrNil.default ~= nil then
-			return optionsOrNil.default
-		end
-
-		if optionsOrNil ~= nil and optionsOrNil.optional == true then
-			return nil -- no error
-		end
-
-		-- Assume required for all fields
-		-- TODO: Add an 'options key' for this.
-		log:schema("ddapi", "    ERROR: Missing required field: " .. name .. " in table: ")
-		log:schema("ddapi", tbl)
-		return nil
-	end
-
-	-- Apply the various options
-	if optionsOrNil ~= nil then
-		if objectUtils:validate(key, value, optionsOrNil) == nil then
-			return
-		end
-
-		if optionsOrNil.with ~= nil then
-			if type(optionsOrNil.with) == "function" then
-				value = optionsOrNil.with(value)
-			else
-				log:schema("ddapi", "    ERROR: Value of with option is not function")
-			end
+	if options.with ~= nil then
+		if type(options.with) == "function" then
+			value = options.with(value)
+		else
+			log:schema("ddapi", "    ERROR: Value of with option is not function")
 		end
 	end
 
@@ -272,34 +309,35 @@ end
 
 -- TODO: Make this share more stuff with `getField`
 function objectUtils:getTable(tbl, key, options)
+	options = objectUtils:ceorceToTable(options)
+	
+	-- Handle 
+	if canGetField(tbl, key) == false then
+		-- Attempt to return default, if it exists
+		if options.default ~= nil then
+			return options.default
+		end
+
+		-- Optional fields silently coerce to nil
+		if options.optional == true then
+			return nil -- no error
+		end
+
+		-- If field wasn't explicitally marked as optional, we throw an error at this point.
+		log:schema("ddapi", "    ERROR: Missing required table-field: " .. key .. " in table: ")
+		log:schema("ddapi", tbl)
+		log:schema("ddapi", options)
+		os.exit(1) -- Crash
+		return nil
+	end
 
 	-- Sanitize
 	if key == nil or tbl == nil then
 		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
+		return nil
 	end
 
 	local values = tbl[key]
-	local name = key
-
-	if options ~= nil and options.displayName ~= nil then
-		name = options.displayName
-	end
-
-	if values == nil then
-		-- Attempt to return default, if it exists
-		if options ~= nil and options.default ~= nil then
-			return options.default
-		end
-
-		if options ~= nil and options.optional == true then
-			return nil -- no error
-		end
-
-		-- Assume required for all fields
-		-- TODO: Add an 'options key' for this called "optional" or something, to disable warning.
-		log:schema("ddapi", "    ERROR: Missing required field: " .. key .. " in table " .. name)
-		return nil
-	end
 
 	if type(values) ~= "table" then
 		return log:schema("ddapi", "    ERROR: Value type of key '" .. key .. "' is not table")

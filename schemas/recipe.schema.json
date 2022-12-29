@@ -239,6 +239,7 @@
                             "properties": {
                                 "build_sequence_model": {
                                     "type": "string",
+                                    "default": "craftSimple",
                                     "description": "A model with placeholders used while crafting. For example, you can define positions for resources or tools that appear on the ground.",
                                     "examples": [
                                         "fireStickCook"
@@ -334,6 +335,7 @@
                                 },
                                 "craft_sequence": {
                                     "type": "array",
+                                    "minimum": 1,
                                     "description": "The sequence of items and actions to craft this recipe.",
                                     "items": {
                                         "type": "object",
@@ -362,7 +364,6 @@
                                                 "type": "object",
                                                 "description": "The action to perform after placing the item. This action ensures the recipe takes time to complete.\n\nSee: actionSequence.lua",
                                                 "required": [
-                                                    "action_type",
                                                     "duration",
                                                     "duration_without_skill"
                                                 ],
@@ -370,6 +371,7 @@
                                                     "action_type": {
                                                         "type": "string",
                                                         "description": "The action/animation identifier",
+                                                        "default": "inspect",
                                                         "examples": [
                                                             "inspect",
                                                             "chop",

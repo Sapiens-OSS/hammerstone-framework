@@ -200,8 +200,7 @@ end
 
 -- Loads a single object
 function objectManager:loadObjectDefinition(objectName, objectData)
-	log:schema("ddapi", "\nGenerating " .. objectName .. " definitions:")
-
+	log:schema("ddapi", string.format("\nGenerating %s definitions:", objectName))
 	local configs = objectData.configSource
 	if configs ~= nil and #configs ~= 0 then
 		for i, config in ipairs(configs) do
@@ -544,9 +543,12 @@ function objectManager:generateRecipeDefinition(config)
 
 	-- Components
 	local recipeComponent = utils:getTable(components, "hammerstone:recipe")
-	local requirementsComponent = components["hammerstone:requirements"]
-	local outputComponent = components["hammerstone:output"]
-	local buildSequenceComponent = components["hammerstone:build_sequence"]
+	local outputComponent =  utils:getTable(components, "hammerstone:output")
+	local buildSequenceComponent =  utils:getTable(components, "hammerstone:build_sequence")
+	
+	-- Optional Components
+	local requirementsComponent =  utils:getTable(components, "hammerstone:requirements", {optional = true})
+
 
 	log:schema("ddapi", "  " .. identifier)
 
@@ -615,6 +617,7 @@ function objectManager:generateRecipeDefinition(config)
 		}),
 		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
+			optional = true,
 			with = function(tbl)
 				if #tbl > 1 then
 					return skillModule.types[tbl[2] ].index
@@ -622,7 +625,7 @@ function objectManager:generateRecipeDefinition(config)
 			end
 		}),
 		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
-			optional = true,
+			default = {"craftArea"},
 			map = function(e)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
@@ -636,7 +639,7 @@ function objectManager:generateRecipeDefinition(config)
 
 
 		-- Build Sequence Component
-		inProgressBuildModel = utils:getField(buildSequenceComponent, "build_sequence_model"),
+		inProgressBuildModel = utils:getField(buildSequenceComponent, "craft_sequence_model", {default = "craftSimple"}),
 		buildSequence = utils:getTable(buildSequenceComponent, "build_sequence", {
 			with = function(tbl)
 				if not utils:isEmpty(tbl.steps) then
@@ -675,6 +678,11 @@ function objectManager:generateRecipeDefinition(config)
 				local count = utils:getField(e, "count", {default=1, type="number"})
 
 				if e.action ~= nil then
+					
+					-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
+					if e.action.action_type == nil then
+						e.action.action_type = "inspect"
+					end
 
 					-- Return if action is invalid
 					local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
@@ -716,7 +724,14 @@ function objectManager:generateRecipeDefinition(config)
 
 		-- Add items in crafting panels
 		for _, group in ipairs(data.requiredCraftAreaGroups) do
-			local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
+			-- TODO: Remove this dirty hack. I'm only doing this because `craftArea` is a GOM index not a `craftAreaGroup` index.
+			local key = ""
+			if group == "craftArea" then
+				key = group
+			else
+				key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
+			end
+
 			if objectManager.inspectCraftPanelData[key] == nil then
 				objectManager.inspectCraftPanelData[key] = {}
 			end
@@ -741,14 +756,7 @@ function objectManager:generateMaterialDefinition(config)
 
 		log:schema("ddapi", "  " .. mat["identifier"])
 
-		local required = {
-			identifier = true,
-			color = true,
-			roughness = true,
-			metal = false,
-		}
-
-		local data = utils:compile(required, {
+		local data = {
 
 			identifier = utils:getField(mat, "identifier", {
 				notInTypeTable = moduleManager:get("material").types
@@ -763,7 +771,7 @@ function objectManager:generateMaterialDefinition(config)
 			metal = utils:getField(mat, "metal", {
 				type = "number"
 			})
-		})
+		}
 
 		if data ~= nil then
 			materialModule:addMaterial(data.identifier, data.color, data.roughness, data.metal)

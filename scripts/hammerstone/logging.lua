@@ -1,6 +1,7 @@
 --- Hammerstone: logging.lua
 --- @author SirLich
 
+-- Sapiens
 local mjs = mjrequire "common/mjs"
 local mjm = mjrequire "common/mjm"
 
