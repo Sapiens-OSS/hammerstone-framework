@@ -567,8 +567,8 @@ function objectManager:generateRecipeDefinition(config)
 	})
 
 	local buildSequenceData
-	if buildSequenceComponent.custom_build_sequence == nil then
-		log:logNotImplemented("Custom Build Sequence")
+	if buildSequenceComponent.custom_build_sequence ~= nil then
+		utils:logNotImplemented("Custom Build Sequence")
 	else
 		local actionSequence = utils:getField(buildSequenceComponent, "action_sequence", {
 			with = function (value)
