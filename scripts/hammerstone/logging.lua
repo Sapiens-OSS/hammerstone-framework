@@ -44,6 +44,8 @@ end
 local boundToEventManager = false
 
 local schemaLogsByFile = {}
+local schemaMetaByFile = {}
+local logID = 0
 
 local logSaveNewLog = false
 local logSaveTimeout = 0
@@ -85,6 +87,7 @@ function getModDirectoryPath()
 		local enabledMods = modManager.enabledModDirNamesAndVersionsByType.world
 
 		for _, v in pairs(enabledMods) do
+			-- Crosscheck both lists so we get the correct mod
 			local modName = allMods[v.name].name
 			if modName == "Hammerstone Framework" then
 				logging.modDirectoryPath = allMods[v.name].directory
@@ -94,27 +97,100 @@ function getModDirectoryPath()
 	return logging.modDirectoryPath
 end
 
+--- Gets the log object by ID. Returns the table and the position of the log.
+--- @param logID integer
+--- @return table, integer
+function getLogByID(logID)
+	for tblName, v in pairs(schemaMetaByFile) do
+		for index, id in ipairs(v) do
+			if logID == id then
+				return {
+					metaTable = schemaMetaByFile[tblName],
+					table = schemaLogsByFile[tblName],
+					index = index
+				}
+			end
+		end
+	end
+end
+
 --- Log to Hammerstone log files, which are separate from mainLog.
---- @param file string
+--- @param file_or_logID string or integer
 --- @param msg string
---- @return nil
-function logging:schema(file, msg)
+--- @return integer
+function logging:schema(fileName_or_logID, msg)
 	-- Even though we have our own logging now, we still want main logs too:
 	mj:log(msg)
 
 	local logPath = getLogDirectoryPath()
-	local msgString = mj:tostring(msg, 0) .. "\n"
+	local msgString = mj:tostring(msg, 0)
 
-	
 	-- Add log to specific file
-	if file ~= nil then
-		if schemaLogsByFile[file] == nil then
-			schemaLogsByFile[file] = msgString
+	if fileName_or_logID ~= nil then
+		if type(fileName_or_logID) == "number" then
+
+			-- Overwrite log entry using logID
+			local logID = fileName_or_logID
+			local logObject = getLogByID(logID)
+
+			if logObject ~= nil then
+				logObject.table[logObject.index] = msgString
+			end
 		else
-			schemaLogsByFile[file] = schemaLogsByFile[file] .. msgString
+			-- Create new log entry in file
+			local file = fileName_or_logID
+
+			if schemaLogsByFile[file] == nil then
+				schemaLogsByFile[file] = {}
+			end
+			table.insert(schemaLogsByFile[file], msgString)
+			
+			if schemaMetaByFile[file] == nil then
+				schemaMetaByFile[file] = {}
+			end
+			logID = logID + 1
+			table.insert(schemaMetaByFile[file], logID)
 		end
+		
+		-- Prepare to save log file
+		logSaveNewLog = true
+		logSaveTimeout = logSaveTimeoutMax
+
+		-- Return the log ID to use when calling append, overwrite, and delete
+		return logID
+	end
+end
+
+--- Append to a Hammerstone log entry using a logID.
+--- @param logID integer
+--- @param msg string
+--- @return integer
+function logging:append(logID, msg)
+	local logObject = getLogByID(logID)
+	local msgString = mj:tostring(msg, 0)
+
+	if logObject ~= nil then
+		logObject.table[logObject.index] = logObject.table[logObject.index] .. msgString
 	end
 
+	-- Prepare to save log file
+	logSaveNewLog = true
+	logSaveTimeout = logSaveTimeoutMax
+
+	return logID
+end
+
+--- Removes a log entry in a Hammerstone log file.
+--- @param logID integer
+--- @param msg string
+function logging:remove(logID)
+	local logObject = getLogByID(logID)
+
+	if logObject ~= nil then
+		logObject.table[logObject.index] = nil
+		logObject.metaTable[logObject.index] = nil
+	end
+	
 	-- Prepare to save log file
 	logSaveNewLog = true
 	logSaveTimeout = logSaveTimeoutMax
@@ -129,7 +205,10 @@ function updateLogs(dt)
 		if logSaveNewLog then
 			for file, data in pairs(schemaLogsByFile) do
 				local filePath = getLogDirectoryPath() .. "/logs/hammerstone_" .. file .. ".log"
-				fileUtils.writeToFile(filePath, data)
+				fileUtils.writeToFile(filePath, table.concat(data, "\n"))
+			end
+			for file, data in pairs(schemaMetaByFile) do
+				mj:log(file, data)
 			end
 			logSaveNewLog = false
 		end
