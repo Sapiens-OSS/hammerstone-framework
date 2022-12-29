@@ -135,10 +135,77 @@
                         "hammerstone:requirements": {
                             "type": "object",
                             "description": "Specify the required skills, tools, and crafting areas used to craft this recipe.",
+                            "additionalProperties": false,
                             "required": [
-                                "skills"
+                                "skills",
+                                "resources"
                             ],
                             "properties": {
+                                "resources": {
+                                    "type": "array",
+                                    "minimum": 1,
+                                    "description": "The sequence of items and actions to craft this recipe.\n- Field: requiredResources",
+                                    "items": {
+                                        "type": "object",
+                                        "description": "An individual sequence event, controlling the use/application of a single item.",
+                                        "required": [
+                                            "resource",
+                                            "action"
+                                        ],
+                                        "properties": {
+                                            "resource": {
+                                                "type": "string",
+                                                "description": "The identifier of a resource ingredient.\n\nSee: resource.lua",
+                                                "examples": [
+                                                    "orange"
+                                                ]
+                                            },
+                                            "count": {
+                                                "type": "integer",
+                                                "description": "The number of resource ingredients to use.",
+                                                "default": 1,
+                                                "examples": [
+                                                    1
+                                                ]
+                                            },
+                                            "action": {
+                                                "type": "object",
+                                                "description": "The action to perform after placing the item. This action ensures the recipe takes time to complete.\n\nSee: actionSequence.lua",
+                                                "required": [
+                                                    "duration",
+                                                    "duration_without_skill"
+                                                ],
+                                                "properties": {
+                                                    "action_type": {
+                                                        "type": "string",
+                                                        "description": "The action/animation identifier.\n\nSee: action.lua",
+                                                        "default": "inspect",
+                                                        "examples": [
+                                                            "inspect",
+                                                            "chop",
+                                                            "action_chop",
+                                                            "pickupObject"
+                                                        ]
+                                                    },
+                                                    "duration": {
+                                                        "type":"number",
+                                                        "description": "The duration of the action animation.",
+                                                        "examples": [
+                                                            0.5
+                                                        ]
+                                                    },
+                                                    "duration_without_skill": {
+                                                        "type": "number",
+                                                        "description": "The duration of the action animation, given that the sapien performing the action is missing (learning) the required skill.",
+                                                        "examples": [
+                                                            15
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
                                 "skills": {
                                     "type": "array",
                                     "description": "The skill IDs which must be used to craft this item. Maximum of two.\n\nSee: skill.lua",
@@ -162,9 +229,11 @@
                                         ]
                                     }
                                 },
-                                "tools": {
+                                "tool_types": {
                                     "type": "array",
-                                    "description": "The tool 'types' which are required to craft this item.\n\nSee: tool.lua",
+                                    "maximum": 1,
+                                    "minimum": 1,
+                                    "description": "The tool 'types' which are required to craft this item.\n- Field: requiredTools\n- See: tool.lua",
                                     "items": {
                                         "type": "string",
                                         "description": "Tool ID",
@@ -252,72 +321,56 @@
                                 "craft_sequence"
                             ],
                             "properties": {
-                                "craft_sequence_model": {
+                                "action_sequence": {
+                                    "type": "string",
+                                    "description": "The actionSequence type to use during the crafting animation.\n\nSee: actionSequence.lua",
+                                    "examples": [
+                                        "chop",
+                                        "mine",
+                                        "eat",
+                                        "fireStickCook"
+                                    ]
+                                },
+                                "build_model": {
                                     "type": "string",
                                     "default": "craftSimple",
-                                    "description": "A model with placeholders used while crafting. For example, you can define positions for resources or tools that appear on the ground.\n\nSee: modelPlaceholder.lua",
+                                    "description": "A model with placeholders used while crafting. For example, you can define positions for resources or tools that appear on the ground.\n- Field: inProgressBuildModel\n- See: modelPlaceholder.lua",
                                     "examples": [
                                         "fireStickCook",
                                         "craftSimple"
                                     ]
                                 },
-                                "build_sequence": {
-                                    "type": "object",
-                                    "description": "Specify the sapien logic and animation.",
-                                    "properties": {
-                                        "action": {
-                                            "type": "string",
-                                            "description": "The actionSequence type to use during the crafting animation.\n\nSee: actionSequence.lua",
-                                            "examples": [
-                                                "chop",
-                                                "mine",
-                                                "eat",
-                                                "fireStickCook"
-                                            ]
+                                "custom_build_sequence": {
+                                    "type": "array",
+                                    "description": "(Optional, see schema for more details)\nBy default, Hammerstone will keep your build sequence generic. Add steps here to overwrite these defaults. build_sequence's action and tool properties will be ignored.",
+                                    "examples": [
+                                        {
+                                            "type": "clearIncorrectResources"
                                         },
-                                        "tool": {
-                                            "type": "string",
-                                            "description": "The tool type to use during the crafting animation.\n\nSee: tool.lua",
-                                            "examples": [
-                                                "treeChop",
-                                                "mine",
-                                                "grinding",
-                                                "carving"
-                                            ]
+                                        {
+                                            "type": "clearObjects"
                                         },
-                                        "custom_build_sequence": {
-                                            "type": "array",
-                                            "description": "(Optional, see schema for more details)\nBy default, Hammerstone will keep your build sequence generic. Add steps here to overwrite these defaults. build_sequence's action and tool properties will be ignored.",
-                                            "examples": [
-                                                {
-                                                    "type": "clearIncorrectResources"
-                                                },
-                                                {
-                                                    "type": "clearObjects"
-                                                },
-                                                {
-                                                    "type": "bringResources"
-                                                },
-                                                {
-                                                    "type": "bringTools"
-                                                },
-                                                {
-                                                    "type": "moveComponents"
-                                                },
-                                                {
-                                                    "type": "actionSequence",
-                                                    "action": "dig",
-                                                    "tool": "dig",
-                                                    "repeatCount": 7,
-                                                    "skillRequiredToComplete": true,
-                                                    "submodelEnabledOnComplete": {
-                                                        "placeholderKey": "mound",
-                                                        "modelName": "plantHole"
-                                                    }
-                                                }
-                                            ]
+                                        {
+                                            "type": "bringResources"
+                                        },
+                                        {
+                                            "type": "bringTools"
+                                        },
+                                        {
+                                            "type": "moveComponents"
+                                        },
+                                        {
+                                            "type": "actionSequence",
+                                            "action": "dig",
+                                            "tool": "dig",
+                                            "repeatCount": 7,
+                                            "skillRequiredToComplete": true,
+                                            "submodelEnabledOnComplete": {
+                                                "placeholderKey": "mound",
+                                                "modelName": "plantHole"
+                                            }
                                         }
-                                    }
+                                    ]
                                 },
                                 "object_prop": {
                                     "description": "An object to temporarily use as a tool for this recipe.",
@@ -347,71 +400,6 @@
                                         },
                                         "offset": {},
                                         "rotation": {}
-                                    }
-                                },
-                                "craft_sequence": {
-                                    "type": "array",
-                                    "minimum": 1,
-                                    "description": "The sequence of items and actions to craft this recipe.",
-                                    "items": {
-                                        "type": "object",
-                                        "description": "An individual sequence event, controlling the use/application of a single item.",
-                                        "required": [
-                                            "resource",
-                                            "action"
-                                        ],
-                                        "properties": {
-                                            "resource": {
-                                                "type": "string",
-                                                "description": "The identifier of a resource ingredient.\n\nSee: resource.lua",
-                                                "examples": [
-                                                    "orange"
-                                                ]
-                                            },
-                                            "count": {
-                                                "type": "integer",
-                                                "description": "The number of resource ingredients to use.",
-                                                "default": 1,
-                                                "examples": [
-                                                    1
-                                                ]
-                                            },
-                                            "action": {
-                                                "type": "object",
-                                                "description": "The action to perform after placing the item. This action ensures the recipe takes time to complete.\n\nSee: actionSequence.lua",
-                                                "required": [
-                                                    "duration",
-                                                    "duration_without_skill"
-                                                ],
-                                                "properties": {
-                                                    "action_type": {
-                                                        "type": "string",
-                                                        "description": "The action/animation identifier.\n\nSee: action.lua",
-                                                        "default": "inspect",
-                                                        "examples": [
-                                                            "inspect",
-                                                            "chop",
-                                                            "action_chop",
-                                                            "pickupObject"
-                                                        ]
-                                                    },
-                                                    "duration": {
-                                                        "type":"number",
-                                                        "description": "The duration of the action animation.",
-                                                        "examples": [
-                                                            0.5
-                                                        ]
-                                                    },
-                                                    "duration_without_skill": {
-                                                        "type": "number",
-                                                        "description": "The duration of the action animation, given that the sapien performing the action is missing (learning) the required skill.",
-                                                        "examples": [
-                                                            15
-                                                        ]
-                                                    }
-                                                }
-                                            }
-                                        }
                                     }
                                 }
                             }

@@ -558,7 +558,29 @@ function objectManager:generateRecipeDefinition(config)
 
 	log:schema("ddapi", "  " .. identifier)
 
-	local data = {
+	
+	local toolType = utils:getTable(requirementsComponent, "tool_types", {
+		optional = true,
+		map = function(value)
+			return utils:getTypeIndex(toolModule.types, value, "Tool")
+		end
+	})
+
+	local buildSequenceData
+	if buildSequenceComponent.custom_build_sequence == nil then
+		log:logNotImplemented("Custom Build Sequence")
+	else
+		local actionSequence = utils:getField(buildSequenceComponent, "action_sequence", {
+			with = function (value)
+				return utils:getTypeIndex(actionSequenceModule.types, value, "Action Sequence")
+			end
+		})
+
+		buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, toolType)
+	end
+
+
+	local newRecipeDefinition = {
 		name = utils:getField(description, "name"),
 		plural = utils:getField(description, "plural"),
 		summary = utils:getField(description, "summary"),
@@ -620,43 +642,15 @@ function objectManager:generateRecipeDefinition(config)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
 		}),
-		requiredTools = utils:getTable(requirementsComponent, "tools", {
-			optional = true,
-			map = function(e)
-				return utils:getTypeIndex(toolModule.types, e, "Tool")
-			end
-		}),
-
+		requiredTools = {
+			toolType
+		},
 
 		-- Build Sequence Component
-		inProgressBuildModel = utils:getField(buildSequenceComponent, "craft_sequence_model", {default = "craftSimple"}),
-		buildSequence = utils:getTable(buildSequenceComponent, "build_sequence", {
-			with = function(tbl)
-				if not utils:isEmpty(tbl.custom_build_sequence) then
-					-- If steps exist, we create a custom build sequence instead a standard one
-					log:logNotImplemented("Custom Build Sequence") -- TODO: Implement steps
-				else
-					-- Cancel if action field doesn't exist
-					if tbl.action == nil then
-						return log:schema("ddapi", "    Missing Action Sequence")
-					end
+		inProgressBuildModel = utils:getField(buildSequenceComponent, "build_model", {default = "craftSimple"}),
+		buildSequence = buildSequenceData,
 
-					-- Get the action sequence
-					local sequence = utils:getTypeIndex(actionSequenceModule.types, tbl.action, "Action Sequence")
-					if sequence ~= nil then
-
-						-- Cancel if a tool is stated but doesn't exist
-						if tbl.tool ~= nil and #tbl.tool > 0 and utils:getTypeIndex(toolModule.types, tbl.tool, "Tool") == nil then
-							return
-						end
-
-						-- Return the standard build sequence constructor
-						return craftableModule:createStandardBuildSequence(sequence, tbl.tool)
-					end
-				end
-			end
-		}),
-		requiredResources = utils:getTable(buildSequenceComponent, "craft_sequence", {
+		requiredResources = utils:getTable(requirementsComponent, "resources", {
 			-- Runs for each item and replaces item with return result
 			map = function(e)
 
@@ -708,17 +702,17 @@ function objectManager:generateRecipeDefinition(config)
 		})
 	}
 
-	if data ~= nil then
+	if newRecipeDefinition ~= nil then
 		-- Add recipe
 		mj:log("Adding Craftable: ")
 		mj:log(identifier)
-		mj:log(data)
-		craftableModule:addCraftable(identifier, data)
+		mj:log(newRecipeDefinition)
+		craftableModule:addCraftable(identifier, newRecipeDefinition)
 
 		local typeMapsModule = moduleManager:get("typeMaps")
 		-- Add items in crafting panels
-		if data.requiredCraftAreaGroups then
-			for _, group in ipairs(data.requiredCraftAreaGroups) do
+		if newRecipeDefinition.requiredCraftAreaGroups then
+			for _, group in ipairs(newRecipeDefinition.requiredCraftAreaGroups) do
 				local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
 				if objectManager.inspectCraftPanelData[key] == nil then
 					objectManager.inspectCraftPanelData[key] = {}
