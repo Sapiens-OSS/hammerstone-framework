@@ -93,7 +93,8 @@
                     "description": "Container that stores 'components'. Each component defines a topic or capability that a recipe can have.",
                     "additionalProperties": false,
                     "required": [
-                        "hammerstone:recipe"
+                        "hammerstone:recipe",
+                        "hammerstone:requirements"
                     ],
                     "properties": {
                         "hammerstone:recipe": {
@@ -134,6 +135,9 @@
                         "hammerstone:requirements": {
                             "type": "object",
                             "description": "Specify the required skills, tools, and areas used to craft this recipe.",
+                            "required": [
+                                "skills"
+                            ],
                             "properties": {
                                 "skills": {
                                     "type": "array",

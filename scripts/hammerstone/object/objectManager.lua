@@ -559,30 +559,15 @@ function objectManager:generateRecipeDefinition(config)
 	log:schema("ddapi", "  " .. identifier)
 
 	local data = {
-
-		-- Description
-		identifier = utils:getField(description, "identifier", {
-			notInTypeTable = craftableModule.types
-		}),
 		name = utils:getField(description, "name"),
 		plural = utils:getField(description, "plural"),
 		summary = utils:getField(description, "summary"),
 
-
 		-- Recipe Component
-		iconGameObjectType = utils:getField(recipeComponent, "preview_object", {
-			inTypeTable = moduleManager:get("gameObject").types
-		}),
-
-		-- TODO: This line is too long!
+		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
 		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
-		
-		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", {
-			type = "boolean",
-			default = false
-		}),
+		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", { type = "boolean", default = false }),
 
-		
 		-- TODO: If the component doesn't exist, then set `hasNoOutput` instead.
 		outputObjectInfo = {
 			outputArraysByResourceObjectType = utils:getTable(outputComponent, "output_by_object", {
@@ -607,7 +592,6 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			}),
 		},
-
 
 		-- Requirements Component
 		skills = utils:getTable(requirementsComponent, "skills", {
