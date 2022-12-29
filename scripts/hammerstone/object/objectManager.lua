@@ -573,10 +573,10 @@ function objectManager:generateRecipeDefinition(config)
 		iconGameObjectType = utils:getField(recipeComponent, "preview_object", {
 			inTypeTable = moduleManager:get("gameObject").types
 		}),
-		classification = utils:getField(recipeComponent, "classification", {
-			inTypeTable = constructableModule.classifications,
-			default = "craft"
-		}),
+
+		-- TODO: This line is too long!
+		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
+		
 		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", {
 			type = "boolean",
 			default = false
@@ -631,7 +631,7 @@ function objectManager:generateRecipeDefinition(config)
 			end
 		}),
 		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
-			default = {"craftArea"},
+			optional = true, -- Default is the normal crafting zone.
 			map = function(e)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
@@ -726,18 +726,23 @@ function objectManager:generateRecipeDefinition(config)
 
 	if data ~= nil then
 		-- Add recipe
+		mj:log("Adding Craftable: ")
+		mj:log(identifier)
+		mj:log(data)
 		craftableModule:addCraftable(identifier, data)
 
+		local typeMapsModule = moduleManager:get("typeMaps")
 		-- Add items in crafting panels
-		for _, group in ipairs(data.requiredCraftAreaGroups) do
-			-- TODO: Remove this dirty hack. I'm only doing this because `craftArea` is a GOM index not a `craftAreaGroup` index.
-			local key = ""
-			if group == "craftArea" then
-				key = group
-			else
-				key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
+		if data.requiredCraftAreaGroups then
+			for _, group in ipairs(data.requiredCraftAreaGroups) do
+				local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
+				if objectManager.inspectCraftPanelData[key] == nil then
+					objectManager.inspectCraftPanelData[key] = {}
+				end
+				table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
 			end
-
+		else
+			local key = typeMapsModule.types.gameObject.craftGroup
 			if objectManager.inspectCraftPanelData[key] == nil then
 				objectManager.inspectCraftPanelData[key] = {}
 			end
