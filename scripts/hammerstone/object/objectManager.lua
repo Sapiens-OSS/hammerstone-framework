@@ -632,7 +632,7 @@ function objectManager:generateRecipeDefinition(config)
 		inProgressBuildModel = utils:getField(buildSequenceComponent, "craft_sequence_model", {default = "craftSimple"}),
 		buildSequence = utils:getTable(buildSequenceComponent, "build_sequence", {
 			with = function(tbl)
-				if not utils:isEmpty(tbl.steps) then
+				if not utils:isEmpty(tbl.custom_build_sequence) then
 					-- If steps exist, we create a custom build sequence instead a standard one
 					log:logNotImplemented("Custom Build Sequence") -- TODO: Implement steps
 				else
