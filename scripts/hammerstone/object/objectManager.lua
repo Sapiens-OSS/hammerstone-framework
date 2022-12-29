@@ -135,8 +135,14 @@ moduleManager:bind(newModuleAdded)
 function objectManager:init()
 	if utils:runOnceGuard("ddapi") then return end
 
-	log:schema("ddapi", os.date())
-	log:schema("ddapi", "\nInitializing DDAPI...")
+	log:schema("ddapi", os.date() .. "\n")
+
+
+	local logID = log:schema("ddapi", "Initializing DDAPI...")
+	log:schema(logID, "\nInitialized DDAPI.")
+	log:append(logID, "test")
+	log:remove(logID)
+
 
 	-- Load configs from FS
 	configLoader:loadConfigs(objectLoader)
