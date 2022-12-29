@@ -7,6 +7,7 @@ local objectUtils = {}
 -- Math
 local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
+local json = mjrequire "hammerstone/utils/json"
 
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
@@ -97,6 +98,27 @@ function objectUtils:getTypeIndex(tbl, key, displayAlias)
 		return tbl[key].index
 	end
 	return objectUtils:logMissing(displayAlias, key, tbl)
+end
+
+-- Ceorces a value into something safe for string concatination
+-- I deserve to be shot for this implementation
+function objectUtils:coerceToString(value)
+	if value == nil then
+		return "nil"
+	end
+
+	if type(value) == table then
+		local valueAsString = json:encode(value)
+		local maxStringLen = math.min(20, valueAsString.len)
+		local new_string = ""
+		for i in maxStringLen do
+			new_string = new_string .. valueAsString[i]
+		end
+
+		return new_string
+	end
+
+	return value
 end
 
 -- Returns the key of a type, or nil if not found.
@@ -197,16 +219,13 @@ end
 -- default (any)
 -- with (function)end
 -- type
+-- optional
 -- inTypeTable
 -- notInTypeTable
 function objectUtils:getField(tbl, key, optionsOrNil)
 	-- Sanitize
-	if key == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
-		return nil
-	elseif tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
-		return nil
+	if key == nil or tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get table-field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
 
 	local value = tbl[key]
@@ -220,6 +239,10 @@ function objectUtils:getField(tbl, key, optionsOrNil)
 		-- Attempt to return default, if it exists
 		if optionsOrNil ~= nil and optionsOrNil.default ~= nil then
 			return optionsOrNil.default
+		end
+
+		if optionsOrNil ~= nil and optionsOrNil.optional == true then
+			return nil -- no error
 		end
 
 		-- Assume required for all fields
@@ -251,12 +274,8 @@ end
 function objectUtils:getTable(tbl, key, options)
 
 	-- Sanitize
-	if key == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'key' is nil.")
-		return nil
-	elseif tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: 'tbl' is nil.")
-		return nil
+	if key == nil or tbl == nil then
+		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
 	end
 
 	local values = tbl[key]
@@ -270,6 +289,10 @@ function objectUtils:getTable(tbl, key, options)
 		-- Attempt to return default, if it exists
 		if options ~= nil and options.default ~= nil then
 			return options.default
+		end
+
+		if options ~= nil and options.optional == true then
+			return nil -- no error
 		end
 
 		-- Assume required for all fields
@@ -300,7 +323,7 @@ function objectUtils:getTable(tbl, key, options)
 				if type(v) == "function" then
 					values = objectUtils:map(values, v)
 				else
-					log:schema("ddapi", "    ERROR: Value of map option is not function")
+					log:schema("ddapi", "    ERROR: Value of map option is not function.")
 				end
 			end
 
@@ -311,7 +334,7 @@ function objectUtils:getTable(tbl, key, options)
 						return
 					end
 				else
-					log:schema("ddapi", "    ERROR: Value of with option is not function")
+					log:schema("ddapi", "    ERROR: Value of with option is not function.")
 				end
 			end
 		end
