@@ -95,9 +95,24 @@ local objectLoader = {
 		moduleDependencies = {
 			"resource",
 			"gameObject",
-			"tool"
+			"tool",
+			"harvestable"
 		},
 		loadFunction = "generateGameObject"
+	},
+
+	harvestable = {
+		waitingForStart = true,
+		configSource = objectDB.objectConfigs,
+		dependencies = {
+			"gameObject"
+		},
+		moduleDependencies = {
+			"harvestable",
+			"gameObject",
+			"typeMaps"
+		},
+		loadFunction = "generateHarvestableObject"
 	},
 
 	recipe = {
@@ -176,10 +191,19 @@ local function canLoadObjectType(objectName, objectData)
 		return false
 	end
 
-	-- Don't load until all dependencies are satisfied.
+	-- Don't load until all moduleDependencies are satisfied.
 	for i, moduleDependency in pairs(objectData.moduleDependencies) do
 		if moduleManager.modules[moduleDependency] == nil then
 			return false
+		end
+	end
+
+	-- Don't load until all dependencies are satisfied (dependent types loaded first!)
+	if objectData.dependencies ~= nil then
+		for i, dependency in pairs(objectData.dependencies) do
+			if objectLoader[dependency].loaded ~= true then
+				return false
+			end
 		end
 	end
 
@@ -253,10 +277,10 @@ function objectManager:generateResourceDefinition(config)
 	local identifier = description["identifier"]
 
 	-- Resource links prevent a *new* resource from being generated.
-	local resourceLinkComponent = components["hammerstone:resource_link"]
-	if resourceLinkComponent ~= nil then
-		log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceLinkComponent.identifier .. ". No unique resource created.")
-		return
+	local resourceComponent = components["hammerstone:resource"]
+	if resourceComponent.create_resource ~= true then
+		-- log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceComponent.identifier .. ". No unique resource created.")
+		return -- Abort creation of resource
 	end
 
 	log:schema("ddapi", "  " .. identifier)
@@ -402,6 +426,34 @@ function objectManager:generateStorageObject(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Harvestable  Object
+---------------------------------------------------------------------------------
+
+function objectManager:generateHarvestableObject(config)
+	-- Modules
+	local harvestableModule = moduleManager:get("harvestable")
+	local gameObjectModule =  moduleManager:get("gameObject")
+
+	-- Setup
+	local object_definition = config["hammerstone:object_definition"]
+	local harvestableComponent = object_definition.components["hammerstone:harvestable"]
+	local identifier = object_definition.description.identifier
+
+	if harvestableComponent == nil then
+		return -- This is allowed
+	else
+		log:schema("ddapi", "  " .. identifier)
+	end
+
+	local resourcesToHarvest = utils:getTable(harvestableComponent, "resources_to_harvest", {
+		map = function(value)
+			return gameObjectModule.typeIndexMap[value]
+		end
+	})
+	harvestableModule:addHarvestable(identifier, resourcesToHarvest, 2, 2)
+end
+
+---------------------------------------------------------------------------------
 -- Evolving Objects
 ---------------------------------------------------------------------------------
 
@@ -468,44 +520,59 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
+-- TODO: selectionGroupTypeIndexes
+-- TODO: Implement eatByProducts
+
+-- TODO: These ones are probably for a new component related to world placement.
+-- allowsAnyInitialRotation
+-- randomMaxScale = 1.5,
+-- randomShiftDownMin = -1.0,
+-- randomShiftUpMax = 0.5,
+
 function objectManager:generateGameObject(config)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
 	local resourceModule = moduleManager:get("resource")
-	local toolModule = moduleManager:get("tool") -- TODO: Will this be available? Hmm...
+	local toolModule = moduleManager:get("tool")
+	local harvestableModule = moduleManager:get("harvestable")
 
 	-- Setup
 	local object_definition = config["hammerstone:object_definition"]
 	local description = object_definition["description"]
+	local identifier = description["identifier"]
+
+	-- Components
 	local components = object_definition["components"]
 	local objectComponent = components["hammerstone:object"]
 	local toolComponent = components["hammerstone:tool"]
-	local identifier = description["identifier"]
+	local harvestableComponent = components["hammerstone:harvestable"]
+	local resourceComponent = components["hammerstone:resource"]
 
 	log:schema("ddapi", "  " .. identifier)
 	
-	-- Allow resource linking
-	local resourceIdentifier = identifier
-	local resourceLinkComponent = components["hammerstone:resource_link"]
-	if resourceLinkComponent ~= nil then
-		resourceIdentifier = resourceLinkComponent["identifier"]
+	local resourceIdentifier = nil -- If this stays nil, that just means it's a GOM without a resource, such as animal corpse.
+	if resourceComponent ~= nil then
+
+		-- If creating a resource, link ourselves to this identifier
+		if resourceComponent.create_resource == true then
+			resourceIdentifier = identifier
+		end
+
+		-- Otherwise we can link to the requested resource
+		if resourceComponent.link_to_resource ~= nil then
+			resourceIdentifier = resourceComponent.link_to_resource
+		end
+
+		-- Finally, cast to index. This may fail, but that's considered an acceptable error since we can't have both options defined.
+		utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
+	else
+		log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
 	end
-
-	-- TODO: selectionGroupTypeIndexes
-	-- TODO: Implement eatByProducts
-
-	-- TODO: These ones are probably for a new component related to world placement.
-	-- allowsAnyInitialRotation
-	-- randomMaxScale = 1.5,
-	-- randomShiftDownMin = -1.0,
-	-- randomShiftUpMax = 0.5,
 
 	-- Handle tools
 	local toolUsage = {}
 	local toolConfigs = utils:getField(toolComponent, "tool_usage", {default = {}})
-	mj:log(toolConfigs)
 	for i, config in ipairs(toolConfigs) do
-		mj:log(config)
 		local toolTypeIndex = utils:getFieldAsIndex(config, "tool_type", toolModule.types)
 		toolUsage[toolTypeIndex] = {
 			[toolModule.propertyTypes.damage.index] = utils:getField(toolComponent, "damage", {default = 1}),
@@ -514,13 +581,25 @@ function objectManager:generateGameObject(config)
 		}
 	end
 
+	-- TODO: Is this a load order issue?
+	-- Handle harvestable
+	local harvestableTypeIndex = utils:getField(description, "identifier", {
+		with = function (value)
+			if harvestableComponent ~= nil then
+				return harvestableModule.typeIndexMap[value]
+			end
+			return nil
+		end
+	})
+
 	local newGameObject = {
 		name = utils:getField(description, "name"),
 		plural = utils:getField(description, "plural"),
 		modelName = utils:getField(objectComponent, "model"),
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
-		resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource"),
+		resourceTypeIndex = resourceTypeIndex,
+		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsage = toolUsage,
 		-- TODO: Implement marker positions
 		markerPositions = {

@@ -209,13 +209,20 @@
                                 }
                             }
                         },
-                        "hammerstone:resource_link": {
-                            "description": "Defines whether this object should use an existing resource. If missing, resource will be auto-generated.",
+                        "hammerstone:resource": {
+                            "description": "Defines the relationship that this object has with any potential resources.",
                             "type": "object",
+                            "required": [
+                                "create_resource"
+                            ],
                             "properties": {
-                                "resource_identifier": {
+                                "create_resource": {
+                                    "type": "boolean",
+                                    "description": "Whether a resource should be created and linked to this game-object. Identifier will match the object itself."
+                                },
+                                "link_to_resource": {
                                     "type": "string",
-                                    "description": "The identifier of the resource.",
+                                    "description": "Allows you to link to an existing resource, rather than creating a new one. Mutually exclusive with 'create_resource'",
                                     "examples": [
                                         "sirlich:skulls"
                                     ]
@@ -275,13 +282,15 @@
                             }
                         },
                         "hammerstone:harvestable": {
+                            "type": "object",
+                            "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua",
                             "properties": {
-                                "identifiers": {
+                                "resources_to_harvest": {
                                     "type": "array",
-                                    "description": "The list of resources to drop when the object is harvested. Duplicates are allowed.",
+                                    "description": "The list of resources to drop when this object is harvested. Duplicates are allowed.",
                                     "items": {
                                         "type": "string",
-                                        "description": "The identifier of a single item to drop.",
+                                        "description": "The 'gameObject' identifier of a single item to drop.\n- See: gameObject.lua",
                                         "examples": [
                                             "hs:rat_skull"
                                         ]
