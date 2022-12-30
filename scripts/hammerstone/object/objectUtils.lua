@@ -96,8 +96,14 @@ function objectUtils:logNotImplemented(featureName)
 	log:schema("ddapi", "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
 
--- Returns the index of a type, or nil if not found.
+--- Returns the index of a type, or nil if not found.
+-- @param tbl The table where the index can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" where which will be cast to type.
 function objectUtils:getTypeIndex(tbl, key, displayAlias)
+	if displayAlias == nil then
+		displayAlias = objectUtils:coerceToString(key)
+	end
+	
 	if tbl[key] ~= nil then
 		return tbl[key].index
 	end
@@ -233,10 +239,29 @@ function objectUtils:getVec3(tbl, key, options)
 	return objectUtils:getTable(tbl, key, options)
 end
 
+--- Fetches a field and casts it to the correct type index.
+-- @param tbl The table to get the field from.
+-- @param key The key to get from the tbl
+-- @param indexTable the index table where you are going to cast the value to
+-- @example "foo" becomes gameObject.types["foo"].index
+function objectUtils:getFieldAsIndex(tbl, key, indexTable, options)
+	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
+		inTypeTable = indexTable,
+		with = function(value)
+			return objectUtils:getTypeIndex(indexTable, value)
+		end
+	})
+
+	return objectUtils:getField(tbl, key, options)
+end
 
 --- Returns whether it's possible to get a field directly
 local function canGetField(tbl, key)
 	if tbl == nil then
+		return false
+	end
+
+	if type(tbl) ~= "table" then
 		return false
 	end
 

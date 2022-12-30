@@ -94,7 +94,8 @@ local objectLoader = {
 		waitingForStart = true,
 		moduleDependencies = {
 			"resource",
-			"gameObject"
+			"gameObject",
+			"tool"
 		},
 		loadFunction = "generateGameObject"
 	},
@@ -214,16 +215,19 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 
 				-- Happy path
 
-				local status, error = pcall(objectManager[objectData.loadFunction], self, config)
-				if status then
-					-- 
-				else -- Exception Path
+				local function errorhandler(error)
 					log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
 					log:schema("ddapi", error)
+					log:schema("ddapi", "--------")
+					log:schema("ddapi", debug.traceback())
+					
 					if crashes then
 						os.exit()
 					end
 				end
+				
+				xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
+
 			else
 				log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
 			end
@@ -468,6 +472,7 @@ function objectManager:generateGameObject(config)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
 	local resourceModule = moduleManager:get("resource")
+	local toolModule = moduleManager:get("tool") -- TODO: Will this be available? Hmm...
 
 	-- Setup
 	local object_definition = config["hammerstone:object_definition"]
@@ -486,7 +491,6 @@ function objectManager:generateGameObject(config)
 		resourceIdentifier = resourceLinkComponent["identifier"]
 	end
 
-	-- TODO: toolUsages
 	-- TODO: selectionGroupTypeIndexes
 	-- TODO: Implement eatByProducts
 
@@ -496,12 +500,19 @@ function objectManager:generateGameObject(config)
 	-- randomShiftDownMin = -1.0,
 	-- randomShiftUpMax = 0.5,
 
-	local toolUsage = utils:getTable(toolComponent, "tool_usage", {
-		optional = true,
-		map = function (tbl)
-
-		end
-	})
+	-- Handle tools
+	local toolUsage = {}
+	local toolConfigs = utils:getField(toolComponent, "tool_usage", {default = {}})
+	mj:log(toolConfigs)
+	for i, config in ipairs(toolConfigs) do
+		mj:log(config)
+		local toolTypeIndex = utils:getFieldAsIndex(config, "tool_type", toolModule.types)
+		toolUsage[toolTypeIndex] = {
+			[toolModule.propertyTypes.damage.index] = utils:getField(toolComponent, "damage", {default = 1}),
+			[toolModule.propertyTypes.durability.index] = utils:getField(toolComponent, "durability", {default = 1}),
+			[toolModule.propertyTypes.speed.index] = utils:getField(toolComponent, "speed", {default = 1}),
+		}
+	end
 
 	local newGameObject = {
 		name = utils:getField(description, "name"),

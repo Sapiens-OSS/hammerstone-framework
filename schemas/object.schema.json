@@ -132,10 +132,10 @@
                             "properties": {
                                 "tool_usage": {
                                     "type": "array",
-                                    "description": "List of tool configurations.",
+                                    "description": "List of tool configurations. You can add multiple configs if your tool is multi-purpose.\n- Field: toolUsages",
                                     "items": {
                                         "type": "object",
-                                        "description": "A single configuration, defining this items usage for a single tool type.",
+                                        "description": "A single configuration, defining the stats for a single tool-type.",
                                         "required": [
                                             "tool_type"
                                         ],
@@ -148,14 +148,17 @@
                                                 ]
                                             },
                                             "damage": {
+                                                "description": "NODOCS",
                                                 "type": "number",
                                                 "default": 1
                                             },
                                             "durability": {
+                                                "description": "NODOCS",
                                                 "type": "number",
                                                 "default": 1
                                             },
                                             "speed": {
+                                                "description": "NODOCS",
                                                 "type": "number",
                                                 "default": 1
                                             }
