@@ -126,6 +126,23 @@
                                 }
                             }
                         },
+                        "hammerstone:plans": {
+                            "type": "object",
+                            "description": "Allows you to define a custom 'planHelper' for this object. Can be used to hook your object to a unique plan, or use a vanilla preset.",
+                            "required": [
+                                "plan_helper"
+                            ],
+                            "properties": {
+                                "plan_helper": {
+                                    "type": "string",
+                                    "description": "The plan-helper config you want to use.\n- See: planHelper.lua",
+                                    "examples": [
+                                        "availablePlansForInProgressBuildObjects",
+                                        "availablePlansForMineableObjects"
+                                    ]
+                                }
+                            }
+                        },
                         "hammerstone:tool": {
                             "type": "object",
                             "description": "Describes the ways in which this item can be used as a tool.",
@@ -283,7 +300,7 @@
                         },
                         "hammerstone:harvestable": {
                             "type": "object",
-                            "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua",
+                            "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua\n- Tip: Set 'hammerstone:plans' to something that supports harvesting.",
                             "properties": {
                                 "resources_to_harvest": {
                                     "type": "array",

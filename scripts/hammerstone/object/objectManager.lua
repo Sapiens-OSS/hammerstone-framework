@@ -134,6 +134,18 @@ local objectLoader = {
 		loadFunction = "generateRecipeDefinition"
 	},
 
+	planHelper = {
+		waitingForStart = true, -- Custom start triggered from planHelper.lua
+		configSource = objectDB.objectConfigs,
+		loadFunction = "generatePlanHelperObject",
+		dependencies = {
+			"gameObject"
+		},
+		moduleDependencies = {
+			"planHelper"
+		}
+	},
+
 	skill = {
 		configSource = objectDB.skillConfigs,
 		configPath = "/hammerstone/skills/",
@@ -276,14 +288,15 @@ function objectManager:generateResourceDefinition(config)
 	local components = objectDefinition["components"]
 	local identifier = description["identifier"]
 
+	log:schema("ddapi", "  " .. identifier)
+
 	-- Resource links prevent a *new* resource from being generated.
 	local resourceComponent = components["hammerstone:resource"]
-	if resourceComponent.create_resource ~= true then
+	if utils:getField(resourceComponent, "create_resource", {optional = true}) ~= true then
 		-- log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceComponent.identifier .. ". No unique resource created.")
 		return -- Abort creation of resource
 	end
 
-	log:schema("ddapi", "  " .. identifier)
 
 	local name = description["name"]
 	local plural = description["plural"]
@@ -426,6 +439,31 @@ function objectManager:generateStorageObject(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Plan Helper
+---------------------------------------------------------------------------------
+
+function objectManager:generatePlanHelperObject(config)
+	-- Modules
+	local planHelperModule = moduleManager:get("planHelper")
+	local gameObjectModule =  moduleManager:get("gameObject")
+
+	-- Setup
+	local definition = config["hammerstone:object_definition"]
+	local plansComponent = definition.components["hammerstone:plans"]
+
+	local objectIndex = utils:getFieldAsIndex(definition, "identifier", gameObjectModule.types)
+	local availablePlans = utils:getField(plansComponent, "available_plans", {
+		optional = true,
+		with = function (value)
+			return planHelperModule[value]
+		end
+	})
+
+	planHelperModule:setPlansForObject(objectIndex, availablePlans)
+
+end
+
+---------------------------------------------------------------------------------
 -- Harvestable  Object
 ---------------------------------------------------------------------------------
 
@@ -551,6 +589,7 @@ function objectManager:generateGameObject(config)
 	log:schema("ddapi", "  " .. identifier)
 	
 	local resourceIdentifier = nil -- If this stays nil, that just means it's a GOM without a resource, such as animal corpse.
+	local resourceTypeIndex = nil
 	if resourceComponent ~= nil then
 
 		-- If creating a resource, link ourselves to this identifier
@@ -564,7 +603,7 @@ function objectManager:generateGameObject(config)
 		end
 
 		-- Finally, cast to index. This may fail, but that's considered an acceptable error since we can't have both options defined.
-		utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
+		resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
 	else
 		log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
 	end
@@ -793,9 +832,6 @@ function objectManager:generateRecipeDefinition(config)
 
 	if newRecipeDefinition ~= nil then
 		-- Add recipe
-		mj:log("Adding Craftable: ")
-		mj:log(identifier)
-		mj:log(newRecipeDefinition)
 		craftableModule:addCraftable(identifier, newRecipeDefinition)
 
 		local typeMapsModule = moduleManager:get("typeMaps")
