@@ -449,9 +449,10 @@ function objectManager:generatePlanHelperObject(config)
 
 	-- Setup
 	local definition = config["hammerstone:object_definition"]
+	local description = definition.description
 	local plansComponent = definition.components["hammerstone:plans"]
 
-	local objectIndex = utils:getFieldAsIndex(definition, "identifier", gameObjectModule.types)
+	local objectIndex = utils:getFieldAsIndex(description, "identifier", gameObjectModule.types)
 	local availablePlans = utils:getField(plansComponent, "available_plans", {
 		optional = true,
 		with = function (value)
@@ -459,7 +460,10 @@ function objectManager:generatePlanHelperObject(config)
 		end
 	})
 
-	planHelperModule:setPlansForObject(objectIndex, availablePlans)
+	-- Nil plans would override desired vanilla plans
+	if availablePlans ~= nil then
+		planHelperModule:setPlansForObject(objectIndex, availablePlans)
+	end
 
 end
 

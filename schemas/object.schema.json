@@ -130,10 +130,10 @@
                             "type": "object",
                             "description": "Allows you to define a custom 'planHelper' for this object. Can be used to hook your object to a unique plan, or use a vanilla preset.",
                             "required": [
-                                "plan_helper"
+                                "available_plans"
                             ],
                             "properties": {
-                                "plan_helper": {
+                                "available_plans": {
                                     "type": "string",
                                     "description": "The plan-helper config you want to use.\n- See: planHelper.lua",
                                     "examples": [
