@@ -116,15 +116,18 @@
 									"properties": {
 										"normal": {
 											"type": "integer",
-											"description": "NODOCS"
+											"description": "The number of items which can normally be held.",
+											"default": 1
 										},
 										"limited_ability": {
 											"type": "integer",
-											"description": "NODOCS"
+											"description": "The number of items which can be carried when in limited ability. e.g, a child, pregnant, or old.",
+											"default": 1
 										},
 										"running": {
 											"type": "integer",
-											"description": "NODOCS"
+											"description": "The number of items which can be held when running.",
+											"default": 1
 										}
 									}
 								},

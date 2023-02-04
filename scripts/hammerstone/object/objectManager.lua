@@ -10,7 +10,7 @@ local objectManager = {
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
 	-- @format map<string, array<string>>.
-	objectsForStorage = {},
+	-- objectsForStorage = {},
 }
 
 -- Sapiens
@@ -62,9 +62,19 @@ local objectLoader = {
 		unwrap = "hammerstone:storage_definition",
 		configPath = "/hammerstone/storage/",
 		moduleDependencies = {
-			"storage"
+			"storage",
+			"resource"
 		},
 		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
+	},
+
+	-- Special one: This handles injecting the resources into storage zones, as defined in hs_storage_link
+	storageLinkHandler = {
+		configSource = objectDB.objectConfigs,
+		dependencies = {
+			"storage"
+		},
+		loadFunction = "handleStorageLinks"
 	},
 
 	evolvingObject = {
@@ -214,9 +224,11 @@ local function canLoadObjectType(objectName, objectData)
 	end
 
 	-- Don't load until all moduleDependencies are satisfied.
-	for i, moduleDependency in pairs(objectData.moduleDependencies) do
-		if moduleManager.modules[moduleDependency] == nil then
-			return false
+	if objectData.moduleDependencies ~= nil then
+		for i, moduleDependency in pairs(objectData.moduleDependencies) do
+			if moduleManager.modules[moduleDependency] == nil then
+				return false
+			end
 		end
 	end
 
@@ -293,8 +305,6 @@ function objectManager:generateResourceDefinition(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 	local resourceModule = moduleManager:get("resource")
 
-	mj:log("LOOK HERE")
-	mj:log(config)
 	-- Setup
 	local components = config["components"]
 	local description = config["description"]
@@ -345,40 +355,56 @@ function objectManager:generateResourceDefinition(config)
 		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
 	end
 
-	objectManager:registerObjectForStorage(identifier, components["hs_storage_link"])
 	resourceModule:addResource(identifier, newResource)
+end
+
+---------------------------------------------------------------------------------
+-- Storage Links
+---------------------------------------------------------------------------------
+
+function objectManager:handleStorageLinks(config)
+	-- Modules
+	local resourceModule = moduleManager:get("resource")
+	local storageModule = moduleManager:get("storage")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	-- Components
+	local components = utils:getField(config, "components")
+	local storageLinkComponent = utils:getField(components, "hs_storage_link", {
+		optional = true
+	})
+
+	if storageLinkComponent ~= nil then
+		local storageIdentifier = utils:getField(storageLinkComponent, "identifier")
+
+		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
+		table.insert(storageModule.types[storageIdentifier].resources, moduleManager:get("resource").types[identifier].index)
+	end
+
 end
 
 ---------------------------------------------------------------------------------
 -- Storage
 ---------------------------------------------------------------------------------
 
---- Special helper function to generate the resource IDs that a storage should use, once they are available.
-function objectManager:generateResourceForStorage(storageIdentifier)
-
-	local newResource = {}
-
-	local objectIdentifiers = objectManager.objectsForStorage[storageIdentifier]
-	if objectIdentifiers ~= nil then
-		for i, identifier in ipairs(objectIdentifiers) do
-			table.insert(newResource, moduleManager:get("resource").types[identifier].index)
-		end
-	else
-		log:schema("ddapi", "WARNING: Storage " .. storageIdentifier .. " is being generated with zero items. This is most likely a mistake.")
-	end
-
-	return newResource
-end
-
 function objectManager:generateStorageObject(config)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local typeMapsModule = moduleManager:get("typeMaps")
+	local resourceModule = moduleManager:get("resource")
 
 	-- Load structured information
 	local description = config["description"]
-	local storageComponent = config.components.hs_storage
-	local carryComponent = config.components.hs_carry
+
+	-- Components
+	local components = utils:getField(config, "components")
+	local carryComponent = utils:getField(components, "hs_carry")
+	local storageComponent = utils:getField(components, "hs_storage")
+	local resourcesComponent = utils:getField(components, "hs_resources", {optional=true})
 
 	local gameObjectTypeIndexMap = typeMapsModule.types.gameObject
 
@@ -404,8 +430,13 @@ function objectManager:generateStorageObject(config)
 
 		displayGameObjectTypeIndex = gameObjectTypeIndexMap[utils:getField(storageComponent, "preview_object")],
 		
-		-- TODO: This needs to be reworked to make sure that it's possible to reference vanilla resources here (?)
-		resources = objectManager:generateResourceForStorage(identifier),
+		resources = utils:getTable(resourcesComponent, "resources", {
+			default = {},
+			map = function(value)
+				return resourceModule.types[value].index
+			end
+		}),
+		-- resources = objectManager:generateResourceForStorage(identifier),
 
 		storageBox = {
 			size =  utils:getVec3(storageComponent, "size", {
@@ -523,7 +554,7 @@ function objectManager:generateEvolvingObject(config)
 	local evolvingObjectComponent = config.components.hs_evolving_object
 	local identifier = config.description.identifier
 	
-	-- If the component doesn't exist, then simply don't register an evolving object.
+	-- If the component doesn't exist, then simply don't registerf an evolving object.
 	if evolvingObjectComponent == nil then
 		return -- This is allowed	
 	else
@@ -550,25 +581,6 @@ function objectManager:generateEvolvingObject(config)
 	end
 
 	evolvingObjectModule:addEvolvingObject(identifier, newEvolvingObject)
-end
-
---- Registers an object into a storage.
--- @param identifier - The identifier of the object. e.g., hs:cake
--- @param componentData - The inner-table data for `hs_storage`
-function objectManager:registerObjectForStorage(identifier, componentData)
-
-	if componentData == nil then
-		return
-	end
-
-	-- Initialize this storage container, if this is the first item we're adding.
-	local storageIdentifier = componentData.identifier
-	if objectManager.objectsForStorage[storageIdentifier] == nil then
-		objectManager.objectsForStorage[storageIdentifier] = {}
-	end
-
-	-- Insert the object identifier for this storage container
-	table.insert(objectManager.objectsForStorage[storageIdentifier], identifier)
 end
 
 ---------------------------------------------------------------------------------
@@ -732,7 +744,8 @@ function objectManager:generateRecipeDefinition(config)
 		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
 		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
 		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", { type = "boolean", default = false }),
-
+		disabledUntilCraftableResearched  = utils:getField(recipeComponent, "disabled_until_craftable_researched", { type = "boolean", default = false }),
+		
 		-- TODO: If the component doesn't exist, then set `hasNoOutput` instead.
 		outputObjectInfo = {
 			outputArraysByResourceObjectType = utils:getTable(outputComponent, "output_by_object", {
@@ -759,6 +772,13 @@ function objectManager:generateRecipeDefinition(config)
 		},
 
 		-- Requirements Component
+		
+		dontPickUpRequiredTool = not utils:getField(requirementsComponent, "pickup_tool", {
+			default = true,
+			with = function (value)
+				return not value
+			end
+		}),
 		skills = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
 			optional = true,

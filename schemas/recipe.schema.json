@@ -126,9 +126,14 @@
                                     ]
                                 },
                                 "is_food_prep": {
-                                    "type": "string",
+                                    "type": "boolean",
                                     "default": false, 
                                     "description": "Describes whether this recipe is 'food preparation'. Used for internal game logic."
+                                },
+                                "disabled_until_craftable_researched": {
+                                    "type": "boolean",
+                                    "default": false,
+                                    "description": "Maps to 'disabledUntilCraftableResearched'"
                                 }
                             }
                         },
@@ -149,8 +154,7 @@
                                         "type": "object",
                                         "description": "An individual sequence event, controlling the use/application of a single item.",
                                         "required": [
-                                            "resource",
-                                            "action"
+                                            "resource"
                                         ],
                                         "properties": {
                                             "resource": {
@@ -220,7 +224,7 @@
                                 },
                                 "craft_area_groups": {
                                     "type": "array",
-                                    "description": "The craft area group IDs which are used to craft this item. Leave blank to craft without a crafting area.\n\nSee: craftAreaGroup.lua",
+                                    "description": "The craft area group IDs which are used to craft this item. Leave blank to craft without a crafting area.\n\nField: requiredCraftAreaGroups\n\nSee: craftAreaGroup.lua",
                                     "items": {
                                         "type": "string",
                                         "description": "Craft area ID",
@@ -251,6 +255,10 @@
                                             "carving"
                                         ]
                                     }
+                                },
+                                "pickup_tool": {
+                                    "type": "boolean",
+                                    "description": "Field: dontPickUpRequiredTool"
                                 }
                             }
                         },
