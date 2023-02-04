@@ -40,11 +40,11 @@
 					"type": "object",
 					"description": "A list of components controlling this storage zone.",
 					"required": [
-						"hammerstone:storage",
-						"hammerstone:carry"
+						"hs_storage",
+						"hs_carry"
 					],
 					"properties": {
-						"hammerstone:storage": {
+						"hs_storage": {
 							"type": "object",
 							"description": "Describes how the object is stored.",
 							"required": [
@@ -106,7 +106,7 @@
 								}
 							}
 						},
-						"hammerstone:carry": {
+						"hs_carry": {
 							"type": "object",
 							"description": "Describes how the object is carried",
 							"properties": {

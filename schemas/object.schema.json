@@ -6,10 +6,10 @@
     "description": "An object definition file for registering objects using the Hammerstone Data Driven API.",
     "type": "object",
     "required": [
-        "hs_object_definition"
+        "hammerstone:object_definition"
     ],
     "properties": {
-        "hs_object_definition": {
+        "hammerstone:object_definition": {
             "type": "object",
             "description": "Wrapper object, to make identifying object files easier.",
             "required": [
