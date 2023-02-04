@@ -20,7 +20,12 @@ local configLoader = {
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
 
+function configLoader:addConfig()
+	-- TODO Continue here
+end
+
 -- Loops over known config locations and attempts to load them
+-- @param objectLoader a table with a very specific structure where the loaded configs will be delivered.
 function configLoader:loadConfigs(objectLoader)
 	configLoader.isInitialized = true
 	log:schema("ddapi", "Loading configuration files from FileSystem:")

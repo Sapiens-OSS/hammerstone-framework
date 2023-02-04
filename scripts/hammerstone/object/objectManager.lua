@@ -18,7 +18,6 @@ local rng = mjrequire "common/randomNumberGenerator"
 
 -- Math
 local mjm = mjrequire "common/mjm"
-local vec2 = mjm.vec2
 local vec3 = mjm.vec3
 local mat3Identity = mjm.mat3Identity
 local mat3Rotate = mjm.mat3Rotate
@@ -28,20 +27,26 @@ local log = mjrequire "hammerstone/logging"
 local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
+local hammerAPI = mjrequire "hammerAPI"
 local objectDB = configLoader.configs
+
+hammerAPI:test()
 
 ---------------------------------------------------------------------------------
 -- Globals
 ---------------------------------------------------------------------------------
 
+-- Whether to crash (for development), or attempt to recover (for release).
 local crashes = true
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
 ---------------------------------------------------------------------------------
 
---- Data structure which defines how a config is loaded, and in which order. 
--- @field configSource - Table to store loaded config data.
+--- Data structure which defines how a config is loaded, and in which order.
+--- It will also be used to HOLD the loaded configs, once they've been read from the FS
+--
+-- @field configSource - Table to store loaded config data (more like a reference)
 -- @field configPath - Path to the folder where the config files can be read. Multiple objects can be generated from the same file.
 -- Each route here maps to a FILE TYPE. The fact that 
 -- file type has no impact herre.
@@ -157,7 +162,6 @@ local objectLoader = {
 	}
 }
 
-
 local function newModuleAdded(modules)
 	objectManager:tryLoadObjectDefinitions()
 end
@@ -170,18 +174,18 @@ function objectManager:init()
 
 	log:schema("ddapi", os.date() .. "\n")
 
-
 	local logID = log:schema("ddapi", "Initializing DDAPI...")
 	log:schema(logID, "\nInitialized DDAPI.")
 	log:append(logID, "test")
 	log:remove(logID)
-
 
 	-- Load configs from FS
 	configLoader:loadConfigs(objectLoader)
 end
 
 
+--- Function which tracks whether a particular object type is ready to be loaded. There
+--- are numerious reasons why this might not be the case.
 local function canLoadObjectType(objectName, objectData)
 	-- Wait for configs to be loaded from the FS
 	if configLoader.isInitialized == false then
@@ -248,9 +252,6 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 	if configs ~= nil and #configs ~= 0 then
 		for i, config in ipairs(configs) do
 			if config then
-
-				-- Happy path
-
 				local function errorhandler(error)
 					log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
 					log:schema("ddapi", error)
@@ -262,7 +263,11 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 					end
 				end
 				
-				xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
+				if config.disabled == true then
+					log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
+				else
+					xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
+				end
 
 			else
 				log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
@@ -492,7 +497,11 @@ function objectManager:generateHarvestableObject(config)
 			return gameObjectModule.typeIndexMap[value]
 		end
 	})
-	harvestableModule:addHarvestable(identifier, resourcesToHarvest, 2, 2)
+
+	local finishedHarvestIndex = utils:getField(harvestableComponent, "finish_harvest_index", {
+		default = #resourcesToHarvest
+	})
+	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
 end
 
 ---------------------------------------------------------------------------------
@@ -870,30 +879,34 @@ function objectManager:generateMaterialDefinition(config)
 	local materialDefinition = utils:getField(config, "hammerstone:material_definition")
 	local materials = utils:getField(materialDefinition, "materials")
 
-	for _, material in pairs(materials) do
+	local function loadMaterialFromTbl(tbl)
+		-- Allowed
+		if tbl == nil then
+			return nil
+		end
 
-		log:schema("ddapi", "  " .. material["identifier"])
-
-		local data = {
-
-			identifier = utils:getField(material, "identifier", {
-				notInTypeTable = moduleManager:get("material").types
-			}),
-
-			color = utils:getVec3(material, "color"),
-			
-			roughness = utils:getField(material, "roughness", {
+		return {
+			color = utils:getVec3(tbl, "color"),
+		
+			roughness = utils:getField(tbl, "roughness", {
 				default = 1,
 				type = "number"
 			}),
 
-			metal = utils:getField(material, "metal", {
+			metal = utils:getField(tbl, "metal", {
 				default = 0,
 				type = "number"
 			})
 		}
+	end
 
-		materialModule:addMaterial(data.identifier, data.color, data.roughness, data.metal)
+	for _, material in pairs(materials) do
+		local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
+		log:schema("ddapi", "  " .. identifier)
+		
+		local materialData = loadMaterialFromTbl(material)
+		local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
+		materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
 	end
 end
 

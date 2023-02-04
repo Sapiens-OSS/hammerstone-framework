@@ -6,10 +6,10 @@
     "description": "An object definition file for registering objects using the Hammerstone Data Driven API.",
     "type": "object",
     "required": [
-        "hammerstone:object_definition"
+        "hs_object_definition"
     ],
     "properties": {
-        "hammerstone:object_definition": {
+        "hs_object_definition": {
             "type": "object",
             "description": "Wrapper object, to make identifying object files easier.",
             "required": [
@@ -17,40 +17,6 @@
                 "components"
             ],
             "properties": {
-                "description": {
-                    "description": "Container for global object properties.",
-                    "type": "object",
-                    "required": [
-                        "identifier",
-                        "name",
-                        "plural"
-                    ],
-                    "properties": {
-                        "identifier": {
-                            "type": "string",
-                            "description": "The unique identifier of your object",
-                            "examples": [
-                                "sirlich:snake_skull"
-                            ]
-                        },
-                        "name": {
-                            "type": "string",
-                            "description": "The name of the object. May be localized, or not.",
-                            "examples": [
-                                "Snake Skull",
-                                "object_snakeSkull"
-                            ]
-                        },
-                        "plural": {
-                            "type": "string",
-                            "description": "The pluralized name of the object. May be localized, or not.",
-                            "examples": [
-                                "Snake Skull",
-                                "object_snakeSkull"
-                            ]
-                        }
-                    }
-                },
                 "meta": {
                     "description": "Container for 'metadata' related to your object. Feel free to introduce new fields.",
                     "properties": {
@@ -80,18 +46,52 @@
                 "components": {
                     "description": "Container for object 'components', reach covering a topic or capability.",
                     "required": [
-                        "hammerstone:object"
+                        "hs_object"
                     ],
                     "examples": [
                         {
-                            "hammerstone:object": {
+                            "hs_object": {
 
                             }
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
-                        "hammerstone:object": {
+                        "hs_description": {
+                            "description": "Container for global object properties.",
+                            "type": "object",
+                            "required": [
+                                "identifier",
+                                "name",
+                                "plural"
+                            ],
+                            "properties": {
+                                "identifier": {
+                                    "type": "string",
+                                    "description": "The unique identifier of your object",
+                                    "examples": [
+                                        "sirlich:snake_skull"
+                                    ]
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "The name of the object. May be localized, or not.",
+                                    "examples": [
+                                        "Snake Skull",
+                                        "object_snakeSkull"
+                                    ]
+                                },
+                                "plural": {
+                                    "type": "string",
+                                    "description": "The pluralized name of the object. May be localized, or not.",
+                                    "examples": [
+                                        "Snake Skull",
+                                        "object_snakeSkull"
+                                    ]
+                                }
+                            }
+                        },
+                        "hs_object": {
                             "type": "object",
                             "description": "This component allows you to specify basic information about the object.",
                             "required": [
@@ -126,7 +126,7 @@
                                 }
                             }
                         },
-                        "hammerstone:plans": {
+                        "hs_plans": {
                             "type": "object",
                             "description": "Allows you to define a custom 'planHelper' for this object. Can be used to hook your object to a unique plan, or use a vanilla preset.",
                             "required": [
@@ -143,7 +143,7 @@
                                 }
                             }
                         },
-                        "hammerstone:tool": {
+                        "hs_tool": {
                             "type": "object",
                             "description": "Describes the ways in which this item can be used as a tool.",
                             "properties": {
@@ -184,7 +184,7 @@
                                 }
                             }
                         },
-                        "hammerstone:evolving_object": {
+                        "hs_evolving_object": {
                             "type": "object",
                             "description": "This component allows specifying how your object will rot/dry/despawn.",
                             "required": [
@@ -226,7 +226,7 @@
                                 }
                             }
                         },
-                        "hammerstone:resource": {
+                        "hs_resource": {
                             "description": "Defines the relationship that this object has with any potential resources.",
                             "type": "object",
                             "required": [
@@ -246,7 +246,7 @@
                                 }
                             }
                         },
-                        "hammerstone:food": {
+                        "hs_food": {
                             "type": "object",
                             "description": "Defines that the object is edible, and specifies it's properties.",
                             "properties": {
@@ -275,7 +275,7 @@
                                 }
                             }
                         },
-                        "hammerstone:storage_link": {
+                        "hs_storage_link": {
                             "type":"object",
                             "description": "Specifies how this item is carried and stored.",
                             "properties": {
@@ -288,7 +288,7 @@
                                 }
                             }
                         },
-                        "hammerstone:decoration": {
+                        "hs_decoration": {
                             "type": "object",
                             "description": "Specifies the decoration related properties for this object.",
                             "properties": {
@@ -298,9 +298,13 @@
                                 }
                             }
                         },
-                        "hammerstone:harvestable": {
+                        "hs_harvestable": {
                             "type": "object",
-                            "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua\n- Tip: Set 'hammerstone:plans' to something that supports harvesting.",
+                            "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua\n- Tip: Set 'hs_plans' to something that supports harvesting.",
+                            "required": [
+                                "resources_to_harvest",
+                                "finish_harvest_index"
+                            ],
                             "properties": {
                                 "resources_to_harvest": {
                                     "type": "array",
@@ -313,13 +317,9 @@
                                         ]
                                     }
                                 },
-                                "single_object_count": {
+                                "finish_harvest_index": {
                                     "type": "integer",
-                                    "description": "UNDOCUMENTED"
-                                },
-                                "completion_group_count": {
-                                    "type": "integer",
-                                    "description": "UNDOCUMENTED"
+                                    "description": "The index [in resources_to_harvest] upon which the object will be removed, and replaced with the remaining resources."
                                 }
                             }
                         }
