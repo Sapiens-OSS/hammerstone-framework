@@ -43,7 +43,7 @@ function configLoader:loadConfigs(objectLoader)
 				for j, configPath in ipairs(configPaths) do
 					local fullPath =  objectConfigDir .. configPath
 					count = count + 1;
-					configLoader:loadConfig(fullPath, config.configSource)
+					configLoader:loadConfig(fullPath, config.configSource, config.unwrap)
 				end
 			end
 			
@@ -56,11 +56,17 @@ end
 --- Loads a single config from the filesystem and decodes it from json to lua
 -- @param path
 -- @param type
-function configLoader:loadConfig(path, type)
+-- @param unwrap - The top level of the config, which we optionally 'unwrap' to expose the inner definitions.
+function configLoader:loadConfig(path, type, unwrap)
 	log:schema("ddapi", "  " .. path)
 
 	local configString = fileUtils.getFileContents(path)
 	local configTable = json:decode(configString)
+
+	-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
+	if unwrap then
+		configTable = configTable[unwrap]
+	end
 	table.insert(type, configTable)
 end
 

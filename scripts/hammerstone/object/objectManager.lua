@@ -54,6 +54,7 @@ local crashes = true
 -- @field loaded - Whether the route has already been loaded
 -- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
+-- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
 local objectLoader = {
 
 	storage = {
@@ -95,6 +96,7 @@ local objectLoader = {
 
 	gameObject = {
 		configSource = objectDB.objectConfigs,
+		unwrap = "hammerstone:object_definition",
 		configPath = "/hammerstone/objects/",
 		waitingForStart = true,
 		moduleDependencies = {
@@ -288,9 +290,8 @@ function objectManager:generateResourceDefinition(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local objectDefinition = config["hammerstone:object_definition"]
-	local description = objectDefinition["description"]
-	local components = objectDefinition["components"]
+	local components = config["components"]
+	local description = config["description"]
 	local identifier = description["identifier"]
 
 	log:schema("ddapi", "  " .. identifier)
@@ -314,7 +315,7 @@ function objectManager:generateResourceDefinition(config)
 	}
 
 	-- Handle Food
-	local foodComponent = components["hammerstone:food"]
+	local foodComponent = components["hs_food"]
 	if foodComponent ~= nil then
 		--if type() -- TODO
 		newResource.foodValue = foodComponent.value
@@ -333,12 +334,12 @@ function objectManager:generateResourceDefinition(config)
 	-- TODO: Consider handling `isRawMeat` and `isCookedMeat` for purpose of tutorial integration.
 
 	-- Handle Decorations
-	local decorationComponent = components["hammerstone:decoration"]
+	local decorationComponent = components["hs_decoration"]
 	if decorationComponent ~= nil then
 		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
 	end
 
-	objectManager:registerObjectForStorage(identifier, components["hammerstone:storage_link"])
+	objectManager:registerObjectForStorage(identifier, components["hs_storage_link"])
 	resourceModule:addResource(identifier, newResource)
 end
 
@@ -453,9 +454,9 @@ function objectManager:generatePlanHelperObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local definition = config["hammerstone:object_definition"]
-	local description = definition.description
-	local plansComponent = definition.components["hammerstone:plans"]
+	local components = config.components
+	local description = components.description
+	local plansComponent = config.components.hs_plans
 
 	local objectIndex = utils:getFieldAsIndex(description, "identifier", gameObjectModule.types)
 	local availablePlans = utils:getField(plansComponent, "available_plans", {
@@ -482,9 +483,8 @@ function objectManager:generateHarvestableObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local object_definition = config["hammerstone:object_definition"]
-	local harvestableComponent = object_definition.components["hammerstone:harvestable"]
-	local identifier = object_definition.description.identifier
+	local harvestableComponent = config.components.hs_harvestable
+	local identifier = config.description.identifier
 
 	if harvestableComponent == nil then
 		return -- This is allowed
@@ -515,9 +515,8 @@ function objectManager:generateEvolvingObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local object_definition = config["hammerstone:object_definition"]
-	local evolvingObjectComponent = object_definition.components["hammerstone:evolving_object"]
-	local identifier = object_definition.description.identifier
+	local evolvingObjectComponent = config.components.hs_evolving_object
+	local identifier = config.description.identifier
 	
 	-- If the component doesn't exist, then simply don't register an evolving object.
 	if evolvingObjectComponent == nil then
@@ -588,16 +587,15 @@ function objectManager:generateGameObject(config)
 	local harvestableModule = moduleManager:get("harvestable")
 
 	-- Setup
-	local object_definition = config["hammerstone:object_definition"]
-	local description = object_definition["description"]
+	local description = config["description"]
 	local identifier = description["identifier"]
 
 	-- Components
-	local components = object_definition["components"]
-	local objectComponent = components["hammerstone:object"]
-	local toolComponent = components["hammerstone:tool"]
-	local harvestableComponent = components["hammerstone:harvestable"]
-	local resourceComponent = components["hammerstone:resource"]
+	local components = config["components"]
+	local objectComponent = components.hs_object
+	local toolComponent = components.hs_tool
+	local harvestableComponent = components.hs_harvestable
+	local resourceComponent = components.hs_resource
 
 	log:schema("ddapi", "  " .. identifier)
 	
