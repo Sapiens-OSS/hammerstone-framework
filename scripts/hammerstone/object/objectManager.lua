@@ -59,6 +59,7 @@ local objectLoader = {
 
 	storage = {
 		configSource = objectDB.storageConfigs,
+		unwrap = "hammerstone:storage_definition",
 		configPath = "/hammerstone/storage/",
 		moduleDependencies = {
 			"storage"
@@ -78,6 +79,7 @@ local objectLoader = {
 
 	material = {
 		configSource = objectDB.materialConfigs,
+		unwrap = "hammerstone:material_definition",
 		configPath = "/hammerstone/materials/",
 		moduleDependencies = {
 			"material"
@@ -124,6 +126,7 @@ local objectLoader = {
 
 	recipe = {
 		configSource = objectDB.recipeConfigs,
+		unwrap = "hammerstone:recipe_definition",
 		configPath = "/hammerstone/recipes/",
 		disabled = false,
 		waitingForStart = true,
@@ -155,6 +158,7 @@ local objectLoader = {
 
 	skill = {
 		configSource = objectDB.skillConfigs,
+		unwrap = "hammerstone:skill_definition",
 		configPath = "/hammerstone/skills/",
 		disabled = true,
 		moduleDependencies = {
@@ -372,10 +376,9 @@ function objectManager:generateStorageObject(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Load structured information
-	local storageDefinition = config["hammerstone:storage_definition"]
-	local description = storageDefinition["description"]
-	local storageComponent = storageDefinition.components["hammerstone:storage"]
-	local carryComponent = storageDefinition.components["hammerstone:carry"]
+	local description = config["description"]
+	local storageComponent = config.components.hs_storage
+	local carryComponent = config.components.hs_carry
 
 	local gameObjectTypeIndexMap = typeMapsModule.types.gameObject
 
@@ -551,7 +554,7 @@ end
 
 --- Registers an object into a storage.
 -- @param identifier - The identifier of the object. e.g., hs:cake
--- @param componentData - The inner-table data for `hammerstone:storage`
+-- @param componentData - The inner-table data for `hs_storage`
 function objectManager:registerObjectForStorage(identifier, componentData)
 
 	if componentData == nil then
@@ -683,18 +686,17 @@ function objectManager:generateRecipeDefinition(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Definition
-	local objectDefinition = config["hammerstone:recipe_definition"]
-	local description = objectDefinition["description"]
+	local description = config["description"]
 	local identifier = description["identifier"]
-	local components = objectDefinition["components"]
+	local components = config["components"]
 
 	-- Components
-	local recipeComponent = utils:getTable(components, "hammerstone:recipe")
-	local outputComponent =  utils:getTable(components, "hammerstone:output")
-	local buildSequenceComponent =  utils:getTable(components, "hammerstone:build_sequence")
+	local recipeComponent = utils:getTable(components, "hs_recipe")
+	local outputComponent =  utils:getTable(components, "hs_output")
+	local buildSequenceComponent =  utils:getTable(components, "hs_build_sequence")
 	
 	-- Optional Components
-	local requirementsComponent =  utils:getTable(components, "hammerstone:requirements", {optional = true})
+	local requirementsComponent =  utils:getTable(components, "hs_requirements", {optional = true})
 
 
 	log:schema("ddapi", "  " .. identifier)
@@ -876,8 +878,7 @@ function objectManager:generateMaterialDefinition(config)
 	local materialModule = moduleManager:get("material")
 
 	-- Setup
-	local materialDefinition = utils:getField(config, "hammerstone:material_definition")
-	local materials = utils:getField(materialDefinition, "materials")
+	local materials = utils:getField(config, "materials")
 
 	local function loadMaterialFromTbl(tbl)
 		-- Allowed
@@ -921,8 +922,7 @@ function objectManager:generateSkillDefinition(config)
 	local skillModule = moduleManager:get("skill")
 
 	-- Setup
-	local skillDefinition = config["hammerstone:skill_definition"]
-	local skills = skillDefinition["skills"]
+	local skills = config["skills"]
 
 	for _, s in pairs(skills) do
 

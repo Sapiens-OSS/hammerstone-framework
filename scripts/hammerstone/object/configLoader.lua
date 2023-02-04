@@ -81,6 +81,7 @@ function configLoader:loadConfig(path, type, unwrap)
 		end
 	end
 
+	-- TODO: Wtf is this, rewrite it.
 	-- Load lua configs
 	if stringEndsWith(path, ".lua") then
 		local configFile = loadstring(configString, "Yeah sorry, you're screwed.")
