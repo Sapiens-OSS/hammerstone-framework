@@ -289,6 +289,8 @@ function objectManager:generateResourceDefinition(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 	local resourceModule = moduleManager:get("resource")
 
+	mj:log("LOOK HERE")
+	mj:log(config)
 	-- Setup
 	local components = config["components"]
 	local description = config["description"]
@@ -297,7 +299,7 @@ function objectManager:generateResourceDefinition(config)
 	log:schema("ddapi", "  " .. identifier)
 
 	-- Resource links prevent a *new* resource from being generated.
-	local resourceComponent = components["hammerstone:resource"]
+	local resourceComponent = components.hs_resource
 	if utils:getField(resourceComponent, "create_resource", {optional = true}) ~= true then
 		-- log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceComponent.identifier .. ". No unique resource created.")
 		return -- Abort creation of resource
@@ -455,7 +457,7 @@ function objectManager:generatePlanHelperObject(config)
 
 	-- Setup
 	local components = config.components
-	local description = components.description
+	local description = config.description
 	local plansComponent = config.components.hs_plans
 
 	local objectIndex = utils:getFieldAsIndex(description, "identifier", gameObjectModule.types)

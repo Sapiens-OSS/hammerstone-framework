@@ -12,7 +12,6 @@ local json = mjrequire "hammerstone/utils/json"
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
 
-
 local runOnceGuards = {}
 --- Guards against the same code being run multiple times.
 -- @param id string - The unique identifier for this guard.

@@ -24,6 +24,14 @@ function configLoader:addConfig()
 	-- TODO Continue here
 end
 
+-- TODO: Move this somewhere more reasonable
+--- Returns true if the string ends with a suffix
+-- @param str The string to test against, eg. bob.json
+-- @param suffix The suffix to test for, eg. .json
+local function stringEndsWith(str, suffix)
+    return string.sub(str, -#suffix) == suffix
+end
+
 -- Loops over known config locations and attempts to load them
 -- @param objectLoader a table with a very specific structure where the loaded configs will be delivered.
 function configLoader:loadConfigs(objectLoader)
@@ -60,14 +68,43 @@ end
 function configLoader:loadConfig(path, type, unwrap)
 	log:schema("ddapi", "  " .. path)
 
+	local configTable = {}
 	local configString = fileUtils.getFileContents(path)
-	local configTable = json:decode(configString)
 
-	-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
-	if unwrap then
-		configTable = configTable[unwrap]
+	-- Load json configs
+	if stringEndsWith(path, ".json") then
+		configTable = json:decode(configString)
+
+		-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
+		if unwrap then
+			configTable = configTable[unwrap]
+		end
 	end
-	table.insert(type, configTable)
+
+	-- Load lua configs
+	if stringEndsWith(path, ".lua") then
+		local configFile = loadstring(configString, "Yeah sorry, you're screwed.")
+
+		if configFile then
+			local function errorhandler(err)
+				mj:log("Rats!")
+			end
+			local ok, potentialConfigFile = xpcall(configFile, errorhandler)
+			if not ok then
+				mj:log("Wow...")
+			else
+				configTable = potentialConfigFile
+			end
+		end
+	end
+
+	mj:log("ADDING CONFIG")
+	mj:log(configTable)
+	if configTable then
+		table.insert(type, configTable)
+	else
+		log:schema("ddapi", "^^^ This config is fucked.")
+	end
 end
 
 return configLoader
