@@ -1,8 +1,11 @@
 --- objectUtils.lua
 --- Utility methods, generally used by the objectManager
---- @author earmuffs
+--- @author earmuffs, SirLich
 
 local objectUtils = {}
+
+-- Sapiens
+local locale = mjrequire "common/locale"
 
 -- Math
 local mjm = mjrequire "common/mjm"
@@ -222,6 +225,20 @@ function objectUtils:validate(key, value, options)
 	end
 
 	return value
+end
+
+-- Returns a string, localized if possible
+function objectUtils:getLocalizedString(tbl, key, options)
+	--- Inject options, without overwriting
+	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
+		type = "string",
+		with = function(key)
+			return locale:getUnchecked(key)
+		end
+	})
+
+	--- Fall through to base definition
+	return objectUtils:getField(tbl, key, options)
 end
 
 --- Fetches a vec3 by coercing a json array with three elements.

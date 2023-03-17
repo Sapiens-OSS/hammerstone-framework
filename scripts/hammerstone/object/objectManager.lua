@@ -320,8 +320,8 @@ function objectManager:generateResourceDefinition(config)
 	end
 
 
-	local name = description["name"]
-	local plural = description["plural"]
+	local name = utils:getLocalizedString(description, "name")
+	local plural = utils:getLocalizedString(description, "plural")
 
 	local newResource = {
 		key = identifier,
@@ -660,8 +660,8 @@ function objectManager:generateGameObject(config)
 	})
 
 	local newGameObject = {
-		name = utils:getField(description, "name"),
-		plural = utils:getField(description, "plural"),
+		name = utils:getLocalizedString(description, "name"),
+		plural = utils:getLocalizedString(description, "plural"),
 		modelName = utils:getField(objectComponent, "model"),
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),

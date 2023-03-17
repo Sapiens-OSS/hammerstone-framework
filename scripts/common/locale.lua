@@ -5,6 +5,10 @@ local mod = {
 	loadOrder = 1
 }
 
+
+local function getOrReturn(key)
+end
+
 function mod:onload(locale)
 
     -- Turn this on for verbose log output
@@ -12,6 +16,18 @@ function mod:onload(locale)
 
     local addedLocaleData = {}
     local currentLocaleKey = nil
+
+    --- Fetches a localization string, or returns the string itself.
+    --- @param key - The localization key, such as 'skill_gathering_description'
+    function locale:getUnchecked(key)
+        local potential_translation = locale:get(key)
+
+        if potential_translation:find("missing localization", 1, true) ~= nil then
+            return key
+        end
+        
+        return potential_translation
+    end
 
     -- Use this method to add dynamic locale keys
     function locale:addKey(localeKey, key, value)
