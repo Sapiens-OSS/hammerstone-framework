@@ -68,6 +68,18 @@ local objectLoader = {
 		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
 	},
 
+	objectSets = {
+		configSource = objectDB.globalDefinitionConfigs,
+		unwrap = "hammerstone:global_definitions",
+		waitingForStart = true, -- Custom start in serverGOM.lua
+		configPath = "/hammerstone/global_definitions/",
+		moduleDependencies = {
+			"serverGOM"
+		},
+		loadFunction = "generateObjectSets"
+	},
+	
+
 	-- Special one: This handles injecting the resources into storage zones, as defined in hs_storage_link
 	storageLinkHandler = {
 		configSource = objectDB.objectConfigs,
@@ -104,6 +116,15 @@ local objectLoader = {
 			"resource"
 		},
 		loadFunction = "generateResourceDefinition"
+	},
+
+	customModel = {
+		configSource = objectDB.objectConfigs,
+		waitingForStart = true, -- See model.lua
+		moduleDependencies = {
+			"model"
+		},
+		loadFunction = "generateCustomModelDefinition"
 	},
 
 	gameObject = {
@@ -297,6 +318,45 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 end
 
 ---------------------------------------------------------------------------------
+-- Custom Model
+---------------------------------------------------------------------------------
+
+function objectManager:generateCustomModelDefinition(config)
+	-- Modules
+	local modelModule = moduleManager:get("model")
+
+	-- Components
+	local components = utils:getField(config, "components")
+	local objectComponent = utils:getField(components, "hs_object")
+	local customModel = utils:getField(objectComponent, "custom_model", {optional=true})
+
+	-- Early Return, if custom model isn't defined
+	if customModel == nil then
+		return
+	end
+
+	local model = utils:getField(customModel, "model")
+	local baseModel = utils:getField(customModel, "base_model")
+	log:schema("ddapi", baseModel .. " --> " .. model)
+
+	local materialRemaps = utils:getTable(customModel, "material_remaps", {
+		with = function(tbl)
+			local newTbl = {}
+			for i, materialRemap in ipairs(tbl) do
+				local old_material = utils:getField(materialRemap, "old_material")
+				local new_material = utils:getField(materialRemap, "new_material")
+				newTbl[old_material] = new_material
+			end
+		end
+	})
+	
+	-- TODO: Multiple remaps will override each other. This shold be a table insert, not an ==
+	modelModule.remapModels[baseModel] = {
+		model = materialRemaps,
+	}
+end
+
+---------------------------------------------------------------------------------
 -- Resource
 ---------------------------------------------------------------------------------
 
@@ -364,9 +424,7 @@ end
 
 function objectManager:handleStorageLinks(config)
 	-- Modules
-	local resourceModule = moduleManager:get("resource")
 	local storageModule = moduleManager:get("storage")
-	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -391,6 +449,20 @@ end
 -- Storage
 ---------------------------------------------------------------------------------
 
+function objectManager:generateObjectSets(config)
+	local serverGOMModule = moduleManager:get("serverGOM")
+	local objectSetKeys = utils:getField(config, "hs_object_sets", {default={}})
+
+	for i, key in ipairs(objectSetKeys) do
+		mj:log(key)
+		serverGOMModule:addObjectSet(key)
+	end
+end
+
+---------------------------------------------------------------------------------
+-- Storage
+---------------------------------------------------------------------------------
+
 function objectManager:generateStorageObject(config)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
@@ -398,7 +470,7 @@ function objectManager:generateStorageObject(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Load structured information
-	local description = config["description"]
+	local description = utils:getField(config, "description")
 
 	-- Components
 	local components = utils:getField(config, "components")
@@ -407,7 +479,6 @@ function objectManager:generateStorageObject(config)
 	local resourcesComponent = utils:getField(components, "hs_resources", {optional=true})
 
 	local gameObjectTypeIndexMap = typeMapsModule.types.gameObject
-
 	local identifier = utils:getField(description, "identifier")
 
 	log:schema("ddapi", "  " .. identifier)
@@ -436,7 +507,6 @@ function objectManager:generateStorageObject(config)
 				return resourceModule.types[value].index
 			end
 		}),
-		-- resources = objectManager:generateResourceForStorage(identifier),
 
 		storageBox = {
 			size =  utils:getVec3(storageComponent, "size", {
@@ -477,6 +547,8 @@ function objectManager:generateStorageObject(config)
 		),
 	}
 
+	mj:log(identifier)
+	mj:log(newStorage)
 	storageModule:addStorage(identifier, newStorage)
 end
 
@@ -659,10 +731,18 @@ function objectManager:generateGameObject(config)
 		end
 	})
 
+	-- Model Name can come from 'model' or 'custom_model/model'
+
+	local modelName = utils:getField(objectComponent, "model", {optional=true})
+	if modelName == nil then
+		local customModel = utils:getField(objectComponent, "custom_model")
+		modelName = utils:getField(customModel, "model")
+	end
+
 	local newGameObject = {
 		name = utils:getLocalizedString(description, "name"),
 		plural = utils:getLocalizedString(description, "plural"),
-		modelName = utils:getField(objectComponent, "model"),
+		modelName = modelName,
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
 		resourceTypeIndex = resourceTypeIndex,

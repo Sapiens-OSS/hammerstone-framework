@@ -12,7 +12,8 @@ local configLoader = {
 		storageConfigs = {},
 		recipeConfigs = {},
 		materialConfigs = {},
-		skillConfigs = {}
+		skillConfigs = {},
+		globalDefinitionConfigs = {}
 	}
 }
 
@@ -99,7 +100,7 @@ function configLoader:loadConfig(path, type, unwrap)
 		end
 	end
 
-	mj:log("ADDING CONFIG")
+	mj:log("ADDING CONFIG:")
 	mj:log(configTable)
 	if configTable then
 		table.insert(type, configTable)

@@ -233,7 +233,9 @@ function objectUtils:getLocalizedString(tbl, key, options)
 	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
 		type = "string",
 		with = function(key)
-			return locale:getUnchecked(key)
+			-- TODO: Fix this
+			return key
+			-- return locale:getUnchecked(key)
 		end
 	})
 
