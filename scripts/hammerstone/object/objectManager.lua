@@ -347,13 +347,17 @@ function objectManager:generateCustomModelDefinition(config)
 				local new_material = utils:getField(materialRemap, "new_material")
 				newTbl[old_material] = new_material
 			end
+			return newTbl
 		end
 	})
 	
-	-- TODO: Multiple remaps will override each other. This shold be a table insert, not an ==
-	modelModule.remapModels[baseModel] = {
-		model = materialRemaps,
-	}
+	-- Ensure exists
+	if modelModule.remapModels[baseModel] == nil then
+		modelModule.remapModels[baseModel] = {}
+	end
+
+	modelModule.remapModels[baseModel][model] = materialRemaps
+
 end
 
 ---------------------------------------------------------------------------------
@@ -443,10 +447,11 @@ function objectManager:handleStorageLinks(config)
 		table.insert(storageModule.types[storageIdentifier].resources, moduleManager:get("resource").types[identifier].index)
 	end
 
+	storageModule:mjInit()
 end
 
 ---------------------------------------------------------------------------------
--- Storage
+-- Object Sets
 ---------------------------------------------------------------------------------
 
 function objectManager:generateObjectSets(config)

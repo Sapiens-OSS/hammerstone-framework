@@ -10,13 +10,16 @@ local mod = {
 }
 
 function mod:onload(model)
+    moduleManager:addModule("model", model)
+
     local super_loadRemaps = model.loadRemaps
     model.loadRemaps = function(model_)
+        mj:log("aaa START loadRemaps")
 		objectManager:markObjectAsReadyToLoad("customModel")
         super_loadRemaps(model_)
+        mj:log("aaa FINISH loadRemaps")
     end
 
-	moduleManager:addModule("model", model)
 end
 
 return mod
