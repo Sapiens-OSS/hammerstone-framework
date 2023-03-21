@@ -118,6 +118,20 @@ local objectLoader = {
 		loadFunction = "generateResourceDefinition"
 	},
 
+	buildable = {
+		configSource = objectDB.objectConfigs,
+		moduleDependencies = {
+			"buildable",
+			"constructable",
+			"plan",
+			"skill",
+			"resource",
+			"action"
+		},
+		loadFunction = "generateBuildableDefinition"
+	},
+
+	-- Custom models are esentially handling 
 	customModel = {
 		configSource = objectDB.objectConfigs,
 		waitingForStart = true, -- See model.lua
@@ -335,7 +349,7 @@ function objectManager:generateCustomModelDefinition(config)
 		return
 	end
 
-	local model = utils:getField(customModel, "model")
+	local model = utils:getField(objectComponent, "model") -- Always loaded here, even if we customize the model itself.
 	local baseModel = utils:getField(customModel, "base_model")
 	log:schema("ddapi", baseModel .. " --> " .. model)
 
@@ -358,6 +372,140 @@ function objectManager:generateCustomModelDefinition(config)
 
 	modelModule.remapModels[baseModel][model] = materialRemaps
 
+end
+
+---------------------------------------------------------------------------------
+-- Buildable
+---------------------------------------------------------------------------------
+
+
+function objectManager:generateBuildableDefinition(config)
+	-- Modules
+	local buildableModule = moduleManager:get("buildable")
+	local planModule = moduleManager:get("plan")
+	local skillModule = moduleManager:get("skill")
+	local constructableModule = moduleManager:get("constructable")
+	local resourceModule = moduleManager:get("resource")
+	local actionModule = moduleManager:get("action")
+
+	local bringAndMoveSequence = {
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringResources.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringTools.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.moveComponents.index,
+		},
+	}
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+	local name = utils:getLocalizedString(description, "name")
+	local plural = utils:getLocalizedString(description, "plural")
+	local summary = utils:getLocalizedString(description, "summary", {optional = true})
+
+	-- Components
+	local components = utils:getField(config, "components")
+	local objectComponent = utils:getField(components, "hs_object")
+	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
+
+	if buildableComponent == nil then
+		-- Not everything is a buildable. Chill.
+		return
+	end
+
+	local newBuildable = {
+		modelName = utils:getField(objectComponent, "model"),
+
+		-- TODO This code needs to be less brittle. We define the same thing in two places :/
+		inProgressGameObjectTypeKey = "build_" .. identifier,
+		finalGameObjectTypeKey = identifier,
+
+		name = name,
+		plural = plural,
+		summary = summary,
+		
+		buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true}),
+
+		-- TODO Allow customizing these values
+		classification = constructableModule.classifications.build.index,
+		allowBuildEvenWhenDark = false,
+		allowYTranslation = false,
+		allowXZRotation = true,
+		noBuildUnderWater = true,
+
+		buildSequence = bringAndMoveSequence,
+
+		-- TODO: This code is copy/pasted. We can easily abstract it.
+		skills = utils:getTable(buildableComponent, "skills", {
+			inTypeTable = skillModule.types,
+			optional = true,
+			with = function(tbl)
+				if #tbl > 0 then
+					return {
+						required = skillModule.types[tbl[1] ].index
+					}
+				end
+			end
+		}),
+
+		requiredResources = utils:getTable(buildableComponent, "resources", {
+			-- Runs for each item and replaces item with return result
+			map = function(e)
+
+				-- Get the resource
+				local res = utils:getTypeIndex(resourceModule.types, e.resource, "Resource")
+				if (res == nil) then return end -- Cancel if resource does not exist
+
+				-- Get the count
+				local count = utils:getField(e, "count", {default=1, type="number"})
+
+				if e.action ~= nil then
+					
+					-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
+					if e.action.action_type == nil then
+						e.action.action_type = "inspect"
+					end
+
+					-- Return if action is invalid
+					local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
+					if (actionType == nil) then return end
+
+					-- Return if duration is invalid
+					local duration = e.action.duration
+					if (not utils:isType(duration, "number")) then
+						return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
+					end
+
+					-- Return if duration without skill is invalid
+					local durationWithoutSkill = e.action.duration_without_skill or duration
+					if (not utils:isType(durationWithoutSkill, "number")) then
+						return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
+					end
+
+					return {
+						type = res,
+						count = count,
+						afterAction = {
+							actionTypeIndex = actionType,
+							duration = duration,
+							durationWithoutSkill = durationWithoutSkill,
+						}
+					}
+				end
+				return {
+					type = res,
+					count = count,
+				}
+			end
+		})
+
+	}
+
+	buildableModule:addBuildable(identifier, newBuildable)
 end
 
 ---------------------------------------------------------------------------------
@@ -674,6 +822,10 @@ end
 -- randomShiftUpMax = 0.5,
 
 function objectManager:generateGameObject(config)
+	objectManager:generateGameObjectInternal(config, false)
+end
+
+function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
 	local resourceModule = moduleManager:get("resource")
@@ -681,17 +833,27 @@ function objectManager:generateGameObject(config)
 	local harvestableModule = moduleManager:get("harvestable")
 
 	-- Setup
-	local description = config["description"]
-	local identifier = description["identifier"]
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	if isBuildVariant then
+		identifier = "build_" .. identifier
+	end
 
 	-- Components
-	local components = config["components"]
-	local objectComponent = components.hs_object
-	local toolComponent = components.hs_tool
-	local harvestableComponent = components.hs_harvestable
-	local resourceComponent = components.hs_resource
+	local components = utils:getField(config, "components")
+	local objectComponent = utils:getField(components, "hs_object")
+	local toolComponent = utils:getField(components, "hs_tool", {optional = true})
+	local harvestableComponent = utils:getField(components, "hs_harvestable", {optional = true})
+	local resourceComponent = utils:getField(components, "hs_resource", {optional = true})
+	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
 
-	log:schema("ddapi", "  " .. identifier)
+	if isBuildVariant then
+		log:schema("ddapi", "  " .. identifier .. "(build variant)")
+
+	else
+		log:schema("ddapi", "  " .. identifier)
+	end
 	
 	local resourceIdentifier = nil -- If this stays nil, that just means it's a GOM without a resource, such as animal corpse.
 	local resourceTypeIndex = nil
@@ -737,13 +899,32 @@ function objectManager:generateGameObject(config)
 	})
 
 	-- Model Name can come from 'model' or 'custom_model/model'
+	local modelName = utils:getField(objectComponent, "model")
+	
+	-- Handle Buildable
+	local newBuildableKeys = {}
+	if buildableComponent then
+		-- If build variant... recurse!
+		if not isBuildVariant then
+			objectManager:generateGameObjectInternal(config, true)
+		end
 
-	local modelName = utils:getField(objectComponent, "model", {optional=true})
-	if modelName == nil then
-		local customModel = utils:getField(objectComponent, "custom_model")
-		modelName = utils:getField(customModel, "model")
+		-- Inject data
+		newBuildableKeys = {
+			isBuiltObject = utils:getField(buildableComponent, "is_built_object", { default = true}),
+			ignoreBuildRay = utils:getField(buildableComponent, "ignore_build_ray", { default = true}),
+			isPathFindingCollider = utils:getField(buildableComponent, "has_collisions", { default = true}),
+			preventGrassAndSnow = utils:getField(buildableComponent, "clear_ground", { default = true}),
+			disallowAnyCollisionsOnPlacement = utils:getField(buildableComponent, "allow_placement_collisions", {
+				default = true,
+				with = function (value)
+					return not value
+				end
+			}),
+			isInProgressBuildObject = isBuildVariant
+		}
 	end
-
+	
 	local newGameObject = {
 		name = utils:getLocalizedString(description, "name"),
 		plural = utils:getLocalizedString(description, "plural"),
@@ -761,8 +942,11 @@ function objectManager:generateGameObject(config)
 		}
 	}
 
+	-- Combine keys
+	local outObject = utils:merge(newGameObject, newBuildableKeys)
+
 	-- Actually register the game object
-	gameObjectModule:addGameObject(identifier, newGameObject)
+	gameObjectModule:addGameObject(identifier, outObject)
 end
 
 ---------------------------------------------------------------------------------
@@ -823,7 +1007,7 @@ function objectManager:generateRecipeDefinition(config)
 	local newRecipeDefinition = {
 		name = utils:getField(description, "name"),
 		plural = utils:getField(description, "plural"),
-		summary = utils:getField(description, "summary"),
+		summary = utils:getField(description, "summary", {optional = true}),
 
 		-- Recipe Component
 		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],

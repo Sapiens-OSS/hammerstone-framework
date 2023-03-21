@@ -88,6 +88,14 @@
                                         "Snake Skull",
                                         "object_snakeSkull"
                                     ]
+                                },
+                                "summary": {
+                                    "type": "string",
+                                    "description": "A short description for the object, used in some contexts.",
+                                    "examples": [
+                                        "Split Log Steps 2x2 Half Floor",
+                                        "buildable_splitLogSteps2x2"
+                                    ]
                                 }
                             }
                         },

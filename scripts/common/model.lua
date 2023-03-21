@@ -14,10 +14,8 @@ function mod:onload(model)
 
     local super_loadRemaps = model.loadRemaps
     model.loadRemaps = function(model_)
-        mj:log("aaa START loadRemaps")
 		objectManager:markObjectAsReadyToLoad("customModel")
         super_loadRemaps(model_)
-        mj:log("aaa FINISH loadRemaps")
     end
 
 end

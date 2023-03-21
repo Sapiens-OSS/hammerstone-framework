@@ -152,6 +152,22 @@ function objectUtils:merge(t1, t2)
     return t1
 end
 
+-- http://lua-users.org/wiki/CopyTable
+function objectUtils:deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[objectUtils:deepcopy(orig_key)] = objectUtils:deepcopy(orig_value)
+        end
+        setmetatable(copy, objectUtils:deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
 
 --- Returns the key of a type, or nil if not found.
 -- @param tbl table
