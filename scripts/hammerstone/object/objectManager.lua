@@ -378,6 +378,55 @@ end
 -- Buildable
 ---------------------------------------------------------------------------------
 
+local function getResources(e)
+	local resourceModule = moduleManager:get("resource")
+	local actionModule = moduleManager:get("action")
+
+	-- Get the resource
+	local res = utils:getTypeIndex(resourceModule.types, e.resource, "Resource")
+	if (res == nil) then return end -- Cancel if resource does not exist
+
+	-- Get the count
+	local count = utils:getField(e, "count", {default=1, type="number"})
+
+	if e.action ~= nil then
+		
+		-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
+		if e.action.action_type == nil then
+			e.action.action_type = "inspect"
+		end
+
+		-- Return if action is invalid
+		local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
+		if (actionType == nil) then return end
+
+		-- Return if duration is invalid
+		local duration = e.action.duration
+		if (not utils:isType(duration, "number")) then
+			return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
+		end
+
+		-- Return if duration without skill is invalid
+		local durationWithoutSkill = e.action.duration_without_skill or duration
+		if (not utils:isType(durationWithoutSkill, "number")) then
+			return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
+		end
+
+		return {
+			type = res,
+			count = count,
+			afterAction = {
+				actionTypeIndex = actionType,
+				duration = duration,
+				durationWithoutSkill = durationWithoutSkill,
+			}
+		}
+	end
+	return {
+		type = res,
+		count = count,
+	}
+end
 
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
@@ -385,8 +434,6 @@ function objectManager:generateBuildableDefinition(config)
 	local planModule = moduleManager:get("plan")
 	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
-	local resourceModule = moduleManager:get("resource")
-	local actionModule = moduleManager:get("action")
 
 	local bringAndMoveSequence = {
 		{
@@ -432,11 +479,8 @@ function objectManager:generateBuildableDefinition(config)
 
 		-- TODO Allow customizing these values
 		classification = constructableModule.classifications.build.index,
-		allowBuildEvenWhenDark = false,
-		allowYTranslation = false,
-		allowXZRotation = true,
-		noBuildUnderWater = true,
 
+		-- TODO
 		buildSequence = bringAndMoveSequence,
 
 		-- TODO: This code is copy/pasted. We can easily abstract it.
@@ -454,56 +498,19 @@ function objectManager:generateBuildableDefinition(config)
 
 		requiredResources = utils:getTable(buildableComponent, "resources", {
 			-- Runs for each item and replaces item with return result
-			map = function(e)
-
-				-- Get the resource
-				local res = utils:getTypeIndex(resourceModule.types, e.resource, "Resource")
-				if (res == nil) then return end -- Cancel if resource does not exist
-
-				-- Get the count
-				local count = utils:getField(e, "count", {default=1, type="number"})
-
-				if e.action ~= nil then
-					
-					-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
-					if e.action.action_type == nil then
-						e.action.action_type = "inspect"
-					end
-
-					-- Return if action is invalid
-					local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
-					if (actionType == nil) then return end
-
-					-- Return if duration is invalid
-					local duration = e.action.duration
-					if (not utils:isType(duration, "number")) then
-						return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
-					end
-
-					-- Return if duration without skill is invalid
-					local durationWithoutSkill = e.action.duration_without_skill or duration
-					if (not utils:isType(durationWithoutSkill, "number")) then
-						return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
-					end
-
-					return {
-						type = res,
-						count = count,
-						afterAction = {
-							actionTypeIndex = actionType,
-							duration = duration,
-							durationWithoutSkill = durationWithoutSkill,
-						}
-					}
-				end
-				return {
-					type = res,
-					count = count,
-				}
-			end
+			map = getResources
 		})
 
 	}
+
+	
+	utils:addProps(newBuildable, buildableComponent, "buildable_props", {
+		allowBuildEvenWhenDark = false,
+		allowYTranslation = true,
+		allowXZRotation = true,
+		noBuildUnderWater = true,
+		canAttachToAnyObjectWithoutTestingForCollisions = false
+	})
 
 	buildableModule:addBuildable(identifier, newBuildable)
 end

@@ -152,6 +152,8 @@ function objectUtils:merge(t1, t2)
     return t1
 end
 
+
+
 -- http://lua-users.org/wiki/CopyTable
 function objectUtils:deepcopy(orig)
     local orig_type = type(orig)
@@ -203,6 +205,18 @@ function objectUtils:isType(value, typeName)
 	end
 	return false
 end
+
+--- Injects properties into a table. Intended to future proof the DDAPI
+-- @param tbl The table to inject into
+-- @param component The component/tbl where the 'key' can be used to find custom props
+-- @param key The key where props can be found
+-- @param defaultProps The default properties, which can be overriden
+function objectUtils:addProps(tbl, component, key, defaultProps)
+	local userDefinedProps = objectUtils:getField(component, key, {default = {}})
+	local mergedProps = objectUtils:merge(defaultProps, userDefinedProps)
+	objectUtils:merge(tbl, mergedProps)
+end
+
 
 --- Applies validations when fetching from a table.
 -- @param key string - The key to fetch
