@@ -40,6 +40,45 @@ function objectUtils:map(tbl, predicate)
 	return data
 end
 
+
+---------------------------------------------------------------------------------
+-- ConfigTable
+---------------------------------------------------------------------------------
+
+local function istable(t) return type(t) == 'table' end
+
+ConfigTable={}
+
+ConfigTable.__add = function(a,b)
+	return objectUtils:merge(a, b)
+end
+
+function objectUtils:initConfig(tbl)
+	if istable(tbl) == false then
+		return tbl
+	end
+
+	setmetatable(tbl,ConfigTable);
+
+	function tbl:get(key, options)
+		return objectUtils:initConfig(
+			objectUtils:getField(self, key, options)
+		)
+	end
+
+	function tbl:getOptional(key)
+		return objectUtils:initConfig(
+			objectUtils:getField(self, key, {optional = true})
+		)
+	end
+
+	-- TODO: Consider making initial access revursive.
+	for k,v in pairs(tbl) do
+	end
+
+	return tbl
+end
+
 --- Returns data if running predicate on each item in table returns true
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run

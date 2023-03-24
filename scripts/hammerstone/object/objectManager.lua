@@ -126,7 +126,8 @@ local objectLoader = {
 			"plan",
 			"skill",
 			"resource",
-			"action"
+			"action",
+			"craftable"
 		},
 		loadFunction = "generateBuildableDefinition"
 	},
@@ -319,6 +320,7 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 				if config.disabled == true then
 					log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
 				else
+					utils:initConfig(config)
 					xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
 				end
 
@@ -434,18 +436,7 @@ function objectManager:generateBuildableDefinition(config)
 	local planModule = moduleManager:get("plan")
 	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
-
-	local bringAndMoveSequence = {
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringResources.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringTools.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.moveComponents.index,
-		},
-	}
+	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -453,6 +444,8 @@ function objectManager:generateBuildableDefinition(config)
 	local name = utils:getLocalizedString(description, "name")
 	local plural = utils:getLocalizedString(description, "plural")
 	local summary = utils:getLocalizedString(description, "summary", {optional = true})
+
+	log:schema("ddapi", "  " .. identifier)
 
 	-- Components
 	local components = utils:getField(config, "components")
@@ -480,8 +473,13 @@ function objectManager:generateBuildableDefinition(config)
 		-- TODO Allow customizing these values
 		classification = constructableModule.classifications.build.index,
 
-		-- TODO
-		buildSequence = bringAndMoveSequence,
+		-- This one is interesting: We simly ask people to define a sequence from the craftable. 
+		-- In the future we could also check `buildable.lua` if we wanted.
+		buildSequence = utils:getField(buildableComponent, "sequence", {
+			with = function (value)
+				return utils:getField(craftableModule, value)
+			end
+		}),
 
 		-- TODO: This code is copy/pasted. We can easily abstract it.
 		skills = utils:getTable(buildableComponent, "skills", {
@@ -504,7 +502,7 @@ function objectManager:generateBuildableDefinition(config)
 	}
 
 	
-	utils:addProps(newBuildable, buildableComponent, "buildable_props", {
+	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
 		allowYTranslation = true,
 		allowXZRotation = true,
@@ -525,54 +523,56 @@ function objectManager:generateResourceDefinition(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local components = config["components"]
-	local description = config["description"]
-	local identifier = description["identifier"]
+	local description = config:get("description")
+	local identifier = description:get("identifier")
+	local name = utils:getLocalizedString(description, "name")
+	local plural = utils:getLocalizedString(description, "plural")
 
 	log:schema("ddapi", "  " .. identifier)
 
-	-- Resource links prevent a *new* resource from being generated.
-	local resourceComponent = components.hs_resource
+	-- Components
+	local components = config:get("components")
+	local resourceComponent = components:getOptional("hs_resource")
+	local foodComponent = components:getOptional("hs_food")
+
+	-- Nil Resources aren't created
+	if resourceComponent == nil  then
+		return
+	end
+
+	-- Linked Resources aren't created
 	if utils:getField(resourceComponent, "create_resource", {optional = true}) ~= true then
 		-- log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceComponent.identifier .. ". No unique resource created.")
 		return -- Abort creation of resource
 	end
-
-
-	local name = utils:getLocalizedString(description, "name")
-	local plural = utils:getLocalizedString(description, "plural")
 
 	local newResource = {
 		key = identifier,
 		name = name,
 		plural = plural,
 		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[identifier],
+		resourceTypes = utils:getTable(resourceComponent, "resource_types", {
+			default = {},
+			map = function(value)
+				return resourceModule.types[value].index
+			end
+		}),
 	}
 
+	-- TODO: Missing Properties
+	-- placeBuildableMaleSnapPoints
+
 	-- Handle Food
-	local foodComponent = components["hs_food"]
 	if foodComponent ~= nil then
-		--if type() -- TODO
-		newResource.foodValue = foodComponent.value
-		newResource.foodPortionCount = foodComponent.portions
-
-		-- TODO These should be implemented with a smarter default value check
-		if foodComponent.food_poison_chance ~= nil then
-			newResource.foodPoisoningChance = foodComponent.food_poison_chance
-		end
-		
-		if foodComponent.default_disabled ~= nil then
-			newResource.defaultToEatingDisabled = foodComponent.default_disabled
-		end
+		newResource.foodValue = foodComponent:get("value", {default = 0.5})
+		newResource.foodPortionCount = foodComponent:get("portions", {default = 1})
+		newResource.foodPoisoningChance = foodComponent:get("food_poison_chance", {default = 0})
+		newResource.defaultToEatingDisabled = foodComponent:get("default_disabled", {default = false})
 	end
-
-	-- TODO: Consider handling `isRawMeat` and `isCookedMeat` for purpose of tutorial integration.
-
-	-- Handle Decorations
-	local decorationComponent = components["hs_decoration"]
-	if decorationComponent ~= nil then
-		newResource.disallowsDecorationPlacing = not decorationComponent["enabled"]
-	end
+	
+	utils:addProps(newResource, resourceComponent, "props", {
+		-- No defaults, that's OK :)
+	})
 
 	resourceModule:addResource(identifier, newResource)
 end
