@@ -430,6 +430,10 @@ local function getResources(e)
 	}
 end
 
+local function getBuildIdentifier(identifier)
+	return "build_" .. identifier
+end
+
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
@@ -439,18 +443,20 @@ function objectManager:generateBuildableDefinition(config)
 	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
-	local name = utils:getLocalizedString(description, "name")
-	local plural = utils:getLocalizedString(description, "plural")
-	local summary = utils:getLocalizedString(description, "summary", {optional = true})
+	local description = config:get("description")
+	local identifier = description:get("identifier")
+	local name = description:get("name")
+	local plural = description:get("plural")
+	local summary = description:getOptional(description, "summary")
 
 	log:schema("ddapi", "  " .. identifier)
 
 	-- Components
-	local components = utils:getField(config, "components")
-	local objectComponent = utils:getField(components, "hs_object")
-	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
+	local components = config:get("components")
+	local objectComponent = components:get("hs_object")
+
+	-- Optional Components
+	local buildableComponent = components:getOptional("hs_buildable")
 
 	if buildableComponent == nil then
 		-- Not everything is a buildable. Chill.
@@ -458,10 +464,9 @@ function objectManager:generateBuildableDefinition(config)
 	end
 
 	local newBuildable = {
-		modelName = utils:getField(objectComponent, "model"),
+		modelName = objectComponent:get("model"),
 
-		-- TODO This code needs to be less brittle. We define the same thing in two places :/
-		inProgressGameObjectTypeKey = "build_" .. identifier,
+		inProgressGameObjectTypeKey = getBuildIdentifier(identifier),
 		finalGameObjectTypeKey = identifier,
 
 		name = name,
@@ -469,9 +474,7 @@ function objectManager:generateBuildableDefinition(config)
 		summary = summary,
 		
 		buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true}),
-
-		-- TODO Allow customizing these values
-		classification = constructableModule.classifications.build.index,
+		classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "craft"}),
 
 		-- This one is interesting: We simly ask people to define a sequence from the craftable. 
 		-- In the future we could also check `buildable.lua` if we wanted.
@@ -501,7 +504,6 @@ function objectManager:generateBuildableDefinition(config)
 
 	}
 
-	
 	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
 		allowYTranslation = true,
@@ -844,7 +846,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local identifier = utils:getField(description, "identifier")
 
 	if isBuildVariant then
-		identifier = "build_" .. identifier
+		identifier = getBuildIdentifier(identifier)
 	end
 
 	-- Components
@@ -974,20 +976,20 @@ function objectManager:generateRecipeDefinition(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Definition
-	local description = config["description"]
-	local identifier = description["identifier"]
-	local components = config["components"]
-
-	-- Components
-	local recipeComponent = utils:getTable(components, "hs_recipe")
-	local outputComponent =  utils:getTable(components, "hs_output")
-	local buildSequenceComponent =  utils:getTable(components, "hs_build_sequence")
-	
-	-- Optional Components
-	local requirementsComponent =  utils:getTable(components, "hs_requirements", {optional = true})
-
+	local description = config:get("description")
+	local identifier = description:get("identifier")
 
 	log:schema("ddapi", "  " .. identifier)
+
+
+	-- Components
+	local components = config:get("components")
+	local recipeComponent = components:get("hs_recipe")
+	local outputComponent =  components:get("hs_output")
+	local buildSequenceComponent =  components:get("hs_build_sequence")
+	
+	-- Optional Components
+	local requirementsComponent =  components:getOptional("hs_requirements")
 
 	
 	local toolType = utils:getTable(requirementsComponent, "tool_types", {
@@ -1017,10 +1019,9 @@ function objectManager:generateRecipeDefinition(config)
 		summary = utils:getField(description, "summary", {optional = true}),
 
 		-- Recipe Component
+		-- TODO: Clean these up
 		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
 		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
-		isFoodPreperation = utils:getField(recipeComponent, "is_food_prep", { type = "boolean", default = false }),
-		disabledUntilCraftableResearched  = utils:getField(recipeComponent, "disabled_until_craftable_researched", { type = "boolean", default = false }),
 		
 		-- TODO: If the component doesn't exist, then set `hasNoOutput` instead.
 		outputObjectInfo = {
@@ -1048,13 +1049,10 @@ function objectManager:generateRecipeDefinition(config)
 		},
 
 		-- Requirements Component
-		
-		dontPickUpRequiredTool = not utils:getField(requirementsComponent, "pickup_tool", {
-			default = true,
-			with = function (value)
-				return not value
-			end
-		}),
+	
+
+
+		-- TODO: `skills` can be simplified to `skill` and `disabledUntilAdditionalSkillTypeDiscovered` could be a prop?
 		skills = utils:getTable(requirementsComponent, "skills", {
 			inTypeTable = skillModule.types,
 			optional = true,
@@ -1141,6 +1139,12 @@ function objectManager:generateRecipeDefinition(config)
 		})
 	}
 
+	utils:addProps(newRecipeDefinition, recipeComponent, "props", {
+		-- No defaults, that's OK
+	})
+
+	
+
 	if newRecipeDefinition ~= nil then
 		-- Add recipe
 		craftableModule:addCraftable(identifier, newRecipeDefinition)
@@ -1210,8 +1214,6 @@ end
 ---------------------------------------------------------------------------------
 -- Skill
 ---------------------------------------------------------------------------------
-
---- Generates skill definitions based on the loaded config, and registers them.
 
 function objectManager:generateSkillDefinition(config)
 	-- Modules
