@@ -46,7 +46,6 @@ local crashes = true
 --- Data structure which defines how a config is loaded, and in which order.
 --- It will also be used to HOLD the loaded configs, once they've been read from the FS
 --
--- @field configSource - Table to store loaded config data (more like a reference)
 -- @field configPath - Path to the folder where the config files can be read. Multiple objects can be generated from the same file.
 -- Each route here maps to a FILE TYPE. The fact that 
 -- file type has no impact herre.
@@ -55,11 +54,11 @@ local crashes = true
 -- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
 -- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
+-- @field configType - Never set here, but the path where configs WILL be loaded, when loaded from lua
 local objectLoader = {
 
 	storage = {
-		configSource = objectDB.storageConfigs,
-		unwrap = "hammerstone:storage_definition",
+		configType = configLoader.configTypes.storage,
 		configPath = "/hammerstone/storage/",
 		moduleDependencies = {
 			"storage",
@@ -69,8 +68,7 @@ local objectLoader = {
 	},
 
 	objectSets = {
-		configSource = objectDB.globalDefinitionConfigs,
-		unwrap = "hammerstone:global_definitions",
+		configType = configLoader.configTypes.shared,
 		waitingForStart = true, -- Custom start in serverGOM.lua
 		configPath = "/hammerstone/global_definitions/",
 		moduleDependencies = {
@@ -78,11 +76,20 @@ local objectLoader = {
 		},
 		loadFunction = "generateObjectSets"
 	},
+
+	seats = {
+		configType = configLoader.configTypes.shared,
+		moduleDependencies = {
+			"seat",
+			"typeMaps"
+		},
+		loadFunction = "generateSeatDefinition"
+	},
 	
 
 	-- Special one: This handles injecting the resources into storage zones, as defined in hs_storage_link
 	storageLinkHandler = {
-		configSource = objectDB.objectConfigs,
+		configType = configLoader.configTypes.object,
 		dependencies = {
 			"storage"
 		},
@@ -90,7 +97,7 @@ local objectLoader = {
 	},
 
 	evolvingObject = {
-		configSource = objectDB.objectConfigs,
+		configType = configLoader.configTypes.object,
 		waitingForStart = true,
 		moduleDependencies = {
 			"evolvingObject",
@@ -100,8 +107,7 @@ local objectLoader = {
 	},
 
 	material = {
-		configSource = objectDB.materialConfigs,
-		unwrap = "hammerstone:material_definition",
+		configType = configLoader.configTypes.material,
 		configPath = "/hammerstone/materials/",
 		moduleDependencies = {
 			"material"
@@ -110,7 +116,7 @@ local objectLoader = {
 	},
 
 	resource = {
-		configSource = objectDB.objectConfigs,
+		configType = configLoader.configTypes.object,
 		moduleDependencies = {
 			"typeMaps",
 			"resource"
@@ -119,7 +125,7 @@ local objectLoader = {
 	},
 
 	buildable = {
-		configSource = objectDB.objectConfigs,
+		configType = configLoader.configTypes.object,
 		moduleDependencies = {
 			"buildable",
 			"constructable",
@@ -134,7 +140,7 @@ local objectLoader = {
 
 	-- Custom models are esentially handling 
 	customModel = {
-		configSource = objectDB.objectConfigs,
+		configType = configLoader.configTypes.shared,
 		waitingForStart = true, -- See model.lua
 		moduleDependencies = {
 			"model"
@@ -143,22 +149,22 @@ local objectLoader = {
 	},
 
 	gameObject = {
-		configSource = objectDB.objectConfigs,
-		unwrap = "hammerstone:object_definition",
+		configType = configLoader.configTypes.object,
 		configPath = "/hammerstone/objects/",
 		waitingForStart = true,
 		moduleDependencies = {
 			"resource",
 			"gameObject",
 			"tool",
-			"harvestable"
+			"harvestable",
+			"seat"
 		},
 		loadFunction = "generateGameObject"
 	},
 
 	harvestable = {
+		configType = configLoader.configTypes.object,
 		waitingForStart = true,
-		configSource = objectDB.objectConfigs,
 		dependencies = {
 			"gameObject"
 		},
@@ -171,8 +177,7 @@ local objectLoader = {
 	},
 
 	recipe = {
-		configSource = objectDB.recipeConfigs,
-		unwrap = "hammerstone:recipe_definition",
+		configType = configLoader.configTypes.recipe,
 		configPath = "/hammerstone/recipes/",
 		disabled = false,
 		waitingForStart = true,
@@ -191,8 +196,8 @@ local objectLoader = {
 	},
 
 	planHelper = {
+		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
-		configSource = objectDB.objectConfigs,
 		loadFunction = "generatePlanHelperObject",
 		dependencies = {
 			"gameObject"
@@ -203,8 +208,7 @@ local objectLoader = {
 	},
 
 	skill = {
-		configSource = objectDB.skillConfigs,
-		unwrap = "hammerstone:skill_definition",
+		configType = configLoader.configTypes.skill,
 		configPath = "/hammerstone/skills/",
 		disabled = true,
 		moduleDependencies = {
@@ -300,9 +304,11 @@ function objectManager:tryLoadObjectDefinitions()
 end
 
 -- Loads a single object
+-- @param objectData - A table, containing fields from 'objectLoader'
 function objectManager:loadObjectDefinition(objectName, objectData)
 	log:schema("ddapi", string.format("\nGenerating %s definitions:", objectName))
-	local configs = objectData.configSource
+	local configs = configLoader:fetchRuntimeCompatibleConfigs(objectData)
+	
 	if configs ~= nil and #configs ~= 0 then
 		for i, config in ipairs(configs) do
 			if config then
@@ -342,38 +348,38 @@ function objectManager:generateCustomModelDefinition(config)
 	local modelModule = moduleManager:get("model")
 
 	-- Components
-	local components = utils:getField(config, "components")
-	local objectComponent = utils:getField(components, "hs_object")
-	local customModel = utils:getField(objectComponent, "custom_model", {optional=true})
-
-	-- Early Return, if custom model isn't defined
-	if customModel == nil then
+	local modelRemapComponent = config:getOptional("hs_model_remaps")
+	
+	-- Early Return
+	if modelRemapComponent == nil then
 		return
 	end
 
-	local model = utils:getField(objectComponent, "model") -- Always loaded here, even if we customize the model itself.
-	local baseModel = utils:getField(customModel, "base_model")
-	log:schema("ddapi", baseModel .. " --> " .. model)
-
-	local materialRemaps = utils:getTable(customModel, "material_remaps", {
-		with = function(tbl)
-			local newTbl = {}
-			for i, materialRemap in ipairs(tbl) do
-				local old_material = utils:getField(materialRemap, "old_material")
-				local new_material = utils:getField(materialRemap, "new_material")
-				newTbl[old_material] = new_material
-			end
-			return newTbl
-		end
-	})
+	for i, modelRemap in ipairs(modelRemapComponent) do
+		local model = utils:getField(modelRemap, "model")
+		local baseModel = utils:getField(modelRemap, "base_model")
+		log:schema("ddapi", baseModel .. " --> " .. model)
 	
-	-- Ensure exists
-	if modelModule.remapModels[baseModel] == nil then
-		modelModule.remapModels[baseModel] = {}
+		local materialRemaps = utils:getTable(modelRemap, "material_remaps", {
+			with = function(tbl)
+				local newTbl = {}
+				for j, materialRemap in ipairs(tbl) do
+					local old_material = utils:getField(materialRemap, "from")
+					local new_material = utils:getField(materialRemap, "to")
+					newTbl[old_material] = new_material
+				end
+				return newTbl
+			end
+		})
+		
+		-- Ensure exists
+		if modelModule.remapModels[baseModel] == nil then
+			modelModule.remapModels[baseModel] = {}
+		end
+		
+		-- Inject so it's available
+		modelModule.remapModels[baseModel][model] = materialRemaps
 	end
-
-	modelModule.remapModels[baseModel][model] = materialRemaps
-
 end
 
 ---------------------------------------------------------------------------------
@@ -434,6 +440,14 @@ local function getBuildIdentifier(identifier)
 	return "build_" .. identifier
 end
 
+local function getNameLocKey(identifier)
+	return "object_" .. identifier
+end
+
+local function getPluralLocKey(identifier)
+	return "object_" .. identifier .. "_plural"
+end
+
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
@@ -445,8 +459,8 @@ function objectManager:generateBuildableDefinition(config)
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
-	local name = description:get("name")
-	local plural = description:get("plural")
+	local name = description:get("name", {default = getNameLocKey(identifier)})
+	local plural = description:get("plural", {default = getPluralLocKey(identifier)})
 	local summary = description:getOptional(description, "summary")
 
 	log:schema("ddapi", "  " .. identifier)
@@ -527,8 +541,8 @@ function objectManager:generateResourceDefinition(config)
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
-	local name = utils:getLocalizedString(description, "name")
-	local plural = utils:getLocalizedString(description, "plural")
+	local name = utils:getLocalizedString(description, "name", {default = getNameLocKey(identifier)})
+	local plural = utils:getLocalizedString(description, "plural", {default = getNameLocKey(identifier)})
 
 	log:schema("ddapi", "  " .. identifier)
 
@@ -607,19 +621,6 @@ function objectManager:handleStorageLinks(config)
 	storageModule:mjInit()
 end
 
----------------------------------------------------------------------------------
--- Object Sets
----------------------------------------------------------------------------------
-
-function objectManager:generateObjectSets(config)
-	local serverGOMModule = moduleManager:get("serverGOM")
-	local objectSetKeys = utils:getField(config, "hs_object_sets", {default={}})
-
-	for i, key in ipairs(objectSetKeys) do
-		mj:log(key)
-		serverGOMModule:addObjectSet(key)
-	end
-end
 
 ---------------------------------------------------------------------------------
 -- Storage
@@ -709,8 +710,6 @@ function objectManager:generateStorageObject(config)
 		),
 	}
 
-	mj:log(identifier)
-	mj:log(newStorage)
 	storageModule:addStorage(identifier, newStorage)
 end
 
@@ -775,6 +774,52 @@ function objectManager:generateHarvestableObject(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Object Sets
+---------------------------------------------------------------------------------
+
+function objectManager:generateObjectSets(config)
+	local serverGOMModule = moduleManager:get("serverGOM")
+	local objectSetKeys = utils:getField(config, "hs_object_sets", {default={}})
+
+	for i, key in ipairs(objectSetKeys) do
+		serverGOMModule:addObjectSet(key)
+	end
+end
+
+---------------------------------------------------------------------------------
+-- Seat
+---------------------------------------------------------------------------------
+
+function objectManager:generateSeatDefinition(config)
+	-- Modules
+	local seatModule = moduleManager:get("seat")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	local seatDefinitions = utils:getField(config, "hs_seat_types", {default={}})
+	
+	for i, seat in ipairs(seatDefinitions) do
+		local identifier = utils:getField(seat, "identifier")
+		log:schema("ddapi", "  " .. identifier)
+
+		local newSeat = {
+			key = identifier,
+			comfort = utils:getField(seat, "comfort", {default = 0.5}),
+			nodes = utils:getTable(seat, "nodes", {
+				map = function(node)
+					return {
+						placeholderKey = utils:getField(node, "key"),
+						nodeTypeIndex = utils:getFieldAsIndex(node, "type", seatModule.nodeTypes)
+					}
+				end
+			})
+		}
+
+		typeMapsModule:insert("seat", seatModule.types, newSeat)
+	end
+end
+
+
+---------------------------------------------------------------------------------
 -- Evolving Objects
 ---------------------------------------------------------------------------------
 
@@ -824,12 +869,6 @@ end
 -- TODO: selectionGroupTypeIndexes
 -- TODO: Implement eatByProducts
 
--- TODO: These ones are probably for a new component related to world placement.
--- allowsAnyInitialRotation
--- randomMaxScale = 1.5,
--- randomShiftDownMin = -1.0,
--- randomShiftUpMax = 0.5,
-
 function objectManager:generateGameObject(config)
 	objectManager:generateGameObjectInternal(config, false)
 end
@@ -840,6 +879,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local resourceModule = moduleManager:get("resource")
 	local toolModule = moduleManager:get("tool")
 	local harvestableModule = moduleManager:get("harvestable")
+	local seatModule = moduleManager:get("seat")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -896,8 +936,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		}
 	end
 
-	-- TODO: Is this a load order issue?
-	-- Handle harvestable
 	local harvestableTypeIndex = utils:getField(description, "identifier", {
 		with = function (value)
 			if harvestableComponent ~= nil then
@@ -907,7 +945,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		end
 	})
 
-	-- Model Name can come from 'model' or 'custom_model/model'
 	local modelName = utils:getField(objectComponent, "model")
 	
 	-- Handle Buildable
@@ -920,6 +957,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Inject data
 		newBuildableKeys = {
+			seatTypeIndex = utils:getFieldAsIndex(buildableComponent, "seat_type", seatModule.types, {optional=true}),
 			isBuiltObject = utils:getField(buildableComponent, "is_built_object", { default = true}),
 			ignoreBuildRay = utils:getField(buildableComponent, "ignore_build_ray", { default = true}),
 			isPathFindingCollider = utils:getField(buildableComponent, "has_collisions", { default = true}),
@@ -935,8 +973,8 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	end
 	
 	local newGameObject = {
-		name = utils:getLocalizedString(description, "name"),
-		plural = utils:getLocalizedString(description, "plural"),
+		name = utils:getLocalizedString(description, "name", {default = getNameLocKey(identifier)}),
+		plural = utils:getLocalizedString(description, "plural", {default = getPluralLocKey(identifier)}),
 		modelName = modelName,
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
@@ -963,6 +1001,7 @@ end
 ---------------------------------------------------------------------------------
 
 
+-- TODO: Should handle 'objectTypesArray' better
 function objectManager:generateRecipeDefinition(config)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
@@ -1014,9 +1053,9 @@ function objectManager:generateRecipeDefinition(config)
 
 
 	local newRecipeDefinition = {
-		name = utils:getField(description, "name"),
-		plural = utils:getField(description, "plural"),
-		summary = utils:getField(description, "summary", {optional = true}),
+		name = utils:getField(description, "name", {default = "recipe_" .. identifier}),
+		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "plural"}),
+		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "summary"}),
 
 		-- Recipe Component
 		-- TODO: Clean these up
@@ -1146,6 +1185,19 @@ function objectManager:generateRecipeDefinition(config)
 	
 
 	if newRecipeDefinition ~= nil then
+
+
+		-- Debug
+		local debug = config:get("debug", {default = false})
+		if debug then
+			log:schema("ddapi", "Debugging: " .. identifier)
+			log:schema("ddapi", "Config:")
+			log:schema("ddapi", config)
+			log:schema("ddapi", "Output:")
+			log:schema("ddapi", newRecipeDefinition)
+		end
+
+
 		-- Add recipe
 		craftableModule:addCraftable(identifier, newRecipeDefinition)
 

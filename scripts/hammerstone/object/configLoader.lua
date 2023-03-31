@@ -6,16 +6,45 @@ local configLoader = {
 	-- Whether the configs have been read from the FS
 	isInitialized = false,
 
+	-- The config types
+	configTypes = {
+		object = "object",
+		storage = "storage",
+		recipe = "recipe",
+		material = "material",
+		skill = "skill",
+		shared = "shared"
+	},
+
+	unwrapsForConfigType = {
+		object = "hammerstone:object_definition",
+		storage ="hammerstone:storage_definition",
+		recipe = "hammerstone:recipe_definition",
+		material = "hammerstone:material_definition",
+		skill = "hammerstone:skill_definition",
+		shared = "hammerstone:global_definitions"
+	},
+
 	-- The actual configs, read from the FS
-	configs = {
-		objectConfigs = {},
-		storageConfigs = {},
-		recipeConfigs = {},
-		materialConfigs = {},
-		skillConfigs = {},
-		globalDefinitionConfigs = {}
+	jsonStrings = {
+
+	},
+
+	luaStrings = {
+
+	},
+
+	-- Cached configs, that have been configured for direct processing
+	cachedConfigs = {
+
 	}
 }
+
+for key, configType in pairs(configLoader.configTypes) do
+	configLoader.jsonStrings[configType] = {}
+	configLoader.luaStrings[configType] = {}
+end
+
 
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
@@ -32,6 +61,7 @@ end
 local function stringEndsWith(str, suffix)
     return string.sub(str, -#suffix) == suffix
 end
+
 
 -- Loops over known config locations and attempts to load them
 -- @param objectLoader a table with a very specific structure where the loaded configs will be delivered.
@@ -52,7 +82,7 @@ function configLoader:loadConfigs(objectLoader)
 				for j, configPath in ipairs(configPaths) do
 					local fullPath =  objectConfigDir .. configPath
 					count = count + 1;
-					configLoader:loadConfig(fullPath, config.configSource, config.unwrap)
+					configLoader:loadConfig(fullPath, config)
 				end
 			end
 			
@@ -62,49 +92,82 @@ function configLoader:loadConfigs(objectLoader)
 	log:schema("ddapi", "Loaded configs totalling: " .. count)
 end
 
---- Loads a single config from the filesystem and decodes it from json to lua
+--- Loads a single config from the filesystem and saves it as a string, for future processing
 -- @param path
--- @param type
+-- @param type - The type of the config
 -- @param unwrap - The top level of the config, which we optionally 'unwrap' to expose the inner definitions.
-function configLoader:loadConfig(path, type, unwrap)
+function configLoader:loadConfig(path, configData)
 	log:schema("ddapi", "  " .. path)
-
-	local configTable = {}
 	local configString = fileUtils.getFileContents(path)
-
+	local configType = configData.configType
+	
 	-- Load json configs
 	if stringEndsWith(path, ".json") then
-		configTable = json:decode(configString)
+		table.insert(configLoader.jsonStrings[configType], configString)
+	end
+
+	-- Load lua configs
+	if stringEndsWith(path, ".lua") then
+		table.insert(configLoader.luaStrings[configType], configString)
+	end
+end
+
+-- @param configData - The table, holding information on the kind of config to fetch
+function configLoader:fetchRuntimeCompatibleConfigs(configData)
+	local configType = configData.configType
+	local unwrap = configLoader.unwrapsForConfigType[configType]
+
+	-- Access from the cache, if available
+	local cachedConfigs = configLoader.cachedConfigs[configType]
+	if cachedConfigs ~= nil and cachedConfigs ~= {} then
+		return cachedConfigs
+	end
+
+	-- Otherwise, we need to generate it
+	local outConfigs = {}
+
+	-- Handle Json Strings
+	for i, jsonString in ipairs(configLoader.jsonStrings[configType]) do
+		mj:log("LOOK HERE")
+		local configTable = json:decode(jsonString)
 
 		-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
 		if unwrap then
 			configTable = configTable[unwrap]
+		else
+			mj:log("FAIL")
+			mj:log(configData)
 		end
+
+		-- Insert
+		table.insert(outConfigs, configTable)
 	end
 
-	-- TODO: Wtf is this, rewrite it.
-	-- Load lua configs
-	if stringEndsWith(path, ".lua") then
-		local configFile = loadstring(configString, "Yeah sorry, you're screwed.")
+	-- Handle Lua Strings
+	for i, luaString in ipairs(configLoader.luaStrings[configType]) do
+		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 
 		if configFile then
 			local function errorhandler(err)
-				mj:log("Rats!")
+				mj:log("ERROR: Error handler triggered.")
 			end
 			local ok, potentialConfigFile = xpcall(configFile, errorhandler)
 			if not ok then
-				mj:log("Wow...")
+				mj:log("ERROR: Config couldn't be gatherd.")
 			else
-				configTable = potentialConfigFile
+				
+				if potentialConfigFile.getConfigs then
+					for i, element in ipairs(potentialConfigFile:getConfigs()) do
+						table.insert(outConfigs, element)
+					end
+				else
+					mj:log("ERROR: You failed to implement `getConfigs`")
+				end
 			end
 		end
 	end
 
-	if configTable then
-		table.insert(type, configTable)
-	else
-		log:schema("ddapi", "^^^ This config is broken.")
-	end
+	return outConfigs
 end
 
 return configLoader
