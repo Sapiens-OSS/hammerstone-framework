@@ -6,44 +6,51 @@ local configLoader = {
 	-- Whether the configs have been read from the FS
 	isInitialized = false,
 
-	-- The config types
 	configTypes = {
-		object = "object",
-		storage = "storage",
-		recipe = "recipe",
-		material = "material",
-		skill = "skill",
-		shared = "shared"
+		object = {
+			key = "object",
+			unwrap = "hammerstone:object_definition",
+			configPath = "/hammerstone/objects/",
+			luaGetter = "getObjectConfigs",
+			jsonStrings = {},
+			cachedConfigs = {}
+		},
+		storage = {
+			key = "storage",
+			unwrap = "hammerstone:storage_definition",
+			configPath = "/hammerstone/storage/",
+			luaGetter = "getStorageConfigs",
+			jsonStrings = {},
+			cachedConfigs = {}
+		},
+		shared = {
+			key = "shared",
+			configPath = "/hammerstone/global_definitions/",
+			unwrap = "hammerstone:global_definitions",
+			luaGetter = "getGlobalConfigs",
+			jsonStrings = {},
+			cachedConfigs = {}
+		},
+		recipe = {
+			key = "recipe",
+			unwrap = "hammerstone:recipe_definition",
+			luaGetter = "getRecipeConfigs",
+			configPath = "/hammerstone/recipes/",
+			jsonStrings = {},
+			cachedConfigs = {}
+		},
+		skill = {
+			key = "skill",
+			unwrap = "hammerstone:skill_definition",
+			configPath = "/hammerstone/skills/",
+			luaGetter = "getSkillConfigs",
+			jsonStrings = {},
+			cachedConfigs = {}
+		}
 	},
 
-	unwrapsForConfigType = {
-		object = "hammerstone:object_definition",
-		storage ="hammerstone:storage_definition",
-		recipe = "hammerstone:recipe_definition",
-		material = "hammerstone:material_definition",
-		skill = "hammerstone:skill_definition",
-		shared = "hammerstone:global_definitions"
-	},
-
-	-- The actual configs, read from the FS
-	jsonStrings = {
-
-	},
-
-	luaStrings = {
-
-	},
-
-	-- Cached configs, that have been configured for direct processing
-	cachedConfigs = {
-
-	}
+	luaStrings = {}
 }
-
-for key, configType in pairs(configLoader.configTypes) do
-	configLoader.jsonStrings[configType] = {}
-	configLoader.luaStrings[configType] = {}
-end
 
 
 -- Hammerstone
@@ -65,7 +72,7 @@ end
 
 -- Loops over known config locations and attempts to load them
 -- @param objectLoader a table with a very specific structure where the loaded configs will be delivered.
-function configLoader:loadConfigs(objectLoader)
+function configLoader:loadConfigs()
 	configLoader.isInitialized = true
 	log:schema("ddapi", "Loading configuration files from FileSystem:")
 
@@ -75,7 +82,7 @@ function configLoader:loadConfigs(objectLoader)
 	local count = 0;
 	
 	for i, mod in ipairs(mods) do
-		for routeName, config in pairs(objectLoader) do
+		for routeName, config in pairs(configLoader.configTypes) do
 			if config["configPath"] ~= nil then
 				local objectConfigDir = mod.path .. config.configPath
 				local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
@@ -98,41 +105,46 @@ end
 -- @param unwrap - The top level of the config, which we optionally 'unwrap' to expose the inner definitions.
 function configLoader:loadConfig(path, configData)
 	log:schema("ddapi", "  " .. path)
+
+
 	local configString = fileUtils.getFileContents(path)
-	local configType = configData.configType
 	
 	-- Load json configs
 	if stringEndsWith(path, ".json") then
-		table.insert(configLoader.jsonStrings[configType], configString)
+		table.insert(configData.jsonStrings, configString)
 	end
 
 	-- Load lua configs
 	if stringEndsWith(path, ".lua") then
-		table.insert(configLoader.luaStrings[configType], configString)
+		table.insert(configLoader.luaStrings, configString)
 	end
 end
 
 -- @param configData - The table, holding information on the kind of config to fetch
 function configLoader:fetchRuntimeCompatibleConfigs(configData)
+	mj:log("Fetching Runtime Compatible Configs:")
 	local configType = configData.configType
-	local unwrap = configLoader.unwrapsForConfigType[configType]
 
-	-- Access from the cache, if available
-	local cachedConfigs = configLoader.cachedConfigs[configType]
-	if cachedConfigs ~= nil and cachedConfigs ~= {} then
-		return cachedConfigs
-	end
+	mj:log("Json Strings: " .. #configType.jsonStrings)
+
+	-- -- Access from the cache, if available
+	-- local cachedConfigs = configType.cachedConfigs
+	-- if cachedConfigs ~= nil and cachedConfigs ~= {} then
+	-- 	mj:log("SHORTCUT")
+	-- 	mj:log(cachedConfigs)
+	-- 	return cachedConfigs
+	-- end
 
 	-- Otherwise, we need to generate it
 	local outConfigs = {}
 
 	-- Handle Json Strings
-	for i, jsonString in ipairs(configLoader.jsonStrings[configType]) do
+	for i, jsonString in ipairs(configType.jsonStrings) do
 		local configTable = json:decode(jsonString)
 
 		-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
-		if unwrap then
-			configTable = configTable[unwrap]
+		if configType.unwrap then
+			configTable = configTable[configType.unwrap]
 		end
 
 		-- Insert
@@ -140,10 +152,13 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 	end
 
 	-- Handle Lua Strings
-	for i, luaString in ipairs(configLoader.luaStrings[configType]) do
+	mj:log("Checking Lua Strings:")
+	mj:log(#configLoader.luaStrings)
+	for i, luaString in ipairs(configLoader.luaStrings) do
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 
 		if configFile then
+			mj:log("Config Valid")
 			local function errorhandler(err)
 				mj:log("ERROR: Error handler triggered.")
 			end
@@ -152,18 +167,22 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 				mj:log("ERROR: Config couldn't be gatherd.")
 			else
 				
-				if potentialConfigFile.getConfigs then
-					for i, element in ipairs(potentialConfigFile:getConfigs()) do
+				local getterString = configType.luaGetter
+				if potentialConfigFile[getterString] then
+					for i, element in ipairs(potentialConfigFile[getterString]()) do
 						table.insert(outConfigs, element)
 					end
 				else
-					mj:log("ERROR: You failed to implement `getConfigs`")
+					mj:log("Warning: method not implemented: " ..  getterString)
 				end
 			end
 		end
 	end
 
+	-- configType.cachedConfigs = outConfigs
+
 	return outConfigs
 end
+
 
 return configLoader

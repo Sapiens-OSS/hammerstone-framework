@@ -28,7 +28,6 @@ local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy n
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
 local hammerAPI = mjrequire "hammerAPI"
-local objectDB = configLoader.configs
 
 hammerAPI:test()
 
@@ -59,7 +58,6 @@ local objectLoader = {
 
 	storage = {
 		configType = configLoader.configTypes.storage,
-		configPath = "/hammerstone/storage/",
 		moduleDependencies = {
 			"storage",
 			"resource"
@@ -70,7 +68,6 @@ local objectLoader = {
 	objectSets = {
 		configType = configLoader.configTypes.shared,
 		waitingForStart = true, -- Custom start in serverGOM.lua
-		configPath = "/hammerstone/global_definitions/",
 		moduleDependencies = {
 			"serverGOM"
 		},
@@ -165,7 +162,6 @@ local objectLoader = {
 
 	gameObject = {
 		configType = configLoader.configTypes.object,
-		configPath = "/hammerstone/objects/",
 		waitingForStart = true,
 		moduleDependencies = {
 			"resource",
@@ -193,7 +189,6 @@ local objectLoader = {
 
 	recipe = {
 		configType = configLoader.configTypes.recipe,
-		configPath = "/hammerstone/recipes/",
 		disabled = false,
 		waitingForStart = true,
 		moduleDependencies = {
@@ -224,7 +219,6 @@ local objectLoader = {
 
 	skill = {
 		configType = configLoader.configTypes.skill,
-		configPath = "/hammerstone/skills/",
 		disabled = true,
 		moduleDependencies = {
 			"skill"
@@ -251,7 +245,7 @@ function objectManager:init()
 	log:remove(logID)
 
 	-- Load configs from FS
-	configLoader:loadConfigs(objectLoader)
+	configLoader:loadConfigs()
 end
 
 
@@ -323,7 +317,6 @@ end
 function objectManager:loadObjectDefinition(objectName, objectData)
 	log:schema("ddapi", string.format("\nGenerating %s definitions:", objectName))
 	local configs = configLoader:fetchRuntimeCompatibleConfigs(objectData)
-	
 	if configs ~= nil and #configs ~= 0 then
 		for i, config in ipairs(configs) do
 			if config then
