@@ -77,11 +77,27 @@ local objectLoader = {
 		loadFunction = "generateObjectSets"
 	},
 
+	resourceGroups = {
+		configType = configLoader.configTypes.shared,
+		moduleDependencies = {
+			"resource",
+			"typeMaps",
+			"gameObject"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = "generateResourceGroup"
+	},
+
 	seats = {
 		configType = configLoader.configTypes.shared,
 		moduleDependencies = {
 			"seat",
 			"typeMaps"
+		},
+		dependencies = {
+			"storage"
 		},
 		loadFunction = "generateSeatDefinition"
 	},
@@ -390,9 +406,9 @@ local function getResources(e)
 	local resourceModule = moduleManager:get("resource")
 	local actionModule = moduleManager:get("action")
 
-	-- Get the resource
-	local res = utils:getTypeIndex(resourceModule.types, e.resource, "Resource")
-	if (res == nil) then return end -- Cancel if resource does not exist
+	-- Get the resource (as group, or resource)
+	local resourceType = utils:getFieldAsIndex(e, "resource", resourceModule.types, {optional=true})
+	local groupType =  utils:getFieldAsIndex(e, "resource_group", resourceModule.groups, {optional=true})
 
 	-- Get the count
 	local count = utils:getField(e, "count", {default=1, type="number"})
@@ -421,7 +437,8 @@ local function getResources(e)
 		end
 
 		return {
-			type = res,
+			type = resourceType,
+			group = groupType,
 			count = count,
 			afterAction = {
 				actionTypeIndex = actionType,
@@ -431,7 +448,8 @@ local function getResources(e)
 		}
 	end
 	return {
-		type = res,
+		type = resourceType,
+		group = groupType,
 		count = count,
 	}
 end
@@ -787,6 +805,41 @@ function objectManager:generateObjectSets(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Resource Groups
+---------------------------------------------------------------------------------
+
+function objectManager:generateResourceGroup(config)
+	-- Modules
+	local resourceModule = moduleManager:get("resource")
+	local typeMapsModule = moduleManager:get("typeMaps")
+	local gameObjectModule  = moduleManager:get("gameObject")
+
+	local resourceGroupDefinitions = utils:getField(config, "hs_resource_groups", {default={}})
+	
+	for i, groupDefinition in ipairs(resourceGroupDefinitions) do
+		local identifier = utils:getField(groupDefinition, "identifier")
+		log:schema("ddapi", "  " .. identifier)
+
+		local name = utils:getField(groupDefinition, "name", {default = "group_" .. identifier})
+		local plural = utils:getField(groupDefinition, "plural", {default = "group_" .. identifier .. "_plural"})
+
+		local newResourceGroup = {
+			key = identifier,
+			name = name,
+			plural = plural,
+			displayGameObjectTypeIndex = utils:getFieldAsIndex(groupDefinition, "display_object", gameObjectModule.types),
+			resourceTypes = utils:getTable(groupDefinition, "resources", {
+				map = function(resource_id)
+					return utils:getTypeIndex(resourceModule.types, resource_id, "Resource Types")
+				end
+			})
+		}
+		
+		resourceModule:addResourceGroup(identifier, newResourceGroup)
+	end
+end
+
+---------------------------------------------------------------------------------
 -- Seat
 ---------------------------------------------------------------------------------
 
@@ -1001,7 +1054,6 @@ end
 ---------------------------------------------------------------------------------
 
 
--- TODO: Should handle 'objectTypesArray' better
 function objectManager:generateRecipeDefinition(config)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
@@ -1024,47 +1076,54 @@ function objectManager:generateRecipeDefinition(config)
 	-- Components
 	local components = config:get("components")
 	local recipeComponent = components:get("hs_recipe")
-	local outputComponent =  components:get("hs_output")
 	local buildSequenceComponent =  components:get("hs_build_sequence")
 	
 	-- Optional Components
 	local requirementsComponent =  components:getOptional("hs_requirements")
+	local outputComponent =  components:getOptional("hs_output")
 
 	
-	local toolType = utils:getTable(requirementsComponent, "tool_types", {
+	local toolTypes = utils:getTable(requirementsComponent, "tools", {
 		optional = true,
 		map = function(value)
-			return utils:getTypeIndex(toolModule.types, value, "Tool")
+			return toolModule.types[value].index
 		end
 	})
+	local toolType = nil
+	if toolTypes ~= nil and #toolTypes > 0 then
+		toolType = toolTypes[1]
+	end
 
 	local buildSequenceData
 	if buildSequenceComponent.custom_build_sequence ~= nil then
 		utils:logNotImplemented("Custom Build Sequence")
 	else
 		local actionSequence = utils:getField(buildSequenceComponent, "action_sequence", {
+			optional = true,
 			with = function (value)
 				return utils:getTypeIndex(actionSequenceModule.types, value, "Action Sequence")
 			end
 		})
-
-		buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, toolType)
+		if actionSequence then
+			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, toolType)
+		else
+			buildSequenceData = craftableModule[utils:getField(buildSequenceComponent, "build_sequence")]
+		end
 	end
 
 
-	local newRecipeDefinition = {
-		name = utils:getField(description, "name", {default = "recipe_" .. identifier}),
-		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "plural"}),
-		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "summary"}),
-
-		-- Recipe Component
-		-- TODO: Clean these up
-		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
-		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
-		
-		-- TODO: If the component doesn't exist, then set `hasNoOutput` instead.
+	local outputObjectInfo = nil
+	local hasNoOutput = outputComponent == nil
+	if outputComponent then
 		outputObjectInfo = {
-			outputArraysByResourceObjectType = utils:getTable(outputComponent, "output_by_object", {
+			objectTypesArray = utils:getTable(outputComponent, "simple_output", {
+				optional = true, -- Can also define with 'outputArraysByResourceObjectType'
+				map = function(e)
+					return utils:getTypeIndex(gameObjectModule.types, e)
+				end
+			}),
+			outputArraysByResourceObjectType = outputComponent:get("output_by_object", {
+				optional = true, -- Can also define with 'objectTypesArray'
 				with = function(tbl)
 					local result = {}
 					for _, value in pairs(tbl) do -- Loop through all output objects
@@ -1085,11 +1144,23 @@ function objectManager:generateRecipeDefinition(config)
 					return result
 				end
 			}),
-		},
+		}
+	end
 
-		-- Requirements Component
-	
 
+	local newRecipeDefinition = {
+		name = utils:getField(description, "name", {default = "recipe_" .. identifier}),
+		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "plural"}),
+		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "summary"}),
+
+		-- Recipe Component
+		-- TODO: Clean these up
+		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
+		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,	
+
+		-- Output
+		outputObjectInfo = outputObjectInfo,
+		hasNoOutput = hasNoOutput,
 
 		-- TODO: `skills` can be simplified to `skill` and `disabledUntilAdditionalSkillTypeDiscovered` could be a prop?
 		skills = utils:getTable(requirementsComponent, "skills", {
@@ -1118,9 +1189,7 @@ function objectManager:generateRecipeDefinition(config)
 				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
 			end
 		}),
-		requiredTools = {
-			toolType
-		},
+		requiredTools = toolTypes,
 
 		-- Build Sequence Component
 		inProgressBuildModel = utils:getField(buildSequenceComponent, "build_model", {default = "craftSimple"}),
@@ -1128,53 +1197,7 @@ function objectManager:generateRecipeDefinition(config)
 
 		requiredResources = utils:getTable(requirementsComponent, "resources", {
 			-- Runs for each item and replaces item with return result
-			map = function(e)
-
-				-- Get the resource
-				local res = utils:getTypeIndex(resourceModule.types, e.resource, "Resource")
-				if (res == nil) then return end -- Cancel if resource does not exist
-
-				-- Get the count
-				local count = utils:getField(e, "count", {default=1, type="number"})
-
-				if e.action ~= nil then
-					
-					-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
-					if e.action.action_type == nil then
-						e.action.action_type = "inspect"
-					end
-
-					-- Return if action is invalid
-					local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
-					if (actionType == nil) then return end
-
-					-- Return if duration is invalid
-					local duration = e.action.duration
-					if (not utils:isType(duration, "number")) then
-						return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
-					end
-
-					-- Return if duration without skill is invalid
-					local durationWithoutSkill = e.action.duration_without_skill or duration
-					if (not utils:isType(durationWithoutSkill, "number")) then
-						return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
-					end
-
-					return {
-						type = res,
-						count = count,
-						afterAction = {
-							actionTypeIndex = actionType,
-							duration = duration,
-							durationWithoutSkill = durationWithoutSkill,
-						}
-					}
-				end
-				return {
-					type = res,
-					count = count,
-				}
-			end
+			map = getResources
 		})
 	}
 
@@ -1202,6 +1225,8 @@ function objectManager:generateRecipeDefinition(config)
 		craftableModule:addCraftable(identifier, newRecipeDefinition)
 
 		local typeMapsModule = moduleManager:get("typeMaps")
+
+		
 		-- Add items in crafting panels
 		if newRecipeDefinition.requiredCraftAreaGroups then
 			for _, group in ipairs(newRecipeDefinition.requiredCraftAreaGroups) do
@@ -1212,7 +1237,7 @@ function objectManager:generateRecipeDefinition(config)
 				table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
 			end
 		else
-			local key = typeMapsModule.types.gameObject.craftGroup
+			local key = gameObjectModule.typeIndexMap.craftArea
 			if objectManager.inspectCraftPanelData[key] == nil then
 				objectManager.inspectCraftPanelData[key] = {}
 			end
