@@ -123,8 +123,7 @@ local objectLoader = {
 	},
 
 	material = {
-		configType = configLoader.configTypes.material,
-		configPath = "/hammerstone/materials/",
+		configType = configLoader.configTypes.shared,
 		moduleDependencies = {
 			"material"
 		},
@@ -834,7 +833,7 @@ function objectManager:generateResourceGroup(config)
 				end
 			})
 		}
-		
+
 		resourceModule:addResourceGroup(identifier, newResourceGroup)
 	end
 end
@@ -1255,7 +1254,10 @@ function objectManager:generateMaterialDefinition(config)
 	local materialModule = moduleManager:get("material")
 
 	-- Setup
-	local materials = utils:getField(config, "materials")
+	local materialComponent = utils:getField(config, "hs_materials", {optional = true})
+	if materialComponent == nil then
+		return
+	end
 
 	local function loadMaterialFromTbl(tbl)
 		-- Allowed
@@ -1278,7 +1280,7 @@ function objectManager:generateMaterialDefinition(config)
 		}
 	end
 
-	for _, material in pairs(materials) do
+	for _, material in pairs(materialComponent) do
 		local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
 		log:schema("ddapi", "  " .. identifier)
 		
