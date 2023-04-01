@@ -128,15 +128,11 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 
 	-- Handle Json Strings
 	for i, jsonString in ipairs(configLoader.jsonStrings[configType]) do
-		mj:log("LOOK HERE")
 		local configTable = json:decode(jsonString)
 
 		-- If the 'unwrap' exists, we can use this to strip the stored definition to be simpler.
 		if unwrap then
 			configTable = configTable[unwrap]
-		else
-			mj:log("FAIL")
-			mj:log(configData)
 		end
 
 		-- Insert
