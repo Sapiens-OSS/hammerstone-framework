@@ -147,8 +147,19 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 			configTable = configTable[configType.unwrap]
 		end
 
-		-- Insert
-		table.insert(outConfigs, configTable)
+		-- This is like, a secondary level (such as hs_materials)
+		if configData.unwrap then
+			mj:log("Unwrapping!")
+			mj:log(configTable)
+			mj:log(configData.unwrap)
+			configTable = configTable[configData.unwrap]
+			mj:log(configTable)
+		end
+
+		-- Insert if valid
+		if configTable ~= nil and type(configTable) == table then
+			table.insert(outConfigs, configTable)
+		end
 	end
 
 	-- Handle Lua Strings
@@ -158,7 +169,6 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 
 		if configFile then
-			mj:log("Config Valid")
 			local function errorhandler(err)
 				mj:log("ERROR: Error handler triggered.")
 			end
@@ -173,7 +183,7 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 						table.insert(outConfigs, element)
 					end
 				else
-					mj:log("Warning: method not implemented: " ..  getterString)
+					-- mj:log("Warning: method not implemented: " ..  getterString)
 				end
 			end
 		end

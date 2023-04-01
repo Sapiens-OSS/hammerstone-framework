@@ -121,6 +121,7 @@ local objectLoader = {
 
 	material = {
 		configType = configLoader.configTypes.shared,
+		unwrap = "hs_materials",
 		moduleDependencies = {
 			"material"
 		},
@@ -1246,12 +1247,6 @@ function objectManager:generateMaterialDefinition(config)
 	-- Modules
 	local materialModule = moduleManager:get("material")
 
-	-- Setup
-	local materialComponent = utils:getField(config, "hs_materials", {optional = true})
-	if materialComponent == nil then
-		return
-	end
-
 	local function loadMaterialFromTbl(tbl)
 		-- Allowed
 		if tbl == nil then
@@ -1273,7 +1268,7 @@ function objectManager:generateMaterialDefinition(config)
 		}
 	end
 
-	for _, material in pairs(materialComponent) do
+	for _, material in pairs(config) do
 		local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
 		log:schema("ddapi", "  " .. identifier)
 		

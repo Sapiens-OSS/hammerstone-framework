@@ -115,12 +115,7 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 			log:schema("ddapi", debug.traceback())
 		else
 			log:schema("ddapi", "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
-
-			for k, _ in pairs(tbl) do
-				if type(k) == "string" then
-					log:schema("ddapi", "      " .. k)
-				end
-			end
+			-- log:schema("ddapi", tbl)
 		end
 	end
 end
