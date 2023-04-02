@@ -149,15 +149,14 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 
 		-- This is like, a secondary level (such as hs_materials)
 		if configData.unwrap then
-			mj:log("Unwrapping!")
-			mj:log(configTable)
-			mj:log(configData.unwrap)
 			configTable = configTable[configData.unwrap]
-			mj:log(configTable)
-		end
-
-		-- Insert if valid
-		if configTable ~= nil and type(configTable) == table then
+			
+			if configTable then
+				for i, data in ipairs(configTable) do
+					table.insert(outConfigs, data)
+				end
+			end
+		else
 			table.insert(outConfigs, configTable)
 		end
 	end

@@ -318,33 +318,37 @@ end
 function objectManager:loadObjectDefinition(objectName, objectData)
 	log:schema("ddapi", string.format("\nGenerating %s definitions:", objectName))
 	local configs = configLoader:fetchRuntimeCompatibleConfigs(objectData)
-	if configs ~= nil and #configs ~= 0 then
-		for i, config in ipairs(configs) do
-			if config then
-				local function errorhandler(error)
-					log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
-					log:schema("ddapi", error)
-					log:schema("ddapi", "--------")
-					log:schema("ddapi", debug.traceback())
-					
-					if crashes then
-						os.exit()
-					end
-				end
-				
-				if config.disabled == true then
-					log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
-				else
-					utils:initConfig(config)
-					xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
-				end
+	log:schema("ddapi", "  Available Configs: " .. #configs)
 
-			else
-				log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
-			end
-		end
-	else
+
+	if configs == nil or #configs == 0 then
 		log:schema("ddapi", "  (none)")
+		return
+	end
+
+	for i, config in ipairs(configs) do
+		if config then
+			local function errorhandler(error)
+				log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
+				log:schema("ddapi", error)
+				log:schema("ddapi", "--------")
+				log:schema("ddapi", debug.traceback())
+				
+				if crashes then
+					os.exit()
+				end
+			end
+			
+			if config.disabled == true then
+				log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
+			else
+				utils:initConfig(config)
+				xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
+			end
+
+		else
+			log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
+		end
 	end
 end
 
@@ -1243,7 +1247,9 @@ end
 -- Material
 ---------------------------------------------------------------------------------
 
-function objectManager:generateMaterialDefinition(config)
+function objectManager:generateMaterialDefinition(material)
+	mj:log("LOADING MATERIAL")
+	mj:log(material)
 	-- Modules
 	local materialModule = moduleManager:get("material")
 
@@ -1268,14 +1274,12 @@ function objectManager:generateMaterialDefinition(config)
 		}
 	end
 
-	for _, material in pairs(config) do
-		local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
-		log:schema("ddapi", "  " .. identifier)
-		
-		local materialData = loadMaterialFromTbl(material)
-		local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
-		materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
-	end
+	local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
+	log:schema("ddapi", "  " .. identifier)
+	
+	local materialData = loadMaterialFromTbl(material)
+	local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
+	materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
 end
 
 ---------------------------------------------------------------------------------
