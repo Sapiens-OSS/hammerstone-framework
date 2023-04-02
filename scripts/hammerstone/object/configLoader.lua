@@ -148,8 +148,8 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 		end
 
 		-- This is like, a secondary level (such as hs_materials)
-		if configData.unwrap then
-			configTable = configTable[configData.unwrap]
+		if configData.shared_unwrap then
+			configTable = configTable[configData.shared_unwrap]
 			
 			if configTable then
 				for i, data in ipairs(configTable) do
@@ -176,7 +176,7 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 				mj:log("ERROR: Config couldn't be gatherd.")
 			else
 				
-				local getterString = configType.luaGetter
+				local getterString = configData.shared_getter or configType.luaGetter
 				if potentialConfigFile[getterString] then
 					for i, element in ipairs(potentialConfigFile[getterString]()) do
 						table.insert(outConfigs, element)

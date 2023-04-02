@@ -121,7 +121,8 @@ local objectLoader = {
 
 	material = {
 		configType = configLoader.configTypes.shared,
-		unwrap = "hs_materials",
+		shared_unwrap = "hs_materials",
+		shared_getter = "getMaterials",
 		moduleDependencies = {
 			"material"
 		},
