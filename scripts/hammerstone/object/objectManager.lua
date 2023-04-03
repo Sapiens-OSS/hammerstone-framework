@@ -37,6 +37,7 @@ hammerAPI:test()
 
 -- Whether to crash (for development), or attempt to recover (for release).
 local crashes = true
+local count = true
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
@@ -65,41 +66,6 @@ local objectLoader = {
 		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
 	},
 
-	objectSets = {
-		configType = configLoader.configTypes.shared,
-		waitingForStart = true, -- Custom start in serverGOM.lua
-		moduleDependencies = {
-			"serverGOM"
-		},
-		loadFunction = "generateObjectSets"
-	},
-
-	resourceGroups = {
-		configType = configLoader.configTypes.shared,
-		moduleDependencies = {
-			"resource",
-			"typeMaps",
-			"gameObject"
-		},
-		dependencies = {
-			"gameObject"
-		},
-		loadFunction = "generateResourceGroup"
-	},
-
-	seats = {
-		configType = configLoader.configTypes.shared,
-		moduleDependencies = {
-			"seat",
-			"typeMaps"
-		},
-		dependencies = {
-			"storage"
-		},
-		loadFunction = "generateSeatDefinition"
-	},
-	
-
 	-- Special one: This handles injecting the resources into storage zones, as defined in hs_storage_link
 	storageLinkHandler = {
 		configType = configLoader.configTypes.object,
@@ -117,16 +83,6 @@ local objectLoader = {
 			"gameObject"
 		},
 		loadFunction = "generateEvolvingObject"
-	},
-
-	material = {
-		configType = configLoader.configTypes.shared,
-		shared_unwrap = "hs_materials",
-		shared_getter = "getMaterials",
-		moduleDependencies = {
-			"material"
-		},
-		loadFunction = "generateMaterialDefinition"
 	},
 
 	resource = {
@@ -150,16 +106,6 @@ local objectLoader = {
 			"craftable"
 		},
 		loadFunction = "generateBuildableDefinition"
-	},
-
-	-- Custom models are esentially handling 
-	customModel = {
-		configType = configLoader.configTypes.shared,
-		waitingForStart = true, -- See model.lua
-		moduleDependencies = {
-			"model"
-		},
-		loadFunction = "generateCustomModelDefinition"
 	},
 
 	gameObject = {
@@ -226,6 +172,73 @@ local objectLoader = {
 			"skill"
 		},
 		loadFunction = "generateSkillDefinition"
+	},
+
+
+	---------------------------------------------------------------------------------
+	-- Shared Configs
+	---------------------------------------------------------------------------------
+
+	objectSets = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_object_sets",
+		shared_getter = "getObjectSets",
+		waitingForStart = true, -- Custom start in serverGOM.lua
+		moduleDependencies = {
+			"serverGOM"
+		},
+		loadFunction = "generateObjectSets"
+	},
+
+	resourceGroups = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_resource_groups",
+		shared_getter = "getResourceGroups",
+		moduleDependencies = {
+			"resource",
+			"typeMaps",
+			"gameObject"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = "generateResourceGroup"
+	},
+
+	seats = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_seat_types",
+		shared_getter = "getSeatTypes",
+		moduleDependencies = {
+			"seat",
+			"typeMaps"
+		},
+		dependencies = {
+			"storage"
+		},
+		loadFunction = "generateSeatDefinition"
+	},
+
+	material = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_materials",
+		shared_getter = "getMaterials",
+		moduleDependencies = {
+			"material"
+		},
+		loadFunction = "generateMaterialDefinition"
+	},
+
+	-- Custom models are esentially handling 
+	customModel = {
+		configType = configLoader.configTypes.shared,
+		waitingForStart = true, -- See model.lua
+		shared_unwrap = "hs_model_remaps",
+		shared_getter = "getModelRemaps",
+		moduleDependencies = {
+			"model"
+		},
+		loadFunction = "generateCustomModelDefinition"
 	}
 }
 
@@ -357,43 +370,34 @@ end
 -- Custom Model
 ---------------------------------------------------------------------------------
 
-function objectManager:generateCustomModelDefinition(config)
+function objectManager:generateCustomModelDefinition(modelRemap)
 	-- Modules
 	local modelModule = moduleManager:get("model")
 
-	-- Components
-	local modelRemapComponent = config:getOptional("hs_model_remaps")
-	
-	-- Early Return
-	if modelRemapComponent == nil then
-		return
-	end
 
-	for i, modelRemap in ipairs(modelRemapComponent) do
-		local model = utils:getField(modelRemap, "model")
-		local baseModel = utils:getField(modelRemap, "base_model")
-		log:schema("ddapi", baseModel .. " --> " .. model)
-	
-		local materialRemaps = utils:getTable(modelRemap, "material_remaps", {
-			with = function(tbl)
-				local newTbl = {}
-				for j, materialRemap in ipairs(tbl) do
-					local old_material = utils:getField(materialRemap, "from")
-					local new_material = utils:getField(materialRemap, "to")
-					newTbl[old_material] = new_material
-				end
-				return newTbl
+	local model = utils:getField(modelRemap, "model")
+	local baseModel = utils:getField(modelRemap, "base_model")
+	log:schema("ddapi", baseModel .. " --> " .. model)
+
+	local materialRemaps = utils:getTable(modelRemap, "material_remaps", {
+		with = function(tbl)
+			local newTbl = {}
+			for j, materialRemap in ipairs(tbl) do
+				local old_material = utils:getField(materialRemap, "from")
+				local new_material = utils:getField(materialRemap, "to")
+				newTbl[old_material] = new_material
 			end
-		})
-		
-		-- Ensure exists
-		if modelModule.remapModels[baseModel] == nil then
-			modelModule.remapModels[baseModel] = {}
+			return newTbl
 		end
-		
-		-- Inject so it's available
-		modelModule.remapModels[baseModel][model] = materialRemaps
+	})
+	
+	-- Ensure exists
+	if modelModule.remapModels[baseModel] == nil then
+		modelModule.remapModels[baseModel] = {}
 	end
+	
+	-- Inject so it's available
+	modelModule.remapModels[baseModel][model] = materialRemaps
 end
 
 ---------------------------------------------------------------------------------
@@ -479,8 +483,6 @@ function objectManager:generateBuildableDefinition(config)
 	local plural = description:get("plural", {default = getPluralLocKey(identifier)})
 	local summary = description:getOptional(description, "summary")
 
-	log:schema("ddapi", "  " .. identifier)
-
 	-- Components
 	local components = config:get("components")
 	local objectComponent = components:get("hs_object")
@@ -492,6 +494,8 @@ function objectManager:generateBuildableDefinition(config)
 		-- Not everything is a buildable. Chill.
 		return
 	end
+
+	log:schema("ddapi", "  " .. identifier)
 
 	local newBuildable = {
 		modelName = objectComponent:get("model"),
@@ -560,8 +564,6 @@ function objectManager:generateResourceDefinition(config)
 	local name = utils:getLocalizedString(description, "name", {default = getNameLocKey(identifier)})
 	local plural = utils:getLocalizedString(description, "plural", {default = getNameLocKey(identifier)})
 
-	log:schema("ddapi", "  " .. identifier)
-
 	-- Components
 	local components = config:get("components")
 	local resourceComponent = components:getOptional("hs_resource")
@@ -571,6 +573,8 @@ function objectManager:generateResourceDefinition(config)
 	if resourceComponent == nil  then
 		return
 	end
+
+	log:schema("ddapi", "  " .. identifier)
 
 	-- Linked Resources aren't created
 	if utils:getField(resourceComponent, "create_resource", {optional = true}) ~= true then
@@ -793,80 +797,68 @@ end
 -- Object Sets
 ---------------------------------------------------------------------------------
 
-function objectManager:generateObjectSets(config)
+function objectManager:generateObjectSets(key)
 	local serverGOMModule = moduleManager:get("serverGOM")
-	local objectSetKeys = utils:getField(config, "hs_object_sets", {default={}})
-
-	for i, key in ipairs(objectSetKeys) do
-		serverGOMModule:addObjectSet(key)
-	end
+	serverGOMModule:addObjectSet(key)
 end
 
 ---------------------------------------------------------------------------------
 -- Resource Groups
 ---------------------------------------------------------------------------------
 
-function objectManager:generateResourceGroup(config)
+function objectManager:generateResourceGroup(groupDefinition)
 	-- Modules
 	local resourceModule = moduleManager:get("resource")
-	local typeMapsModule = moduleManager:get("typeMaps")
 	local gameObjectModule  = moduleManager:get("gameObject")
 
-	local resourceGroupDefinitions = utils:getField(config, "hs_resource_groups", {default={}})
 	
-	for i, groupDefinition in ipairs(resourceGroupDefinitions) do
-		local identifier = utils:getField(groupDefinition, "identifier")
-		log:schema("ddapi", "  " .. identifier)
+	local identifier = utils:getField(groupDefinition, "identifier")
+	log:schema("ddapi", "  " .. identifier)
 
-		local name = utils:getField(groupDefinition, "name", {default = "group_" .. identifier})
-		local plural = utils:getField(groupDefinition, "plural", {default = "group_" .. identifier .. "_plural"})
+	local name = utils:getField(groupDefinition, "name", {default = "group_" .. identifier})
+	local plural = utils:getField(groupDefinition, "plural", {default = "group_" .. identifier .. "_plural"})
 
-		local newResourceGroup = {
-			key = identifier,
-			name = name,
-			plural = plural,
-			displayGameObjectTypeIndex = utils:getFieldAsIndex(groupDefinition, "display_object", gameObjectModule.types),
-			resourceTypes = utils:getTable(groupDefinition, "resources", {
-				map = function(resource_id)
-					return utils:getTypeIndex(resourceModule.types, resource_id, "Resource Types")
-				end
-			})
-		}
+	local newResourceGroup = {
+		key = identifier,
+		name = name,
+		plural = plural,
+		displayGameObjectTypeIndex = utils:getFieldAsIndex(groupDefinition, "display_object", gameObjectModule.types),
+		resourceTypes = utils:getTable(groupDefinition, "resources", {
+			map = function(resource_id)
+				return utils:getTypeIndex(resourceModule.types, resource_id, "Resource Types")
+			end
+		})
+	}
 
-		resourceModule:addResourceGroup(identifier, newResourceGroup)
-	end
+	resourceModule:addResourceGroup(identifier, newResourceGroup)
 end
 
 ---------------------------------------------------------------------------------
 -- Seat
 ---------------------------------------------------------------------------------
 
-function objectManager:generateSeatDefinition(config)
+function objectManager:generateSeatDefinition(seatType)
 	-- Modules
 	local seatModule = moduleManager:get("seat")
 	local typeMapsModule = moduleManager:get("typeMaps")
-
-	local seatDefinitions = utils:getField(config, "hs_seat_types", {default={}})
 	
-	for i, seat in ipairs(seatDefinitions) do
-		local identifier = utils:getField(seat, "identifier")
-		log:schema("ddapi", "  " .. identifier)
+	local identifier = utils:getField(seatType, "identifier")
+	log:schema("ddapi", "  " .. identifier)
 
-		local newSeat = {
-			key = identifier,
-			comfort = utils:getField(seat, "comfort", {default = 0.5}),
-			nodes = utils:getTable(seat, "nodes", {
-				map = function(node)
-					return {
-						placeholderKey = utils:getField(node, "key"),
-						nodeTypeIndex = utils:getFieldAsIndex(node, "type", seatModule.nodeTypes)
-					}
-				end
-			})
-		}
+	local newSeat = {
+		key = identifier,
+		comfort = utils:getField(seatType, "comfort", {default = 0.5}),
+		nodes = utils:getTable(seatType, "nodes", {
+			map = function(node)
+				return {
+					placeholderKey = utils:getField(node, "key"),
+					nodeTypeIndex = utils:getFieldAsIndex(node, "type", seatModule.nodeTypes)
+				}
+			end
+		})
+	}
 
-		typeMapsModule:insert("seat", seatModule.types, newSeat)
-	end
+	typeMapsModule:insert("seat", seatModule.types, newSeat)
 end
 
 
@@ -1249,8 +1241,6 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateMaterialDefinition(material)
-	mj:log("LOADING MATERIAL")
-	mj:log(material)
 	-- Modules
 	local materialModule = moduleManager:get("material")
 

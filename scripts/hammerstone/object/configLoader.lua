@@ -162,8 +162,7 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 	end
 
 	-- Handle Lua Strings
-	mj:log("Checking Lua Strings:")
-	mj:log(#configLoader.luaStrings)
+	mj:log("Lua Strings:" .. #configLoader.luaStrings)
 	for i, luaString in ipairs(configLoader.luaStrings) do
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 

@@ -105,6 +105,19 @@ function objectUtils:where(tbl, predicate)
 	return data
 end
 
+function objectUtils:estimateTableSize(tbl)
+	local count = 0
+	for _, value in pairs(tbl) do
+	  if type(value) == "table" then
+		count = count + objectUtils:estimateTableSize(value)
+	  else
+		count = count + 1
+	  end
+	end
+	return count
+  end
+  
+
 local logMissingTables = {}
 function objectUtils:logMissing(displayAlias, key, tbl)
 	if logMissingTables[tbl] == nil then
@@ -114,8 +127,19 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 			log:schema("ddapi", "    ERROR: " .. displayAlias .. " key is nil.")
 			log:schema("ddapi", debug.traceback())
 		else
-			log:schema("ddapi", "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist. Try one of these instead:")
-			-- log:schema("ddapi", tbl)
+			log:schema("ddapi", "    ERROR: " .. displayAlias .. " '" .. key .. "' does not exist.")
+			if tbl then
+				log:schema("ddapi", "    HINT: Try one of these:")
+				log:schema("ddapi", "{")
+				for k, _ in pairs(tbl) do
+					if type(k) == "string" then
+						log:schema("ddapi", "      " .. k)
+					end
+				end
+				log:schema("ddapi", "}")
+			else
+				log:schema("ddapi", "        Error: No available options. This might be a Hammerstone bug.")
+			end
 		end
 	end
 end
