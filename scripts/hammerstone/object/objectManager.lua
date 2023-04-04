@@ -66,7 +66,7 @@ local objectLoader = {
 		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
 	},
 
-	-- Special one: This handles injecting the resources into storage zones, as defined in hs_storage_link
+	-- Special one: This handles injecting the resources into storage zones
 	storageLinkHandler = {
 		configType = configLoader.configTypes.object,
 		dependencies = {
@@ -575,24 +575,12 @@ function objectManager:generateResourceDefinition(config)
 	end
 
 	log:schema("ddapi", "  " .. identifier)
-
-	-- Linked Resources aren't created
-	if utils:getField(resourceComponent, "create_resource", {optional = true}) ~= true then
-		-- log:schema("ddapi", "GameObject " .. identifier .. " linked to resource " .. resourceComponent.identifier .. ". No unique resource created.")
-		return -- Abort creation of resource
-	end
-
+	
 	local newResource = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[identifier],
-		resourceTypes = utils:getTable(resourceComponent, "resource_types", {
-			default = {},
-			map = function(value)
-				return resourceModule.types[value].index
-			end
-		}),
+		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[identifier]
 	}
 
 	-- TODO: Missing Properties
@@ -627,12 +615,12 @@ function objectManager:handleStorageLinks(config)
 
 	-- Components
 	local components = utils:getField(config, "components")
-	local storageLinkComponent = utils:getField(components, "hs_storage_link", {
+	local resourceComponent = utils:getField(components, "hs_resource", {
 		optional = true
 	})
 
-	if storageLinkComponent ~= nil then
-		local storageIdentifier = utils:getField(storageLinkComponent, "identifier")
+	if resourceComponent ~= nil then
+		local storageIdentifier = utils:getField(resourceComponent, "link_to_storage")
 
 		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
 		table.insert(storageModule.types[storageIdentifier].resources, moduleManager:get("resource").types[identifier].index)
@@ -950,20 +938,19 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local resourceIdentifier = nil -- If this stays nil, that just means it's a GOM without a resource, such as animal corpse.
 	local resourceTypeIndex = nil
 	if resourceComponent ~= nil then
-
-		-- If creating a resource, link ourselves to this identifier
-		if resourceComponent.create_resource == true then
-			resourceIdentifier = identifier
-		end
-
-		-- Otherwise we can link to the requested resource
-		if resourceComponent.link_to_resource ~= nil then
-			resourceIdentifier = resourceComponent.link_to_resource
-		end
+		-- If creating a resource, link ourselves here
+		resourceIdentifier = identifier
 
 		-- Finally, cast to index. This may fail, but that's considered an acceptable error since we can't have both options defined.
-		resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
 	else
+		-- Otherwise we can link to the requested resource
+		if objectComponent.link_to_resource ~= nil then
+			resourceIdentifier = objectComponent.link_to_resource
+		end
+	end
+
+	resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
+	if resourceTypeIndex == nil then
 		log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
 	end
 
