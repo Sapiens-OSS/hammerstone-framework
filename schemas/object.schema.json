@@ -44,61 +44,9 @@
                     }
                 },
                 "components": {
-                    "description": "Container for object 'components', reach covering a topic or capability.",
-                    "required": [
-                        "hs_object"
-                    ],
-                    "examples": [
-                        {
-                            "hs_object": {
-
-                            }
-                        }
-                    ],
+                    "description": "Container for object 'components', each covering a topic or capability.",
                     "additionalProperties": false,
                     "properties": {
-                        "hs_description": {
-                            "description": "Container for global object properties.",
-                            "type": "object",
-                            "required": [
-                                "identifier",
-                                "name",
-                                "plural"
-                            ],
-                            "properties": {
-                                "identifier": {
-                                    "type": "string",
-                                    "description": "The unique identifier of your object",
-                                    "examples": [
-                                        "sirlich:snake_skull"
-                                    ]
-                                },
-                                "name": {
-                                    "type": "string",
-                                    "description": "The name of the object. May be localized, or not.",
-                                    "examples": [
-                                        "Snake Skull",
-                                        "object_snakeSkull"
-                                    ]
-                                },
-                                "plural": {
-                                    "type": "string",
-                                    "description": "The pluralized name of the object. May be localized, or not.",
-                                    "examples": [
-                                        "Snake Skull",
-                                        "object_snakeSkull"
-                                    ]
-                                },
-                                "summary": {
-                                    "type": "string",
-                                    "description": "A short description for the object, used in some contexts.",
-                                    "examples": [
-                                        "Split Log Steps 2x2 Half Floor",
-                                        "buildable_splitLogSteps2x2"
-                                    ]
-                                }
-                            }
-                        },
                         "hs_object": {
                             "type": "object",
                             "description": "This component allows you to specify basic information about the object.",
@@ -330,6 +278,46 @@
                                     "description": "The index [in resources_to_harvest] upon which the object will be removed, and replaced with the remaining resources."
                                 }
                             }
+                        }
+                    }
+                },
+                "description": {
+                    "description": "Container for global object properties.",
+                    "type": "object",
+                    "required": [
+                        "identifier"
+                    ],
+                    "properties": {
+                        "identifier": {
+                            "type": "string",
+                            "description": "The unique identifier of your object.",
+                            "examples": [
+                                "sirlich:snake_skull"
+                            ]
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "The name of the object. May be localized, or not. Default is 'object_{identifier}",
+                            "examples": [
+                                "Snake Skull",
+                                "object_snakeSkull"
+                            ]
+                        },
+                        "plural": {
+                            "type": "string",
+                            "description": "The pluralized name of the object. May be localized, or not. Default is 'object_{identifier}_plural",
+                            "examples": [
+                                "Snake Skulls",
+                                "object_snakeSkull_plural"
+                            ]
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "A short description for the object, used in some contexts, such as buildables",
+                            "examples": [
+                                "Split Log Steps 2x2 Half Floor",
+                                "buildable_splitLogSteps2x2"
+                            ]
                         }
                     }
                 }

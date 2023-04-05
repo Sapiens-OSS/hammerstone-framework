@@ -641,46 +641,43 @@ function objectManager:generateStorageObject(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Load structured information
-	local description = utils:getField(config, "description")
+	local description = config:get("description")
 
 	-- Components
-	local components = utils:getField(config, "components")
-	local carryComponent = utils:getField(components, "hs_carry")
-	local storageComponent = utils:getField(components, "hs_storage")
-	local resourcesComponent = utils:getField(components, "hs_resources", {optional=true})
+	local components = config:get("components")
+	local carryComponent = components:get("hs_carry")
+	local storageComponent = components:get("hs_storage")
 
-	local gameObjectTypeIndexMap = typeMapsModule.types.gameObject
+	-- Print
 	local identifier = utils:getField(description, "identifier")
-
 	log:schema("ddapi", "  " .. identifier)
 
 	-- Prep
-	local random_rotation_weight = utils:getField(storageComponent, "random_rotation_weight", {
+	local random_rotation_weight = storageComponent:get("random_rotation_weight", {
 		default = 2.0
 	})
 	local rotation = utils:getVec3(storageComponent, "rotation", {
 		default = vec3(0.0, 0.0, 0.0)
 	})
 
-	local carryCounts = utils:getTable(carryComponent, "carry_count", {
+	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
 		default = {} -- Allow this field to be undefined, but don't use nil
 	})
 	
+	-- The new storage item
 	local newStorage = {
 		key = identifier,
-		name = utils:getField(description, "name"),
-
-		displayGameObjectTypeIndex = gameObjectTypeIndexMap[utils:getField(storageComponent, "preview_object")],
-		
-		resources = utils:getTable(resourcesComponent, "resources", {
+		name = utils:getField(description, "name", {default = "storage_" .. identifier}),
+		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[storageComponent:get("display_object")],
+		resources = utils:getTable(storageComponent, "resources", {
 			default = {},
 			map = function(value)
-				return resourceModule.types[value].index
+				return utils:getTypeIndex(resourceModule.types, value, "Resource")
 			end
 		}),
 
 		storageBox = {
-			size =  utils:getVec3(storageComponent, "size", {
+			size =  utils:getVec3(storageComponent, "item_size", {
 				default = vec3(0.5, 0.5, 0.5)
 			}),
 			
@@ -690,11 +687,6 @@ function objectManager:generateStorageObject(config)
 				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation_weight, rotation)
 				return rot
 			end,
-
-			dontRotateToFitBelowSurface = utils:getField(storageComponent, "rotate_to_fit_below_surface", {
-				default = true,
-				type = "boolean"
-			}),
 			
 			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "offset", {
 				default = vec3(0.0, 0.0, 0.0)
@@ -704,6 +696,7 @@ function objectManager:generateStorageObject(config)
 		maxCarryCount = utils:getField(carryCounts, "normal", {default=1}),
 		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
 		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
+
 
 		carryStackType = storageModule.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
 		carryType = storageModule.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
@@ -717,6 +710,10 @@ function objectManager:generateStorageObject(config)
 			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 0.0)})
 		),
 	}
+
+	utils:addProps(newStorage, storageComponent, "props", {
+		-- No defaults, that's OK
+	})
 
 	storageModule:addStorage(identifier, newStorage)
 end

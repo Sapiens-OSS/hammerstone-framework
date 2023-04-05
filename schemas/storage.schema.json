@@ -2,7 +2,7 @@
 	"__url": "https://raw.githubusercontent.com/Sapiens-OSS/hammerstone-framework/feature/data-driven-api/schemas/storage.schema.json",
 	"$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "hammerstone.storage.schema",
-    "title": "Storage Definition File",
+    "title": "Storage Definition File, which defines how resources are stored and carried.",
     "description": "A file which describes how objects are stored/carried",
     "type": "object",
     "required": [
@@ -14,7 +14,7 @@
 			"properties": {
 				"description": {
 					"type": "object",
-					"description": "NODOCS",
+					"description": "A field which describes generic or shared properties for this storage area.",
 					"required": [
 						"identifier",
 						"name"
@@ -24,14 +24,16 @@
 							"type": "string",
 							"description": "The name of the storage zone",
 							"examples": [
-								"sirlich:skull_storage"
+								"sirlich:skull_storage",
+								"skull"
 							]
 						},
 						"name": {
 							"type": "string",
 							"description": "The name of the storage zone.",
 							"examples": [
-								"Potato Storage"
+								"Potato Storage",
+								"Potatoes"
 							]
 						}
 					}
@@ -48,71 +50,82 @@
 							"type": "object",
 							"description": "Describes how the object is stored.",
 							"required": [
-								"preview_object"
+								"display_object"
 							],
 							"properties": {
-								"preview_object": {
-									"type": "string",
-									"description": "NODOCS"
+								"props": {
+									"type": "object",
+									"additionalItems": true,
+									"description": "A table, which will be inserted/merged into the newly created storage. Match the keys you find in storage.lua. Use lua configs if you need more control."
 								},
-								"size": {
+								"resources": {
+									"type": "array",
+									"description": "The resources which will be stored in this storage area by default.",
+									"items": {
+										"type": "string",
+										"description": "A single resource id.",
+										"examples": [
+											"skull"
+										]
+									}
+								},
+								"display_object": {
+									"type": "string",
+									"description": "The game object which will represent this storage.",
+									"examples": [
+										"skull"
+									]
+								},
+								"item_size": {
 									"type": "array",
 									"default": [
 										0.5, 0.5, 0.5
 									],
-									"description": "NODOCS",
+									"description": "The 'XYZ' size of the resource, when stored. Small objects like apples tend to be around '0.15' in size.",
 									"minimum": 3,
 									"maximum": 3,
 									"items": {
-										"type": "number",
-										"description": "NODOCS"
+										"type": "number"
 									}
 								},
 								"offset": {
 									"type": "array",
-									"description": "NODOCS",
+									"description": "The offset of the object, within the storage area.",
 									"minimum": 3,
 									"maximum": 3,
 									"default": [
 										0.0, 0.0, 0.0
 									],
 									"items": {
-										"type": "number",
-										"description": "NODOCS"
+										"type": "number"
 									}
 								},
 								"rotation": {
 									"type": "array",
-									"description": "NODOCS",
+									"description": "The default rotation, before randomization is applied.",
 									"minimum": 3,
 									"maximum": 3,
 									"default": [
 										0.0, 0.0, 0.0
 									],
 									"items": {
-										"type": "number",
-										"description": "NODOCS"
+										"type": "number"
 									}
 								},
 								"random_rotation_weight": {
 									"type": "number",
 									"description": "The weight that the random rotation will have on the object",
 									"default": "2"
-								},
-								"rotate_to_fit_below_surface": {
-									"type": "boolean",
-									"description": "NODOCS",
-									"default": "true"
 								}
 							}
 						},
 						"hs_carry": {
 							"type": "object",
-							"description": "Describes how the object is carried",
+							"description": "Describes how the object is carried.",
 							"properties": {
-								"carry_count": {
+								"hs_carry_count": {
 									"type": "object",
-									"description": "NODOCS",
+									"description": "A 'component' which wraps a few carry-count related properties.",
 									"properties": {
 										"normal": {
 											"type": "integer",
@@ -132,7 +145,7 @@
 									}
 								},
 								"carry_type": {
-									"description": "NODOCS",
+									"description": "The 'carry type' animation the sapien will play, when carrying this object.",
 									"type": "string",
 									"default": "standard",
 									"enum": [
@@ -144,7 +157,7 @@
 									]
 								},
 								"stack_type": {
-									"description": "NODOCS",
+									"description": "The stacking behavior of the objects when being carried.",
 									"type": "string",
 									"default": "standard",
 									"enum": [
