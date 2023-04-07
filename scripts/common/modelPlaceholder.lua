@@ -8,7 +8,13 @@ local mod = {
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 function mod:onload(modelPlaceholder)
-	moduleManager:addModule("modelPlaceholder", modelPlaceholder)
+	local super_initRemaps = modelPlaceholder.initRemaps
+
+    mod.modelPlaceholder = modelPlaceholder
+    modelPlaceholder.initRemaps = function()
+        super_initRemaps()
+		moduleManager:addModule("modelPlaceholder", modelPlaceholder)
+	end
 end
 
 return mod

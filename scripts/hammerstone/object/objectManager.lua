@@ -6,6 +6,7 @@
 
 local objectManager = {
 	inspectCraftPanelData = {},
+	constructableIndexes = {},
 
 	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
 	-- Collected when generating objects, and inserted when generating storages (after converting to index)
@@ -104,14 +105,18 @@ local objectLoader = {
 			"resource",
 			"action",
 			"craftable",
-			"buildUI"
+			-- "buildUI"
 		},
 		loadFunction = "generateBuildableDefinition"
 	},
 
 	modelPlaceholder = {
 		configType = configLoader.configTypes.object,
-		loadFunction = "generateModelPlaceholder"
+		moduleDependencies = {
+			"modelPlaceholder",
+			"resource"
+		},
+		loadFunction = "generateModelPlaceholder",
 	},
 
 	gameObject = {
@@ -373,11 +378,110 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 end
 
 ---------------------------------------------------------------------------------
--- Custom Model
+-- Model Placeholder
 ---------------------------------------------------------------------------------
 
+
+-- Example remap structure
+-- local chairLegRemaps = {
+--     bone = "bone_chairLeg",
+--     foo = "bar"
+-- }
+
+-- Takes in a remap table, and returns the 'placeholderModelIndexForObjectTypeFunction' that can handle this data.
+--- @param remaps table string->string mapping
+local function createIndexFunction(remaps)
+	-- Modules
+	local gameObjectModule =  moduleManager:get("gameObject")
+	local typeMapsModule = moduleManager:get("typeMaps")
+	local modelModule = moduleManager:get("model")
+
+    local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
+        local objectKey = typeMapsModule:indexToKey(objectTypeIndex, gameObjectModule.validTypes)
+        local remap = remaps[objectKey]
+
+        -- Return a remap if exists
+        if remap ~= nil then
+            return modelModule:modelIndexForName(remap)
+        end
+
+        -- Else, return the default model associated with this resource
+        local defaultModel = gameObjectModule.types[objectKey].modelName
+
+
+        return gameObjectModule:modelIndexForName(defaultModel)
+    end
+
+    return inner
+end
+
 function objectManager:generateModelPlaceholder(config)
+	-- Modules
+	local modelPlaceholderModule = moduleManager:get("modelPlaceholder")
+	local resourceModule = moduleManager:get("resource")
+
+	-- Setup
+	local description = config:get("description")
+	local identifier = description:get("identifier")
+
+	local components = config:get("components")
+	local buildableComponent = components:getOptional("hs_buildable")
+	local objectComponent = components:getOptional("hs_object")
 	
+	--- Don't generate for non-buildables
+	if buildableComponent == nil then
+		return
+	end
+
+	-- Otherwise, give warning on potential ill configuration
+	if buildableComponent.model_placeholder == nil then
+		log:schema("ddapi", "   Warning: " .. identifier .. " is being created without a model placeholder. In this case, you are responsible for creating one yourself.")
+		return
+	end
+
+	local modelName = utils:getField(objectComponent, "model")
+	log:schema("ddapi", "  " .. identifier .. "(" .. modelName .. ")")
+
+
+	
+	local modelPlaceholderData = utils:getTable(buildableComponent, "model_placeholder", {
+		map = function(data)
+
+			local isStore = utils:getField(data, "is_store", {default=false})
+			
+			if isStore then
+				return {
+					key = utils:getField(data, "key"),
+					offsetToStorageBoxWalkableHeight = true
+				}
+			else
+				local default_model = utils:getField(data, "default_model")
+				local resource_type = utils:getFieldAsIndex(data, "resource", resourceModule.types)
+				local resource_name = utils:getField(data, "resource")
+
+				local remap_data = utils:getField(data, "remaps", {
+					default = {
+						[resource_name] = default_model
+					}
+				})
+				
+				mj:log("REMAPS")
+				mj:log(remap_data)
+	
+				return {
+					key = utils:getField(data, "key"),
+					defaultModelName = default_model,
+					resourceTypeIndex = resource_type,
+					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data)
+				}
+			end
+
+		end
+	})
+
+	mj:log(modelPlaceholderData)
+
+	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 end
 
 
@@ -388,7 +492,6 @@ end
 function objectManager:generateCustomModelDefinition(modelRemap)
 	-- Modules
 	local modelModule = moduleManager:get("model")
-
 
 	local model = utils:getField(modelRemap, "model")
 	local baseModel = utils:getField(modelRemap, "base_model")
@@ -489,7 +592,7 @@ function objectManager:generateBuildableDefinition(config)
 	local planModule = moduleManager:get("plan")
 	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
-	local buildUIModule = moduleManager:get("buildUI")
+	-- local buildUIModule = moduleManager:get("buildUI")
 	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
@@ -563,9 +666,10 @@ function objectManager:generateBuildableDefinition(config)
 	})
 
 	buildableModule:addBuildable(identifier, newBuildable)
+	-- constructableModule:finalize()
 
 	-- Cached, and handled later in buildUI.lua
-	table.insert(buildUIModule.hammerstoneItems, constructableModule.types[identifier].index)
+	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
 end
 
 ---------------------------------------------------------------------------------
