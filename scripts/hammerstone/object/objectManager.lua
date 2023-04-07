@@ -464,10 +464,7 @@ function objectManager:generateModelPlaceholder(config)
 						[resource_name] = default_model
 					}
 				})
-				
-				mj:log("REMAPS")
-				mj:log(remap_data)
-	
+					
 				return {
 					key = utils:getField(data, "key"),
 					defaultModelName = default_model,
