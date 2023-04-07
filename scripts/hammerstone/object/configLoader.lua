@@ -25,7 +25,7 @@ local configLoader = {
 		},
 		shared = {
 			key = "shared",
-			configPath = "/hammerstone/global_definitions/",
+			configPath = "/hammerstone/shared/",
 			unwrap = "hammerstone:global_definitions",
 			luaGetter = "getGlobalConfigs",
 			jsonStrings = {},

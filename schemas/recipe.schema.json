@@ -26,10 +26,8 @@
                     "description": "Container for global object properties.",
                     "type": "object",
                     "required": [
-                        "identifier",
-                        "name",
-                        "plural",
-                        "summary"
+                        "identifier"
+
                     ],
                     "properties": {
                         "identifier": {
@@ -101,10 +99,10 @@
                             "type": "object",
                             "description": "This component allows you to specify basic information about the recipe.",
                             "required": [
-                                "preview_object"
+                                "display_object"
                             ],
                             "properties": {
-                                "preview_object": {
+                                "display_object": {
                                     "type": "string",
                                     "description": "The object which will be used as the preview for this crafting recipe. Normally you would choose a representative output. i.e., the result of the crafting.",
                                     "examples": [
@@ -124,16 +122,6 @@
                                         "fill",
                                         "research"
                                     ]
-                                },
-                                "is_food_prep": {
-                                    "type": "boolean",
-                                    "default": false, 
-                                    "description": "Describes whether this recipe is 'food preparation'. Used for internal game logic."
-                                },
-                                "disabled_until_craftable_researched": {
-                                    "type": "boolean",
-                                    "default": false,
-                                    "description": "Maps to 'disabledUntilCraftableResearched'"
                                 }
                             }
                         },
@@ -255,10 +243,6 @@
                                             "carving"
                                         ]
                                     }
-                                },
-                                "pickup_tool": {
-                                    "type": "boolean",
-                                    "description": "Field: dontPickUpRequiredTool"
                                 }
                             }
                         },
@@ -266,7 +250,7 @@
                             "type": "object",
                             "description": "Specify the output items from the recipe.\n\nItems that are not listed will be 'consumed', so you should return tools explicitly.",
                             "required": [
-                                "output_by_object"
+                               
                             ],
                             "examples": [
                                 {
@@ -287,6 +271,16 @@
                                 }
                             ],
                             "properties": {
+                                "simple_output": {
+                                    "type": "array",
+                                    "description": "Output option which drops a simple list of items, consuming all inputs except tools.",
+                                    "items": {
+                                        "type": "string",
+                                        "examples": [
+                                            "bone"
+                                        ]
+                                    }
+                                },
                                 "output_by_object": {
                                     "type": "array",
                                     "description": "Controls what items will be returned from this recipe.",

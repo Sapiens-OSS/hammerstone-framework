@@ -103,9 +103,15 @@ local objectLoader = {
 			"skill",
 			"resource",
 			"action",
-			"craftable"
+			"craftable",
+			"buildUI"
 		},
 		loadFunction = "generateBuildableDefinition"
+	},
+
+	modelPlaceholder = {
+		configType = configLoader.configTypes.object,
+		loadFunction = "generateModelPlaceholder"
 	},
 
 	gameObject = {
@@ -370,6 +376,15 @@ end
 -- Custom Model
 ---------------------------------------------------------------------------------
 
+function objectManager:generateModelPlaceholder(config)
+	
+end
+
+
+---------------------------------------------------------------------------------
+-- Custom Model
+---------------------------------------------------------------------------------
+
 function objectManager:generateCustomModelDefinition(modelRemap)
 	-- Modules
 	local modelModule = moduleManager:get("model")
@@ -474,6 +489,7 @@ function objectManager:generateBuildableDefinition(config)
 	local planModule = moduleManager:get("plan")
 	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
+	local buildUIModule = moduleManager:get("buildUI")
 	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
@@ -547,6 +563,9 @@ function objectManager:generateBuildableDefinition(config)
 	})
 
 	buildableModule:addBuildable(identifier, newBuildable)
+
+	-- Cached, and handled later in buildUI.lua
+	table.insert(buildUIModule.hammerstoneItems, constructableModule.types[identifier].index)
 end
 
 ---------------------------------------------------------------------------------
@@ -661,7 +680,7 @@ function objectManager:generateStorageObject(config)
 	})
 
 	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
-		default = {} -- Allow this field to be undefined, but don't use nil
+		default = {} -- Allow this field to be undefined, but don't use nil, since we will pull props from here later, with their *own* defaults
 	})
 	
 	-- The new storage item
@@ -946,10 +965,13 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		end
 	end
 
-	resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
-	if resourceTypeIndex == nil then
-		log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
+	if resourceIdentifier then
+		resourceTypeIndex = utils:getTypeIndex(resourceModule.types, resourceIdentifier, "Resource")
+		if resourceTypeIndex == nil then
+			log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
+		end
 	end
+
 
 	-- Handle tools
 	local toolUsage = {}
@@ -1018,6 +1040,9 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Combine keys
 	local outObject = utils:merge(newGameObject, newBuildableKeys)
+
+	-- Register inside of UI
+	-- table.insert(buildUI.itemList, constructableModule.types.woodChair.index)
 
 	-- Actually register the game object
 	gameObjectModule:addGameObject(identifier, outObject)
@@ -1129,8 +1154,8 @@ function objectManager:generateRecipeDefinition(config)
 
 		-- Recipe Component
 		-- TODO: Clean these up
-		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "preview_object", { inTypeTable = gameObjectModule.types})],
-		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,	
+		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "display_object", { inTypeTable = gameObjectModule.types})],
+		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
 
 		-- Output
 		outputObjectInfo = outputObjectInfo,

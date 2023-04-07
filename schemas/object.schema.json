@@ -76,6 +76,13 @@
                                     "default": true,
                                     "description": "Whether the object has physics.\n- Field: hasPhysics"
                                 },
+                                "link_to_resource": {
+                                    "type": "string",
+                                    "description": "Allows you to link to an existing resource, rather than creating a new one. Mutually exclusive with 'create_resource'",
+                                    "examples": [
+                                        "sirlich:skulls"
+                                    ]
+                                },
                                 "marker_positions": {
                                     "type": "array",
                                     "description": "The position where in-game markers will be positioned. In meters."
@@ -189,15 +196,11 @@
                                 "create_resource"
                             ],
                             "properties": {
-                                "create_resource": {
-                                    "type": "boolean",
-                                    "description": "Whether a resource should be created and linked to this game-object. Identifier will match the object itself."
-                                },
-                                "link_to_resource": {
+                                "link_to_storage": {
                                     "type": "string",
-                                    "description": "Allows you to link to an existing resource, rather than creating a new one. Mutually exclusive with 'create_resource'",
+                                    "description": "The identifier of the storage type for this object (defined in it's own file).",
                                     "examples": [
-                                        "sirlich:skulls"
+                                        "sirlich:skull_storage"
                                     ]
                                 }
                             }
@@ -231,29 +234,6 @@
                                 }
                             }
                         },
-                        "hs_storage_link": {
-                            "type":"object",
-                            "description": "Specifies how this item is carried and stored.",
-                            "properties": {
-                                "identifier": {
-                                    "type": "string",
-                                    "description": "The identifier of the storage type for this object (defined in it's own file).",
-                                    "examples": [
-                                        "sirlich:skull_storage"
-                                    ]
-                                }
-                            }
-                        },
-                        "hs_decoration": {
-                            "type": "object",
-                            "description": "Specifies the decoration related properties for this object.",
-                            "properties": {
-                                "enabled": {
-                                    "type":"boolean",
-                                    "description": "Whether this object can be placed in the world as a decoration"
-                                }
-                            }
-                        },
                         "hs_harvestable": {
                             "type": "object",
                             "description": "Controls whether the object can be harvested for resources.\n- See: harvestable.lua\n- Tip: Set 'hs_plans' to something that supports harvesting.",
@@ -276,6 +256,19 @@
                                 "finish_harvest_index": {
                                     "type": "integer",
                                     "description": "The index [in resources_to_harvest] upon which the object will be removed, and replaced with the remaining resources."
+                                }
+                            }
+                        },
+                        "hs_buildable": {
+                            "type": "object",
+                            "description": "Marks this as a 'build object'. Incompatible with 'hs_resource'.",
+                            "properties": {
+                                "seat_type": {
+                                    "type": "string",
+                                    "examples": [
+                                        "bench"
+                                    ],
+                                    "description": "Configures whether (and how) the sapien can sit on this object.\n\n- See seat.lua\n\n- Custom seats can be created using the shared config"
                                 }
                             }
                         }
