@@ -20,13 +20,12 @@ function mod:onload(locale)
     --- Fetches a localization string, or returns the string itself.
     --- @param key - The localization key, such as 'skill_gathering_description'
     function locale:getUnchecked(key)
-        local potential_translation = locale:get(key)
-
-        if potential_translation:find("missing localization", 1, true) ~= nil then
+        local success, value = pcall(locale.get, self, key)
+        if success then
+            return value
+        else
             return key
         end
-        
-        return potential_translation
     end
 
     -- Use this method to add dynamic locale keys

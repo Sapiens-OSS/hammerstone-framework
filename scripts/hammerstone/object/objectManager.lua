@@ -76,6 +76,16 @@ local objectLoader = {
 		loadFunction = "handleStorageLinks"
 	},
 
+	-- Special one: This handles injecting the eat products, after all objects have been created.
+	eatByProductsHandler = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true, -- triggered in gameObject.lua
+		moduleDependencies = {
+			"gameObject"
+		},
+		loadFunction = "handleEatByProducts",
+	},
+
 	evolvingObject = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
@@ -105,7 +115,7 @@ local objectLoader = {
 			"resource",
 			"action",
 			"craftable",
-			-- "buildUI"
+			"tool"
 		},
 		loadFunction = "generateBuildableDefinition"
 	},
@@ -444,6 +454,7 @@ function objectManager:generateModelPlaceholder(config)
 
 
 	
+	-- TODO: `additionalIndexCount`
 	local modelPlaceholderData = utils:getTable(buildableComponent, "model_placeholder", {
 		map = function(data)
 
@@ -475,8 +486,6 @@ function objectManager:generateModelPlaceholder(config)
 
 		end
 	})
-
-	mj:log(modelPlaceholderData)
 
 	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 end
@@ -589,15 +598,12 @@ function objectManager:generateBuildableDefinition(config)
 	local planModule = moduleManager:get("plan")
 	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
-	-- local buildUIModule = moduleManager:get("buildUI")
 	local craftableModule = moduleManager:get("craftable")
+	local toolModule = moduleManager:get("tool")
 
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
-	local name = description:get("name", {default = getNameLocKey(identifier)})
-	local plural = description:get("plural", {default = getPluralLocKey(identifier)})
-	local summary = description:getOptional(description, "summary")
 
 	-- Components
 	local components = config:get("components")
@@ -606,8 +612,8 @@ function objectManager:generateBuildableDefinition(config)
 	-- Optional Components
 	local buildableComponent = components:getOptional("hs_buildable")
 
+	-- Not everything is a buildable. Expected soft return.
 	if buildableComponent == nil then
-		-- Not everything is a buildable. Chill.
 		return
 	end
 
@@ -619,14 +625,14 @@ function objectManager:generateBuildableDefinition(config)
 		inProgressGameObjectTypeKey = getBuildIdentifier(identifier),
 		finalGameObjectTypeKey = identifier,
 
-		name = name,
-		plural = plural,
-		summary = summary,
+		name = description:get("name", {default = getNameLocKey(identifier)}),
+		plural = description:get("plural", {default = getPluralLocKey(identifier)}),
+		summary = description:getOptional(description, "summary"),
 		
 		buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true}),
-		classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "craft"}),
+		classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "build"}),
 
-		-- This one is interesting: We simly ask people to define a sequence from the craftable. 
+		-- This one is interesting: We simply ask people to define a sequence from the craftable. 
 		-- In the future we could also check `buildable.lua` if we wanted.
 		buildSequence = utils:getField(buildableComponent, "sequence", {
 			with = function (value)
@@ -634,21 +640,15 @@ function objectManager:generateBuildableDefinition(config)
 			end
 		}),
 
-		-- TODO: This code is copy/pasted. We can easily abstract it.
-		skills = utils:getTable(buildableComponent, "skills", {
-			inTypeTable = skillModule.types,
-			optional = true,
-			with = function(tbl)
-				if #tbl > 0 then
-					return {
-						required = skillModule.types[tbl[1] ].index
-					}
-				end
-			end
-		}),
+		skills = {
+			required = utils:getFieldAsIndex(buildableComponent, "skill", skillModule.types, {optional = true})
+		},
+
+		requiredTools = {
+			utils:getFieldAsIndex(buildableComponent, "tool", toolModule.types, {optional = true})
+		},
 
 		requiredResources = utils:getTable(buildableComponent, "resources", {
-			-- Runs for each item and replaces item with return result
 			map = getResources
 		})
 
@@ -663,7 +663,6 @@ function objectManager:generateBuildableDefinition(config)
 	})
 
 	buildableModule:addBuildable(identifier, newBuildable)
-	-- constructableModule:finalize()
 
 	-- Cached, and handled later in buildUI.lua
 	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
@@ -681,8 +680,8 @@ function objectManager:generateResourceDefinition(config)
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
-	local name = utils:getLocalizedString(description, "name", {default = getNameLocKey(identifier)})
-	local plural = utils:getLocalizedString(description, "plural", {default = getNameLocKey(identifier)})
+	local name = utils:getLocalizedString(description, "name", getNameLocKey(identifier))
+	local plural = utils:getLocalizedString(description, "plural", getNameLocKey(identifier))
 
 	-- Components
 	local components = config:get("components")
@@ -720,6 +719,37 @@ function objectManager:generateResourceDefinition(config)
 
 	resourceModule:addResource(identifier, newResource)
 end
+
+---------------------------------------------------------------------------------
+-- Eat By Products
+---------------------------------------------------------------------------------
+
+function objectManager:handleEatByProducts(config)
+	-- Modules
+	local gameObjectModule =  moduleManager:get("gameObject")
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	-- Components
+	local components = config:get("components")
+	local foodComponent = components:getOptional("hs_food")
+
+	if foodComponent == nil then
+		return
+	end
+
+	local eatByProducts = utils:getTable(foodComponent, "items_when_eaten", {
+		map = function(value)
+			return utils:getTypeIndex(gameObjectModule.types, value, "Game Object")
+		end
+	})
+
+	-- Inject into the object
+	gameObjectModule.types[identifier].eatByProducts = eatByProducts
+end
+
 
 ---------------------------------------------------------------------------------
 -- Storage Links
@@ -848,9 +878,14 @@ function objectManager:generatePlanHelperObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config.components
-	local description = config.description
-	local plansComponent = config.components.hs_plans
+	local components = config:get("components")
+	local description = config:get("description")
+	local plansComponent = components:getOptional("hs_plans")
+
+	if plansComponent == nil then
+		return
+	end
+
 
 	local objectIndex = utils:getFieldAsIndex(description, "identifier", gameObjectModule.types)
 	local availablePlans = utils:getField(plansComponent, "available_plans", {
@@ -1015,7 +1050,6 @@ end
 ---------------------------------------------------------------------------------
 
 -- TODO: selectionGroupTypeIndexes
--- TODO: Implement eatByProducts
 
 function objectManager:generateGameObject(config)
 	objectManager:generateGameObjectInternal(config, false)
@@ -1044,6 +1078,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local harvestableComponent = utils:getField(components, "hs_harvestable", {optional = true})
 	local resourceComponent = utils:getField(components, "hs_resource", {optional = true})
 	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
+	local foodComponent = utils:getField(components, "hs_food", {optional = true})
 
 	if isBuildVariant then
 		log:schema("ddapi", "  " .. identifier .. "(build variant)")
@@ -1072,7 +1107,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 			log:schema("ddapi", "    Note: Object is being created without any associated resource. This is only acceptable for things like corpses etc.")
 		end
 	end
-
 
 	-- Handle tools
 	local toolUsage = {}
@@ -1123,14 +1157,15 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	end
 	
 	local newGameObject = {
-		name = utils:getLocalizedString(description, "name", {default = getNameLocKey(identifier)}),
-		plural = utils:getLocalizedString(description, "plural", {default = getPluralLocKey(identifier)}),
+		name = utils:getLocalizedString(description, "name", getNameLocKey(identifier)),
+		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(identifier)),
 		modelName = modelName,
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
 		resourceTypeIndex = resourceTypeIndex,
 		harvestableTypeIndex = harvestableTypeIndex,
-		toolUsage = toolUsage,
+		toolUsages = toolUsage,
+		eatByProducts = eatByProducts,
 		-- TODO: Implement marker positions
 		markerPositions = {
 			{
@@ -1250,8 +1285,8 @@ function objectManager:generateRecipeDefinition(config)
 
 	local newRecipeDefinition = {
 		name = utils:getField(description, "name", {default = "recipe_" .. identifier}),
-		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "plural"}),
-		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "summary"}),
+		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "_plural"}),
+		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "_summary"}),
 
 		-- Recipe Component
 		-- TODO: Clean these up
@@ -1283,6 +1318,8 @@ function objectManager:generateRecipeDefinition(config)
 				end
 			end
 		}),
+
+		
 		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
 			optional = true, -- Default is the normal crafting zone.
 			map = function(e)

@@ -316,19 +316,14 @@ function objectUtils:validate(key, value, options)
 end
 
 -- Returns a string, localized if possible
-function objectUtils:getLocalizedString(tbl, key, options)
-	--- Inject options, without overwriting
-	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
-		type = "string",
-		with = function(key)
-			-- TODO: Fix this
-			return key
-			-- return locale:getUnchecked(key)
-		end
+function objectUtils:getLocalizedString(tbl, key, default)
+	-- The key, which is either user submited, or the default
+	local localKey = objectUtils:getField(tbl, key, {
+		default = default
 	})
 
-	--- Fall through to base definition
-	return objectUtils:getField(tbl, key, options)
+	-- Unchecked fetch, returns localized result, or source string.
+	return locale:getUnchecked(localKey)
 end
 
 --- Fetches a vec3 by coercing a json array with three elements.

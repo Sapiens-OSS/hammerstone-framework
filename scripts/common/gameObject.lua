@@ -15,6 +15,7 @@ function mod:onload(gameObject)
 	gameObject.mjInit = function(self)
 		objectManager:markObjectAsReadyToLoad("gameObject")
 		super_mjInit(self)
+		objectManager:markObjectAsReadyToLoad("eatByProductsHandler")
 	end
 
 	moduleManager:addModule("gameObject", gameObject)

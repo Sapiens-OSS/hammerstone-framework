@@ -89,6 +89,22 @@
                                 }
                             }
                         },
+                        "hs_resource": {
+                            "description": "Defines the relationship that this object has with any potential resources.",
+                            "type": "object",
+                            "required": [
+                                "create_resource"
+                            ],
+                            "properties": {
+                                "link_to_storage": {
+                                    "type": "string",
+                                    "description": "The identifier of the storage type for this object (defined in it's own file).",
+                                    "examples": [
+                                        "sirlich:skull_storage"
+                                    ]
+                                }
+                            }
+                        },
                         "hs_plans": {
                             "type": "object",
                             "description": "Allows you to define a custom 'planHelper' for this object. Can be used to hook your object to a unique plan, or use a vanilla preset.",
@@ -189,37 +205,24 @@
                                 }
                             }
                         },
-                        "hs_resource": {
-                            "description": "Defines the relationship that this object has with any potential resources.",
-                            "type": "object",
-                            "required": [
-                                "create_resource"
-                            ],
-                            "properties": {
-                                "link_to_storage": {
-                                    "type": "string",
-                                    "description": "The identifier of the storage type for this object (defined in it's own file).",
-                                    "examples": [
-                                        "sirlich:skull_storage"
-                                    ]
-                                }
-                            }
-                        },
                         "hs_food": {
                             "type": "object",
                             "description": "Defines that the object is edible, and specifies it's properties.",
                             "properties": {
                                 "portions": {
                                     "type": "integer",
-                                    "description": "The number of times this food item can be eaten before it is fully consumed."
+                                    "description": "The number of times this food item can be eaten before it is fully consumed.",
+                                    "default": 1
                                 },
                                 "value": {
                                     "type": "number",
-                                    "description": "The saturation value gained each time this food is eaten."
+                                    "description": "The saturation value gained each time this food is eaten.",
+                                    "default": 0.5
                                 },
                                 "food_poison_chance": {
                                     "type": "number",
-                                    "description": "The chance your Sapien will become sick consuming this food. 0=0%, 1=100%"
+                                    "description": "The chance your Sapien will become sick consuming this food. 0=0%, 1=100%",
+                                    "default": 0
                                 },
                                 "items_when_eaten": {
                                     "type": "array",
@@ -261,7 +264,7 @@
                         },
                         "hs_buildable": {
                             "type": "object",
-                            "description": "Marks this as a 'build object'. Incompatible with 'hs_resource'.",
+                            "description": "Marks this as a 'buildable object'. Incompatible with 'hs_resource'.",
                             "properties": {
                                 "seat_type": {
                                     "type": "string",
@@ -269,6 +272,35 @@
                                         "bench"
                                     ],
                                     "description": "Configures whether (and how) the sapien can sit on this object.\n\n- See seat.lua\n\n- Custom seats can be created using the shared config"
+                                },
+                                "skill": {
+                                    "type": "string",
+                                    "description": "The skill required to complete this building.\n- See: skill.lua",
+                                    "examples": [
+                                        "basicBuilding",
+                                        "thatchBuilding"
+                                    ]
+                                },
+                                "classification": {
+                                    "type": "string",
+                                    "description": "The classification for this craftable.\n- See: craftable.lua",
+                                    "default": "build",
+                                    "examples": [
+                                        "build"
+                                    ]
+                                },
+                                "build_completion_plan": {
+                                    "type": "string",
+                                    "description": "The plan to queue, when the building is finished.\n- See: plan.lua",
+                                    "examples": [
+                                        "light"
+                                    ]
+                                },
+                                "resources": {
+                                    "type": "array"
+                                },
+                                "model_placeholder": {
+                                    "type": "array"
                                 }
                             }
                         }
@@ -290,7 +322,7 @@
                         },
                         "name": {
                             "type": "string",
-                            "description": "The name of the object. May be localized, or not. Default is 'object_{identifier}",
+                            "description": "The name of the object. May be localized, or not. Default is 'object_{identifier}'",
                             "examples": [
                                 "Snake Skull",
                                 "object_snakeSkull"
