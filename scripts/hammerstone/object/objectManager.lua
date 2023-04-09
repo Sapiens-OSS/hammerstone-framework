@@ -7,11 +7,6 @@
 local objectManager = {
 	inspectCraftPanelData = {},
 	constructableIndexes = {},
-
-	-- Map between storage identifiers and object IDENTIFIERS that should use this storage.
-	-- Collected when generating objects, and inserted when generating storages (after converting to index)
-	-- @format map<string, array<string>>.
-	-- objectsForStorage = {},
 }
 
 -- Sapiens
@@ -38,7 +33,6 @@ hammerAPI:test()
 
 -- Whether to crash (for development), or attempt to recover (for release).
 local crashes = true
-local count = true
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
@@ -1013,8 +1007,10 @@ function objectManager:generateEvolvingObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local evolvingObjectComponent = config.components.hs_evolving_object
-	local identifier = config.description.identifier
+	local components = config:get("components")
+	local evolvingObjectComponent = components:getOptional("hs_evolving_object")
+	local description = config:get("description")
+	local identifier = description:get("identifier")
 	
 	-- If the component doesn't exist, then simply don't registerf an evolving object.
 	if evolvingObjectComponent == nil then
@@ -1023,10 +1019,25 @@ function objectManager:generateEvolvingObject(config)
 		log:schema("ddapi", "  " .. identifier)
 	end
 
-	-- TODO: Make this smart, and can handle day length OR year length.
-	-- It claims it reads it as lua (schema), but it actually just multiplies it by days.
+	-- Default
+	local time = 1 * evolvingObjectModule.yearLength
+	local yearTime = evolvingObjectComponent:getOptional("time_years")
+	if yearTime then
+		time = yearTime * evolvingObjectModule.yearLength
+	end
+
+	local dayTime = evolvingObjectComponent:getOptional("time_days")
+	if dayTime then
+		time = yearTime * evolvingObjectModule.dayLength
+	end
+
+	if dayTime and yearTime then
+		log:schema("ddapi", "   WARNING: Evolving defines both 'time_years' and 'time_days'. You can only define one.")
+
+	end
+
 	local newEvolvingObject = {
-		minTime = evolvingObjectModule.dayLength * evolvingObjectComponent.min_time,
+		minTime = time,
 		categoryIndex = evolvingObjectModule.categories[evolvingObjectComponent.category].index,
 	}
 
@@ -1067,6 +1078,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local description = utils:getField(config, "description")
 	local identifier = utils:getField(description, "identifier")
 
+	local nameKey = identifier
 	if isBuildVariant then
 		identifier = getBuildIdentifier(identifier)
 	end
@@ -1078,7 +1090,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local harvestableComponent = utils:getField(components, "hs_harvestable", {optional = true})
 	local resourceComponent = utils:getField(components, "hs_resource", {optional = true})
 	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
-	local foodComponent = utils:getField(components, "hs_food", {optional = true})
 
 	if isBuildVariant then
 		log:schema("ddapi", "  " .. identifier .. "(build variant)")
@@ -1157,15 +1168,14 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	end
 	
 	local newGameObject = {
-		name = utils:getLocalizedString(description, "name", getNameLocKey(identifier)),
-		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(identifier)),
+		name = utils:getLocalizedString(description, "name", getNameLocKey(nameKey)),
+		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(nameKey)),
 		modelName = modelName,
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
 		resourceTypeIndex = resourceTypeIndex,
 		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsages = toolUsage,
-		eatByProducts = eatByProducts,
 		-- TODO: Implement marker positions
 		markerPositions = {
 			{

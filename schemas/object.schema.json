@@ -92,9 +92,6 @@
                         "hs_resource": {
                             "description": "Defines the relationship that this object has with any potential resources.",
                             "type": "object",
-                            "required": [
-                                "create_resource"
-                            ],
                             "properties": {
                                 "link_to_storage": {
                                     "type": "string",
@@ -167,19 +164,22 @@
                             "type": "object",
                             "description": "This component allows specifying how your object will rot/dry/despawn.",
                             "required": [
-                                "min_time",
                                 "category"
                             ],
                             "properties": {
-                                "min_time": {
+                                "time_years": {
                                     "type": "string",
-                                    "description": "The minimum time that it takes this object to evolve. Will be interpreted as lua."
+                                    "description": "The time in years before this object will transform. Mutually exclusive with 'time_days'"
+                                },
+                                "time_days": {
+                                    "type": "string",
+                                    "description": "The time in days before this object will transform. Mutually exclusive with 'time_years'"
                                 },
                                 "transform_to": {
                                     "type": "array",
                                     "items": {
                                         "type": "string",
-                                        "description": "Identifiers of the item you want to transform to.",
+                                        "description": "Identifiers of the item you want to transform to. Leave blank to despawn rotten items.",
                                         "examples": [
                                             "sirlich:snake_skull"
                                         ]
