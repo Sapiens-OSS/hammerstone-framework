@@ -10,7 +10,7 @@ local configLoader = {
 		object = {
 			key = "object",
 			unwrap = "hammerstone:object_definition",
-			configPath = "/hammerstone/objects/",
+			configPath = "/hammerstone/objects",
 			luaGetter = "getObjectConfigs",
 			jsonStrings = {},
 			cachedConfigs = {}
@@ -18,7 +18,7 @@ local configLoader = {
 		storage = {
 			key = "storage",
 			unwrap = "hammerstone:storage_definition",
-			configPath = "/hammerstone/storage/",
+			configPath = "/hammerstone/storage",
 			luaGetter = "getStorageConfigs",
 			jsonStrings = {},
 			cachedConfigs = {}
@@ -35,14 +35,14 @@ local configLoader = {
 			key = "recipe",
 			unwrap = "hammerstone:recipe_definition",
 			luaGetter = "getRecipeConfigs",
-			configPath = "/hammerstone/recipes/",
+			configPath = "/hammerstone/recipes",
 			jsonStrings = {},
 			cachedConfigs = {}
 		},
 		skill = {
 			key = "skill",
 			unwrap = "hammerstone:skill_definition",
-			configPath = "/hammerstone/skills/",
+			configPath = "/hammerstone/skills",
 			luaGetter = "getSkillConfigs",
 			jsonStrings = {},
 			cachedConfigs = {}
@@ -79,24 +79,29 @@ function configLoader:loadConfigs()
 	-- Loads files at path to dbTable for each active mod
 	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
-	local count = 0;
 	
 	for i, mod in ipairs(mods) do
 		for routeName, config in pairs(configLoader.configTypes) do
 			if config["configPath"] ~= nil then
 				local objectConfigDir = mod.path .. config.configPath
-				local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
-				for j, configPath in ipairs(configPaths) do
-					local fullPath =  objectConfigDir .. configPath
-					count = count + 1;
-					configLoader:loadConfig(fullPath, config)
-				end
+				configLoader:loadConfigsInFolder(objectConfigDir, config)
 			end
-			
 		end
 	end
+end
 
-	log:schema("ddapi", "Loaded configs totalling: " .. count)
+function configLoader:loadConfigsInFolder(objectConfigDir, config)
+	mj:log("Fetching Configs from " .. objectConfigDir)
+	local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
+	for j, configPath in ipairs(configPaths) do
+		local fullPath =  objectConfigDir .. "/" .. configPath
+		
+		if stringEndsWith(fullPath, ".lua") or stringEndsWith(fullPath, ".json") then
+			configLoader:loadConfig(fullPath, config)
+		else
+			configLoader:loadConfigsInFolder(fullPath, config)
+		end
+	end
 end
 
 --- Loads a single config from the filesystem and saves it as a string, for future processing

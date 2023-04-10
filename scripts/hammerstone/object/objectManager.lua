@@ -20,7 +20,7 @@ local mat3Rotate = mjm.mat3Rotate
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
-local utils = mjrequire "hammerstone/object/objectUtils" -- TOOD: Are we happy name-bungling imports?
+local utils = mjrequire "hammerstone/object/objectUtils"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
 local hammerAPI = mjrequire "hammerAPI"
@@ -109,9 +109,28 @@ local objectLoader = {
 			"resource",
 			"action",
 			"craftable",
-			"tool"
+			"tool",
+			"actionSequence",
+			"gameObject"
 		},
 		loadFunction = "generateBuildableDefinition"
+	},
+
+	craftable = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true,
+		moduleDependencies = {
+			"gameObject",
+			"constructable",
+			"craftAreaGroup",
+			"skill",
+			"resource",
+			"action",
+			"craftable",
+			"tool",
+			"actionSequence"
+		},
+		loadFunction = "generateCraftableDefinition"
 	},
 
 	modelPlaceholder = {
@@ -436,17 +455,15 @@ function objectManager:generateModelPlaceholder(config)
 	if buildableComponent == nil then
 		return
 	end
-
+	
 	-- Otherwise, give warning on potential ill configuration
 	if buildableComponent.model_placeholder == nil then
-		log:schema("ddapi", "   Warning: " .. identifier .. " is being created without a model placeholder. In this case, you are responsible for creating one yourself.")
+		log:schema("ddapi", string.format("   Warning: %s is being created without a model placeholder. In this case, you are responsible for creating one yourself.", identifier))
 		return
 	end
 
 	local modelName = utils:getField(objectComponent, "model")
-	log:schema("ddapi", "  " .. identifier .. "(" .. modelName .. ")")
-
-
+	log:schema("ddapi", string.format("  %s (%s)", identifier, modelName))
 	
 	-- TODO: `additionalIndexCount`
 	local modelPlaceholderData = utils:getTable(buildableComponent, "model_placeholder", {
@@ -474,6 +491,9 @@ function objectManager:generateModelPlaceholder(config)
 					key = utils:getField(data, "key"),
 					defaultModelName = default_model,
 					resourceTypeIndex = resource_type,
+
+					-- TODO
+					additionalIndexCount = utils:getField(data, "additionalIndexCount", {optional = true}),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data)
 				}
 			end
@@ -589,11 +609,8 @@ end
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
-	local planModule = moduleManager:get("plan")
-	local skillModule = moduleManager:get("skill")
 	local constructableModule = moduleManager:get("constructable")
-	local craftableModule = moduleManager:get("craftable")
-	local toolModule = moduleManager:get("tool")
+	local planModule = moduleManager:get("plan")
 
 	-- Setup
 	local description = config:get("description")
@@ -613,40 +630,13 @@ function objectManager:generateBuildableDefinition(config)
 
 	log:schema("ddapi", "  " .. identifier)
 
-	local newBuildable = {
-		modelName = objectComponent:get("model"),
+	local newBuildable = objectManager:getCraftableBase(description, buildableComponent)
 
-		inProgressGameObjectTypeKey = getBuildIdentifier(identifier),
-		finalGameObjectTypeKey = identifier,
-
-		name = description:get("name", {default = getNameLocKey(identifier)}),
-		plural = description:get("plural", {default = getPluralLocKey(identifier)}),
-		summary = description:getOptional(description, "summary"),
-		
-		buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true}),
-		classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "build"}),
-
-		-- This one is interesting: We simply ask people to define a sequence from the craftable. 
-		-- In the future we could also check `buildable.lua` if we wanted.
-		buildSequence = utils:getField(buildableComponent, "sequence", {
-			with = function (value)
-				return utils:getField(craftableModule, value)
-			end
-		}),
-
-		skills = {
-			required = utils:getFieldAsIndex(buildableComponent, "skill", skillModule.types, {optional = true})
-		},
-
-		requiredTools = {
-			utils:getFieldAsIndex(buildableComponent, "tool", toolModule.types, {optional = true})
-		},
-
-		requiredResources = utils:getTable(buildableComponent, "resources", {
-			map = getResources
-		})
-
-	}
+	-- Buildable Specific Stuff
+	newBuildable.modelName = objectComponent:get("model")
+	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
+	newBuildable.finalGameObjectTypeKey = identifier
+	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true})
 
 	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
@@ -660,6 +650,123 @@ function objectManager:generateBuildableDefinition(config)
 
 	-- Cached, and handled later in buildUI.lua
 	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
+end
+
+function objectManager:generateCraftableDefinition(config)
+	-- Modules
+	local constructableModule = moduleManager:get("constructable")
+	local gameObjectModule =  moduleManager:get("gameObject")
+	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
+	local craftableModule = moduleManager:get("craftable")
+
+	-- Setup
+	local description = config:get("description")
+	local identifier = description:get("identifier")
+
+	-- Components
+	local components = config:get("components")
+
+	-- Optional Components
+	local craftableComponent = components:getOptional("hs_craftable")
+
+	-- Not everything is a craftable. Expected soft return.
+	if craftableComponent == nil then
+		return
+	end
+
+	-- TODO
+	local outputComponent = craftableComponent:getOptional("hs_output")
+
+	log:schema("ddapi", "  " .. identifier)
+
+	local newCraftable = objectManager:getCraftableBase(description, craftableComponent)
+
+	local outputObjectInfo = nil
+	local hasNoOutput = outputComponent == nil
+	if outputComponent then
+		outputObjectInfo = {
+			objectTypesArray = utils:getTable(outputComponent, "simple_output", {
+				optional = true, -- Can also define with 'outputArraysByResourceObjectType'
+				map = function(e)
+					return utils:getTypeIndex(gameObjectModule.types, e)
+				end
+			}),
+			outputArraysByResourceObjectType = outputComponent:get("output_by_object", {
+				optional = true, -- Can also define with 'objectTypesArray'
+				with = function(tbl)
+					local result = {}
+					for _, value in pairs(tbl) do -- Loop through all output objects
+						
+						-- Return if input isn't a valid gameObject
+						if utils:getTypeIndex(gameObjectModule.types, value.input, "Game Object") == nil then return end
+
+						-- Get the input's resource index
+						local index = gameObjectModule.types[value.input].index
+
+						-- Convert from schema format to vanilla format
+						-- If the predicate returns nil for any element, map returns nil
+						-- In this case, log an error and return if any output item does not exist in gameObject.types
+						result[index] = utils:map(value.output, function(e)
+							return utils:getTypeIndex(gameObjectModule.types, e, "Game Object")
+						end)
+					end
+					return result
+				end
+			}),
+		}
+	end
+
+	local craftArea = utils:getFieldAsIndex(craftableComponent, "craft_area", craftAreaGroupModule.types, {optional = true})
+	local requiredCraftAreaGroups = nil
+	if craftArea then
+		requiredCraftAreaGroups = {
+			craftArea
+		}
+	end
+
+	-- Craftable Specific Stuff
+	newCraftable.hasNoOutput = hasNoOutput
+	newCraftable.outputObjectInfo = outputObjectInfo
+	newCraftable.requiredCraftAreaGroups = requiredCraftAreaGroups
+
+	utils:addProps(newCraftable, craftableComponent, "props", {
+		-- No defaults, that's OK
+	})
+
+	if newCraftable ~= nil then
+
+
+		-- Debug
+		local debug = config:get("debug", {default = false})
+		if debug then
+			log:schema("ddapi", "Debugging: " .. identifier)
+			log:schema("ddapi", "Config:")
+			log:schema("ddapi", config)
+			log:schema("ddapi", "Output:")
+			log:schema("ddapi", newCraftable)
+		end
+
+
+		-- Add recipe
+		craftableModule:addCraftable(identifier, newCraftable)
+		
+		-- Add items in crafting panels
+		if newCraftable.requiredCraftAreaGroups then
+			for _, group in ipairs(newCraftable.requiredCraftAreaGroups) do
+				local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
+				if objectManager.inspectCraftPanelData[key] == nil then
+					objectManager.inspectCraftPanelData[key] = {}
+				end
+				table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
+			end
+		else
+			local key = gameObjectModule.typeIndexMap.craftArea
+			if objectManager.inspectCraftPanelData[key] == nil then
+				objectManager.inspectCraftPanelData[key] = {}
+			end
+			table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
+		end
+	end
 end
 
 ---------------------------------------------------------------------------------
@@ -1060,8 +1167,80 @@ end
 -- Game Object
 ---------------------------------------------------------------------------------
 
--- TODO: selectionGroupTypeIndexes
+--- Returns a lua table, containing the shared keys between craftables and buildables
+function objectManager:getCraftableBase(description, craftableComponent)
+	
+	-- Modules
+	local skillModule = moduleManager:get("skill")
+	local craftableModule = moduleManager:get("craftable")
+	local toolModule = moduleManager:get("tool")
+	local constructableModule = moduleManager:get("constructable")
+	local actionSequenceModule = moduleManager:get("actionSequence")
+	local gameObjectModule = moduleManager:get("gameObject")
 
+	-- Setup
+	local identifier = description:get("identifier")
+
+	-- TODO: copy/pasted
+	local buildSequenceData
+	if craftableComponent.custom_build_sequence ~= nil then
+		utils:logNotImplemented("Custom Build Sequence")
+	else
+		local actionSequence = utils:getField(craftableComponent, "action_sequence", {
+			optional = true,
+			with = function (value)
+				return utils:getTypeIndex(actionSequenceModule.types, value, "Action Sequence")
+			end
+		})
+		if actionSequence then
+			-- TODO
+			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, nil )
+		else
+			buildSequenceData = craftableModule[utils:getField(craftableComponent, "build_sequence")]
+		end
+	end
+
+
+	local tool = utils:getFieldAsIndex(craftableComponent, "tool", toolModule.types, {optional = true})
+	local requiredTools = nil
+	if tool then
+		requiredTools = {
+			tool
+		}
+	end
+	local craftableBase = {
+
+		name = description:get("name", {default = getNameLocKey(identifier)}),
+		plural = description:get("plural", {default = getPluralLocKey(identifier)}),
+		summary = description:getOptional(description, "summary"),
+		
+		-- TODO: Consider whether to make this 'craft' by default
+		classification = utils:getFieldAsIndex(craftableComponent, "classification", constructableModule.classifications, {default = "build"}),
+
+		buildSequence = buildSequenceData,
+
+		skills = {
+			required = utils:getFieldAsIndex(craftableComponent, "skill", skillModule.types, {optional = true})
+		},
+
+		iconGameObjectType = utils:getFieldAsIndex(craftableComponent, "display_object", gameObjectModule.types, {optional = true}),
+
+		requiredTools = requiredTools,
+
+		inProgressBuildModel = utils:getField(craftableComponent, "build_model", {default = "craftSimple"}),
+
+
+		requiredResources = utils:getTable(craftableComponent, "resources", {
+			map = getResources
+		})
+
+	}
+
+	return craftableBase
+end
+
+
+-- TODO: selectionGroupTypeIndexes
 function objectManager:generateGameObject(config)
 	objectManager:generateGameObjectInternal(config, false)
 end
@@ -1152,7 +1331,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Inject data
 		newBuildableKeys = {
-			seatTypeIndex = utils:getFieldAsIndex(buildableComponent, "seat_type", seatModule.types, {optional=true}),
 			isBuiltObject = utils:getField(buildableComponent, "is_built_object", { default = true}),
 			ignoreBuildRay = utils:getField(buildableComponent, "ignore_build_ray", { default = true}),
 			isPathFindingCollider = utils:getField(buildableComponent, "has_collisions", { default = true}),
@@ -1163,8 +1341,14 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 					return not value
 				end
 			}),
+			
 			isInProgressBuildObject = isBuildVariant
 		}
+
+		-- Build variant doesnt get seats
+		if not isBuildVariant then
+			newBuildableKeys.seatTypeIndex = utils:getFieldAsIndex(buildableComponent, "seat_type", seatModule.types, {optional=true})
+		end
 	end
 	
 	local newGameObject = {
@@ -1206,10 +1390,8 @@ function objectManager:generateRecipeDefinition(config)
 	local craftableModule = moduleManager:get("craftable")
 	local skillModule = moduleManager:get("skill")
 	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
-	local actionModule = moduleManager:get("action")
 	local actionSequenceModule = moduleManager:get("actionSequence")
 	local toolModule = moduleManager:get("tool")
-	local resourceModule = moduleManager:get("resource")
 
 	-- Definition
 	local description = config:get("description")
@@ -1239,6 +1421,7 @@ function objectManager:generateRecipeDefinition(config)
 		toolType = toolTypes[1]
 	end
 
+	-- TODO: Copy/pasted
 	local buildSequenceData
 	if buildSequenceComponent.custom_build_sequence ~= nil then
 		utils:logNotImplemented("Custom Build Sequence")
