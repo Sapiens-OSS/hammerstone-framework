@@ -14,7 +14,6 @@ function mod:onload(craftable)
     local super_load = craftable.load
     craftable.load = function(craftable_, gameObject, flora)
         super_load(craftable_, gameObject, flora)
-        objectManager:markObjectAsReadyToLoad("recipe")
         objectManager:markObjectAsReadyToLoad("craftable")
     end
 

@@ -31,14 +31,6 @@ local configLoader = {
 			jsonStrings = {},
 			cachedConfigs = {}
 		},
-		recipe = {
-			key = "recipe",
-			unwrap = "hammerstone:recipe_definition",
-			luaGetter = "getRecipeConfigs",
-			configPath = "/hammerstone/recipes",
-			jsonStrings = {},
-			cachedConfigs = {}
-		},
 		skill = {
 			key = "skill",
 			unwrap = "hammerstone:skill_definition",

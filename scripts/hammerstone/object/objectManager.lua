@@ -139,6 +139,9 @@ local objectLoader = {
 			"modelPlaceholder",
 			"resource"
 		},
+		dependencies = {
+			"gameObject"
+		},
 		loadFunction = "generateModelPlaceholder",
 	},
 
@@ -167,24 +170,6 @@ local objectLoader = {
 			"typeMaps"
 		},
 		loadFunction = "generateHarvestableObject"
-	},
-
-	recipe = {
-		configType = configLoader.configTypes.recipe,
-		disabled = false,
-		waitingForStart = true,
-		moduleDependencies = {
-			"gameObject",
-			"constructable",
-			"craftable",
-			"skill",
-			"craftAreaGroup",
-			"action",
-			"actionSequence",
-			"tool",
-			"resource"
-		},
-		loadFunction = "generateRecipeDefinition"
 	},
 
 	planHelper = {
@@ -465,7 +450,6 @@ function objectManager:generateModelPlaceholder(config)
 	local modelName = utils:getField(objectComponent, "model")
 	log:schema("ddapi", string.format("  %s (%s)", identifier, modelName))
 	
-	-- TODO: `additionalIndexCount`
 	local modelPlaceholderData = utils:getTable(buildableComponent, "model_placeholder", {
 		map = function(data)
 
@@ -493,7 +477,7 @@ function objectManager:generateModelPlaceholder(config)
 					resourceTypeIndex = resource_type,
 
 					-- TODO
-					additionalIndexCount = utils:getField(data, "additionalIndexCount", {optional = true}),
+					additionalIndexCount = utils:getField(data, "additional_index_count", {optional = true}),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data)
 				}
 			end
@@ -501,6 +485,11 @@ function objectManager:generateModelPlaceholder(config)
 		end
 	})
 
+	if config.debug == true then
+		mj:log(string.format("DEBUGGING '%s'", identifier))
+		mj:log(config)
+		mj:log(modelPlaceholderData)
+	end
 	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 end
 
@@ -606,6 +595,11 @@ local function getPluralLocKey(identifier)
 	return "object_" .. identifier .. "_plural"
 end
 
+local function getSummaryLocKey(identifier)
+	return "object_" .. identifier .. "_summary"
+end
+
+
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
@@ -632,7 +626,29 @@ function objectManager:generateBuildableDefinition(config)
 
 	local newBuildable = objectManager:getCraftableBase(description, buildableComponent)
 
+	local clearObjectsAndTerrainSequence = {
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearObjects.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearTerrain.index
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearObjects.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringResources.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringTools.index,
+		},
+		{
+			constructableSequenceTypeIndex = constructableModule.sequenceTypes.moveComponents.index,
+		},
+	}
+
 	-- Buildable Specific Stuff
+	newBuildable.buildSequence = clearObjectsAndTerrainSequence
 	newBuildable.modelName = objectComponent:get("model")
 	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
 	newBuildable.finalGameObjectTypeKey = identifier
@@ -646,8 +662,9 @@ function objectManager:generateBuildableDefinition(config)
 		canAttachToAnyObjectWithoutTestingForCollisions = false
 	})
 
+	utils:debug(identifier, config, newBuildable)
 	buildableModule:addBuildable(identifier, newBuildable)
-
+	
 	-- Cached, and handled later in buildUI.lua
 	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
 end
@@ -728,6 +745,7 @@ function objectManager:generateCraftableDefinition(config)
 	newCraftable.hasNoOutput = hasNoOutput
 	newCraftable.outputObjectInfo = outputObjectInfo
 	newCraftable.requiredCraftAreaGroups = requiredCraftAreaGroups
+	newCraftable.inProgressBuildModel = utils:getField(craftableComponent, "build_model", {default = "craftSimple"})
 
 	utils:addProps(newCraftable, craftableComponent, "props", {
 		-- No defaults, that's OK
@@ -871,7 +889,7 @@ function objectManager:handleStorageLinks(config)
 	})
 
 	if resourceComponent ~= nil then
-		local storageIdentifier = utils:getField(resourceComponent, "link_to_storage")
+		local storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
 
 		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
 		table.insert(storageModule.types[storageIdentifier].resources, moduleManager:get("resource").types[identifier].index)
@@ -908,7 +926,7 @@ function objectManager:generateStorageObject(config)
 		default = 2.0
 	})
 	local rotation = utils:getVec3(storageComponent, "rotation", {
-		default = vec3(0.0, 0.0, 0.0)
+		default = vec3(1, 0.0, 0.0)
 	})
 
 	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
@@ -1181,6 +1199,14 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	-- Setup
 	local identifier = description:get("identifier")
 
+	local tool = utils:getFieldAsIndex(craftableComponent, "tool", toolModule.types, {optional = true})
+	local requiredTools = nil
+	if tool then
+		requiredTools = {
+			tool
+		}
+	end
+
 	-- TODO: copy/pasted
 	local buildSequenceData
 	if craftableComponent.custom_build_sequence ~= nil then
@@ -1193,26 +1219,16 @@ function objectManager:getCraftableBase(description, craftableComponent)
 			end
 		})
 		if actionSequence then
-			-- TODO
-			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, nil )
+			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, tool)
 		else
 			buildSequenceData = craftableModule[utils:getField(craftableComponent, "build_sequence")]
 		end
 	end
 
-
-	local tool = utils:getFieldAsIndex(craftableComponent, "tool", toolModule.types, {optional = true})
-	local requiredTools = nil
-	if tool then
-		requiredTools = {
-			tool
-		}
-	end
 	local craftableBase = {
-
-		name = description:get("name", {default = getNameLocKey(identifier)}),
-		plural = description:get("plural", {default = getPluralLocKey(identifier)}),
-		summary = description:getOptional(description, "summary"),
+		name = utils:getLocalizedString(description, "name", getNameLocKey(identifier)),
+		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(identifier)),
+		summary = utils:getLocalizedString(description, "summary", getSummaryLocKey(identifier)),
 		
 		-- TODO: Consider whether to make this 'craft' by default
 		classification = utils:getFieldAsIndex(craftableComponent, "classification", constructableModule.classifications, {default = "build"}),
@@ -1223,12 +1239,11 @@ function objectManager:getCraftableBase(description, craftableComponent)
 			required = utils:getFieldAsIndex(craftableComponent, "skill", skillModule.types, {optional = true})
 		},
 
-		iconGameObjectType = utils:getFieldAsIndex(craftableComponent, "display_object", gameObjectModule.types, {optional = true}),
+		iconGameObjectType = utils:getFieldAsIndex(craftableComponent, "display_object", gameObjectModule.types, {
+			default = identifier
+		}),
 
 		requiredTools = requiredTools,
-
-		inProgressBuildModel = utils:getField(craftableComponent, "build_model", {default = "craftSimple"}),
-
 
 		requiredResources = utils:getTable(craftableComponent, "resources", {
 			map = getResources
@@ -1252,6 +1267,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local toolModule = moduleManager:get("tool")
 	local harvestableModule = moduleManager:get("harvestable")
 	local seatModule = moduleManager:get("seat")
+	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -1271,8 +1287,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
 
 	if isBuildVariant then
-		log:schema("ddapi", "  " .. identifier .. "(build variant)")
-
+		log:schema("ddapi", string.format("%s  (build variant)", identifier))
 	else
 		log:schema("ddapi", "  " .. identifier)
 	end
@@ -1300,15 +1315,17 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Handle tools
 	local toolUsage = {}
-	local toolConfigs = utils:getField(toolComponent, "tool_usage", {default = {}})
-	for i, config in ipairs(toolConfigs) do
-		local toolTypeIndex = utils:getFieldAsIndex(config, "tool_type", toolModule.types)
-		toolUsage[toolTypeIndex] = {
-			[toolModule.propertyTypes.damage.index] = utils:getField(toolComponent, "damage", {default = 1}),
-			[toolModule.propertyTypes.durability.index] = utils:getField(toolComponent, "durability", {default = 1}),
-			[toolModule.propertyTypes.speed.index] = utils:getField(toolComponent, "speed", {default = 1}),
-		}
+	if toolComponent then
+		for key, config in pairs(toolComponent) do
+			local toolTypeIndex = utils:getTypeIndex(toolModule.types, key, "Tool Type")
+			toolUsage[toolTypeIndex] = {
+				[toolModule.propertyTypes.damage.index] = utils:getField(config, "damage", {default = 1}),
+				[toolModule.propertyTypes.durability.index] = utils:getField(config, "durability", {default = 1}),
+				[toolModule.propertyTypes.speed.index] = utils:getField(config, "speed", {default = 1}),
+			}
+		end
 	end
+
 
 	local harvestableTypeIndex = utils:getField(description, "identifier", {
 		with = function (value)
@@ -1331,7 +1348,6 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Inject data
 		newBuildableKeys = {
-			isBuiltObject = utils:getField(buildableComponent, "is_built_object", { default = true}),
 			ignoreBuildRay = utils:getField(buildableComponent, "ignore_build_ray", { default = true}),
 			isPathFindingCollider = utils:getField(buildableComponent, "has_collisions", { default = true}),
 			preventGrassAndSnow = utils:getField(buildableComponent, "clear_ground", { default = true}),
@@ -1342,6 +1358,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 				end
 			}),
 			
+			isBuiltObject = not isBuildVariant,
 			isInProgressBuildObject = isBuildVariant
 		}
 
@@ -1360,6 +1377,10 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		resourceTypeIndex = resourceTypeIndex,
 		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsages = toolUsage,
+		craftAreaGroupTypeIndex = utils:getFieldAsIndex(buildableComponent, "craft_area", craftAreaGroupModule.types, {
+			optional = true
+		}),
+
 		-- TODO: Implement marker positions
 		markerPositions = {
 			{
@@ -1368,212 +1389,15 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		}
 	}
 
-	-- Combine keys
-	local outObject = utils:merge(newGameObject, newBuildableKeys)
-
-	-- Register inside of UI
-	-- table.insert(buildUI.itemList, constructableModule.types.woodChair.index)
-
-	-- Actually register the game object
-	gameObjectModule:addGameObject(identifier, outObject)
-end
-
----------------------------------------------------------------------------------
--- Craftable
----------------------------------------------------------------------------------
-
-
-function objectManager:generateRecipeDefinition(config)
-	-- Modules
-	local gameObjectModule = moduleManager:get("gameObject")
-	local constructableModule = moduleManager:get("constructable")
-	local craftableModule = moduleManager:get("craftable")
-	local skillModule = moduleManager:get("skill")
-	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
-	local actionSequenceModule = moduleManager:get("actionSequence")
-	local toolModule = moduleManager:get("tool")
-
-	-- Definition
-	local description = config:get("description")
-	local identifier = description:get("identifier")
-
-	log:schema("ddapi", "  " .. identifier)
-
-
-	-- Components
-	local components = config:get("components")
-	local recipeComponent = components:get("hs_recipe")
-	local buildSequenceComponent =  components:get("hs_build_sequence")
-	
-	-- Optional Components
-	local requirementsComponent =  components:getOptional("hs_requirements")
-	local outputComponent =  components:getOptional("hs_output")
-
-	
-	local toolTypes = utils:getTable(requirementsComponent, "tools", {
-		optional = true,
-		map = function(value)
-			return toolModule.types[value].index
-		end
-	})
-	local toolType = nil
-	if toolTypes ~= nil and #toolTypes > 0 then
-		toolType = toolTypes[1]
-	end
-
-	-- TODO: Copy/pasted
-	local buildSequenceData
-	if buildSequenceComponent.custom_build_sequence ~= nil then
-		utils:logNotImplemented("Custom Build Sequence")
-	else
-		local actionSequence = utils:getField(buildSequenceComponent, "action_sequence", {
-			optional = true,
-			with = function (value)
-				return utils:getTypeIndex(actionSequenceModule.types, value, "Action Sequence")
-			end
-		})
-		if actionSequence then
-			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, toolType)
-		else
-			buildSequenceData = craftableModule[utils:getField(buildSequenceComponent, "build_sequence")]
-		end
-	end
-
-
-	local outputObjectInfo = nil
-	local hasNoOutput = outputComponent == nil
-	if outputComponent then
-		outputObjectInfo = {
-			objectTypesArray = utils:getTable(outputComponent, "simple_output", {
-				optional = true, -- Can also define with 'outputArraysByResourceObjectType'
-				map = function(e)
-					return utils:getTypeIndex(gameObjectModule.types, e)
-				end
-			}),
-			outputArraysByResourceObjectType = outputComponent:get("output_by_object", {
-				optional = true, -- Can also define with 'objectTypesArray'
-				with = function(tbl)
-					local result = {}
-					for _, value in pairs(tbl) do -- Loop through all output objects
-						
-						-- Return if input isn't a valid gameObject
-						if utils:getTypeIndex(gameObjectModule.types, value.input, "Game Object") == nil then return end
-
-						-- Get the input's resource index
-						local index = gameObjectModule.types[value.input].index
-
-						-- Convert from schema format to vanilla format
-						-- If the predicate returns nil for any element, map returns nil
-						-- In this case, log an error and return if any output item does not exist in gameObject.types
-						result[index] = utils:map(value.output, function(e)
-							return utils:getTypeIndex(gameObjectModule.types, e, "Game Object")
-						end)
-					end
-					return result
-				end
-			}),
-		}
-	end
-
-
-	local newRecipeDefinition = {
-		name = utils:getField(description, "name", {default = "recipe_" .. identifier}),
-		plural = utils:getField(description, "plural", {default = "recipe_" .. identifier .. "_plural"}),
-		summary = utils:getField(description, "summary", {default = "recipe_" .. identifier .. "_summary"}),
-
-		-- Recipe Component
-		-- TODO: Clean these up
-		iconGameObjectType = gameObjectModule.typeIndexMap[utils:getField(recipeComponent, "display_object", { inTypeTable = gameObjectModule.types})],
-		classification = constructableModule.classifications[utils:getField(recipeComponent, "classification", { inTypeTable = constructableModule.classifications, default = "craft"})].index,
-
-		-- Output
-		outputObjectInfo = outputObjectInfo,
-		hasNoOutput = hasNoOutput,
-
-		-- TODO: `skills` can be simplified to `skill` and `disabledUntilAdditionalSkillTypeDiscovered` could be a prop?
-		skills = utils:getTable(requirementsComponent, "skills", {
-			inTypeTable = skillModule.types,
-			optional = true,
-			with = function(tbl)
-				if #tbl > 0 then
-					return {
-						required = skillModule.types[tbl[1] ].index
-					}
-				end
-			end
-		}),
-		disabledUntilAdditionalSkillTypeDiscovered = utils:getTable(requirementsComponent, "skills", {
-			inTypeTable = skillModule.types,
-			optional = true,
-			with = function(tbl)
-				if #tbl > 1 then
-					return skillModule.types[tbl[2] ].index
-				end
-			end
-		}),
-
-		
-		requiredCraftAreaGroups = utils:getTable(requirementsComponent, "craft_area_groups", {
-			optional = true, -- Default is the normal crafting zone.
-			map = function(e)
-				return utils:getTypeIndex(craftAreaGroupModule.types, e, "Craft Area Group")
-			end
-		}),
-		requiredTools = toolTypes,
-
-		-- Build Sequence Component
-		inProgressBuildModel = utils:getField(buildSequenceComponent, "build_model", {default = "craftSimple"}),
-		buildSequence = buildSequenceData,
-
-		requiredResources = utils:getTable(requirementsComponent, "resources", {
-			-- Runs for each item and replaces item with return result
-			map = getResources
-		})
-	}
-
-	utils:addProps(newRecipeDefinition, recipeComponent, "props", {
+	utils:addProps(newGameObject, buildableComponent, "props", {
 		-- No defaults, that's OK
 	})
 
-	
+	-- Combine keys
+	local outObject = utils:merge(newGameObject, newBuildableKeys)
 
-	if newRecipeDefinition ~= nil then
-
-
-		-- Debug
-		local debug = config:get("debug", {default = false})
-		if debug then
-			log:schema("ddapi", "Debugging: " .. identifier)
-			log:schema("ddapi", "Config:")
-			log:schema("ddapi", config)
-			log:schema("ddapi", "Output:")
-			log:schema("ddapi", newRecipeDefinition)
-		end
-
-
-		-- Add recipe
-		craftableModule:addCraftable(identifier, newRecipeDefinition)
-
-		local typeMapsModule = moduleManager:get("typeMaps")
-
-		
-		-- Add items in crafting panels
-		if newRecipeDefinition.requiredCraftAreaGroups then
-			for _, group in ipairs(newRecipeDefinition.requiredCraftAreaGroups) do
-				local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
-				if objectManager.inspectCraftPanelData[key] == nil then
-					objectManager.inspectCraftPanelData[key] = {}
-				end
-				table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
-			end
-		else
-			local key = gameObjectModule.typeIndexMap.craftArea
-			if objectManager.inspectCraftPanelData[key] == nil then
-				objectManager.inspectCraftPanelData[key] = {}
-			end
-			table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
-		end
-	end
+	-- Actually register the game object
+	gameObjectModule:addGameObject(identifier, outObject)
 end
 
 ---------------------------------------------------------------------------------

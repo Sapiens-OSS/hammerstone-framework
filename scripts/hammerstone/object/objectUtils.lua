@@ -356,6 +356,17 @@ function objectUtils:getFieldAsIndex(tbl, key, indexTable, options)
 	return objectUtils:getField(tbl, key, options)
 end
 
+function objectUtils:debug(identifier, config, tbl)
+	if config.debug then
+		log:schema("ddapi", "DEBUGGING: " .. identifier)
+		log:schema("ddapi", "Config:")
+		log:schema("ddapi", config)
+		log:schema("ddapi", "Output:")
+		log:schema("ddapi", tbl)
+	end
+end
+
+
 --- Returns whether it's possible to get a field directly
 local function canGetField(tbl, key)
 	if tbl == nil then
