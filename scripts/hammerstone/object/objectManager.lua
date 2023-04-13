@@ -626,33 +626,12 @@ function objectManager:generateBuildableDefinition(config)
 
 	local newBuildable = objectManager:getCraftableBase(description, buildableComponent)
 
-	local clearObjectsAndTerrainSequence = {
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearObjects.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearTerrain.index
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.clearObjects.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringResources.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.bringTools.index,
-		},
-		{
-			constructableSequenceTypeIndex = constructableModule.sequenceTypes.moveComponents.index,
-		},
-	}
-
 	-- Buildable Specific Stuff
-	newBuildable.buildSequence = clearObjectsAndTerrainSequence
+	newBuildable.classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "build"})
 	newBuildable.modelName = objectComponent:get("model")
 	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
 	newBuildable.finalGameObjectTypeKey = identifier
-	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(description, "build_completion_plan", planModule.types, {optional=true})
+	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(buildableComponent, "build_completion_plan", planModule.types, {optional=true})
 
 	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
@@ -742,6 +721,7 @@ function objectManager:generateCraftableDefinition(config)
 	end
 
 	-- Craftable Specific Stuff
+	newCraftable.classification = utils:getFieldAsIndex(craftableComponent, "classification", constructableModule.classifications, {default = "craft"})
 	newCraftable.hasNoOutput = hasNoOutput
 	newCraftable.outputObjectInfo = outputObjectInfo
 	newCraftable.requiredCraftAreaGroups = requiredCraftAreaGroups
@@ -1229,9 +1209,6 @@ function objectManager:getCraftableBase(description, craftableComponent)
 		name = utils:getLocalizedString(description, "name", getNameLocKey(identifier)),
 		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(identifier)),
 		summary = utils:getLocalizedString(description, "summary", getSummaryLocKey(identifier)),
-		
-		-- TODO: Consider whether to make this 'craft' by default
-		classification = utils:getFieldAsIndex(craftableComponent, "classification", constructableModule.classifications, {default = "build"}),
 
 		buildSequence = buildSequenceData,
 
