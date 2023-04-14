@@ -901,14 +901,6 @@ function objectManager:generateStorageObject(config)
 	local identifier = utils:getField(description, "identifier")
 	log:schema("ddapi", "  " .. identifier)
 
-	-- Prep
-	local random_rotation_weight = storageComponent:get("random_rotation_weight", {
-		default = 2.0
-	})
-	local rotation = utils:getVec3(storageComponent, "rotation", {
-		default = vec3(1, 0.0, 0.0)
-	})
-
 	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
 		default = {} -- Allow this field to be undefined, but don't use nil, since we will pull props from here later, with their *own* defaults
 	})
@@ -930,16 +922,30 @@ function objectManager:generateStorageObject(config)
 				default = vec3(0.5, 0.5, 0.5)
 			}),
 			
-			-- TODO consider giving more control here
 			rotationFunction = function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
-				local rot = mat3Rotate(mat3Identity, randomValue * random_rotation_weight, rotation)
-				return rot
+				local baseRotation = mat3Rotate(
+					mat3Identity,
+					math.pi * storageComponent:get("base_rotation_weight", {default = 0}),
+					utils:getVec3(storageComponent, "base_rotation", {default = vec3(1.0, 0.0, 0.0)})
+				)
+
+				return mat3Rotate(
+					baseRotation,
+					randomValue * storageComponent:get("random_rotation_weight", {default = 2.0}),
+					utils:getVec3(storageComponent, "random_rotation", {default = vec3(1, 0.0, 0.0)})
+				)
 			end,
 			
-			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "offset", {
+			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "place_offset", {
 				default = vec3(0.0, 0.0, 0.0)
-			}))
+			})),
+
+			placeObjectRotation = mat3Rotate(
+				mat3Identity,
+				math.pi * storageComponent:get("place_rotation_weight", {default = 0.0}),
+				utils:getVec3(storageComponent, "place_rotation", {default = vec3(0.0, 0.0, 1)})
+			),
 		},
 
 		maxCarryCount = utils:getField(carryCounts, "normal", {default=1}),
@@ -956,7 +962,7 @@ function objectManager:generateStorageObject(config)
 
 		carryRotation = mat3Rotate(mat3Identity,
 			utils:getField(carryComponent, "rotation_constant", { default = 1}),
-			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 0.0)})
+			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 1.0)})
 		),
 	}
 
@@ -1296,9 +1302,9 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		for key, config in pairs(toolComponent) do
 			local toolTypeIndex = utils:getTypeIndex(toolModule.types, key, "Tool Type")
 			toolUsage[toolTypeIndex] = {
-				[toolModule.propertyTypes.damage.index] = utils:getField(config, "damage", {default = 1}),
-				[toolModule.propertyTypes.durability.index] = utils:getField(config, "durability", {default = 1}),
-				[toolModule.propertyTypes.speed.index] = utils:getField(config, "speed", {default = 1}),
+				[toolModule.propertyTypes.damage.index] = utils:getField(config, "damage", {optional = true}),
+				[toolModule.propertyTypes.durability.index] = utils:getField(config, "durability", {optional = true}),
+				[toolModule.propertyTypes.speed.index] = utils:getField(config, "speed", {optional = true}),
 			}
 		end
 	end
