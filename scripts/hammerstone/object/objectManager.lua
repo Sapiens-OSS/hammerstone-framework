@@ -137,7 +137,9 @@ local objectLoader = {
 		configType = configLoader.configTypes.object,
 		moduleDependencies = {
 			"modelPlaceholder",
-			"resource"
+			"resource",
+			"gameObject",
+			"model"
 		},
 		dependencies = {
 			"gameObject"
@@ -417,7 +419,7 @@ local function createIndexFunction(remaps)
         local defaultModel = gameObjectModule.types[objectKey].modelName
 
 
-        return gameObjectModule:modelIndexForName(defaultModel)
+        return modelModule:modelIndexForName(defaultModel)
     end
 
     return inner
