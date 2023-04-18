@@ -34,319 +34,6 @@ hammerAPI:test()
 -- Whether to crash (for development), or attempt to recover (for release).
 local crashes = true
 
----------------------------------------------------------------------------------
--- Configuation and Loading
----------------------------------------------------------------------------------
-
---- Data structure which defines how a config is loaded, and in which order.
---- It will also be used to HOLD the loaded configs, once they've been read from the FS
---
--- @field configPath - Path to the folder where the config files can be read. Multiple objects can be generated from the same file.
--- Each route here maps to a FILE TYPE. The fact that 
--- file type has no impact herre.
--- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
--- @field loaded - Whether the route has already been loaded
--- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
--- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
--- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
--- @field configType - Never set here, but the path where configs WILL be loaded, when loaded from lua
-local objectLoader = {
-
-	storage = {
-		configType = configLoader.configTypes.storage,
-		moduleDependencies = {
-			"storage",
-			"resource"
-		},
-		loadFunction = "generateStorageObject" -- TODO: Find out how to run a function without accessing it via string
-	},
-
-	-- Special one: This handles injecting the resources into storage zones
-	storageLinkHandler = {
-		configType = configLoader.configTypes.object,
-		dependencies = {
-			"storage"
-		},
-		loadFunction = "handleStorageLinks"
-	},
-
-	-- Special one: This handles injecting the eat products, after all objects have been created.
-	eatByProductsHandler = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true, -- triggered in gameObject.lua
-		moduleDependencies = {
-			"gameObject"
-		},
-		loadFunction = "handleEatByProducts",
-	},
-
-	evolvingObject = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true,
-		moduleDependencies = {
-			"evolvingObject",
-			"gameObject"
-		},
-		loadFunction = "generateEvolvingObject"
-	},
-
-	resource = {
-		configType = configLoader.configTypes.object,
-		moduleDependencies = {
-			"typeMaps",
-			"resource"
-		},
-		loadFunction = "generateResourceDefinition"
-	},
-
-	buildable = {
-		configType = configLoader.configTypes.object,
-		moduleDependencies = {
-			"buildable",
-			"constructable",
-			"plan",
-			"skill",
-			"resource",
-			"action",
-			"craftable",
-			"tool",
-			"actionSequence",
-			"gameObject"
-		},
-		loadFunction = "generateBuildableDefinition"
-	},
-
-	craftable = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true,
-		moduleDependencies = {
-			"gameObject",
-			"constructable",
-			"craftAreaGroup",
-			"skill",
-			"resource",
-			"action",
-			"craftable",
-			"tool",
-			"actionSequence"
-		},
-		loadFunction = "generateCraftableDefinition"
-	},
-
-	modelPlaceholder = {
-		configType = configLoader.configTypes.object,
-		moduleDependencies = {
-			"modelPlaceholder",
-			"resource",
-			"gameObject",
-			"model"
-		},
-		dependencies = {
-			"gameObject"
-		},
-		loadFunction = "generateModelPlaceholder",
-	},
-
-	gameObject = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true,
-		moduleDependencies = {
-			"resource",
-			"gameObject",
-			"tool",
-			"harvestable",
-			"seat"
-		},
-		loadFunction = "generateGameObject"
-	},
-
-	harvestable = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true,
-		dependencies = {
-			"gameObject"
-		},
-		moduleDependencies = {
-			"harvestable",
-			"gameObject",
-			"typeMaps"
-		},
-		loadFunction = "generateHarvestableObject"
-	},
-
-	planHelper = {
-		configType = configLoader.configTypes.object,
-		waitingForStart = true, -- Custom start triggered from planHelper.lua
-		loadFunction = "generatePlanHelperObject",
-		dependencies = {
-			"gameObject"
-		},
-		moduleDependencies = {
-			"planHelper"
-		}
-	},
-
-	skill = {
-		configType = configLoader.configTypes.skill,
-		disabled = true,
-		moduleDependencies = {
-			"skill"
-		},
-		loadFunction = "generateSkillDefinition"
-	},
-
-
-	---------------------------------------------------------------------------------
-	-- Shared Configs
-	---------------------------------------------------------------------------------
-
-	objectSets = {
-		configType = configLoader.configTypes.shared,
-		shared_unwrap = "hs_object_sets",
-		shared_getter = "getObjectSets",
-		waitingForStart = true, -- Custom start in serverGOM.lua
-		moduleDependencies = {
-			"serverGOM"
-		},
-		loadFunction = "generateObjectSets"
-	},
-
-	resourceGroups = {
-		configType = configLoader.configTypes.shared,
-		shared_unwrap = "hs_resource_groups",
-		shared_getter = "getResourceGroups",
-		moduleDependencies = {
-			"resource",
-			"typeMaps",
-			"gameObject"
-		},
-		dependencies = {
-			"gameObject"
-		},
-		loadFunction = "generateResourceGroup"
-	},
-
-	seats = {
-		configType = configLoader.configTypes.shared,
-		shared_unwrap = "hs_seat_types",
-		shared_getter = "getSeatTypes",
-		moduleDependencies = {
-			"seat",
-			"typeMaps"
-		},
-		dependencies = {
-			"storage"
-		},
-		loadFunction = "generateSeatDefinition"
-	},
-
-	material = {
-		configType = configLoader.configTypes.shared,
-		shared_unwrap = "hs_materials",
-		shared_getter = "getMaterials",
-		moduleDependencies = {
-			"material"
-		},
-		loadFunction = "generateMaterialDefinition"
-	},
-
-	-- Custom models are esentially handling 
-	customModel = {
-		configType = configLoader.configTypes.shared,
-		waitingForStart = true, -- See model.lua
-		shared_unwrap = "hs_model_remaps",
-		shared_getter = "getModelRemaps",
-		moduleDependencies = {
-			"model"
-		},
-		loadFunction = "generateCustomModelDefinition"
-	}
-}
-
-local function newModuleAdded(modules)
-	objectManager:tryLoadObjectDefinitions()
-end
-
-moduleManager:bind(newModuleAdded)
-
--- Initialize the full Data Driven API (DDAPI).
-function objectManager:init()
-	if utils:runOnceGuard("ddapi") then return end
-
-	log:schema("ddapi", os.date() .. "\n")
-
-	local logID = log:schema("ddapi", "Initializing DDAPI...")
-	log:schema(logID, "\nInitialized DDAPI.")
-	log:append(logID, "test")
-	log:remove(logID)
-
-	-- Load configs from FS
-	configLoader:loadConfigs()
-end
-
-
---- Function which tracks whether a particular object type is ready to be loaded. There
---- are numerious reasons why this might not be the case.
-local function canLoadObjectType(objectName, objectData)
-	-- Wait for configs to be loaded from the FS
-	if configLoader.isInitialized == false then
-		return false
-	end
-
-	-- Some routes wait for custom start logic. Don't start these until triggered!
-	if objectData.waitingForStart == true then
-		return false
-	end
-	
-	-- Don't enable disabled modules
-	if objectData.disabled then
-		return false
-	end
-
-	-- Don't double-load objects
-	if objectData.loaded == true then
-		return false
-	end
-
-	-- Don't load until all moduleDependencies are satisfied.
-	if objectData.moduleDependencies ~= nil then
-		for i, moduleDependency in pairs(objectData.moduleDependencies) do
-			if moduleManager.modules[moduleDependency] == nil then
-				return false
-			end
-		end
-	end
-
-	-- Don't load until all dependencies are satisfied (dependent types loaded first!)
-	if objectData.dependencies ~= nil then
-		for i, dependency in pairs(objectData.dependencies) do
-			if objectLoader[dependency].loaded ~= true then
-				return false
-			end
-		end
-	end
-
-	-- If checks pass, then we can load the object
-	objectData.loaded = true
-	return true
-end
-
---- Marks an object type as ready to load. 
--- @param configName the name of the config which is being marked as ready to load
-function objectManager:markObjectAsReadyToLoad(configName)
-	-- log:schema("ddapi", "Object is now ready to start loading: " .. configName)
-	objectLoader[configName].waitingForStart = false
-	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
-end
-
---- Attempts to load object definitions from the objectLoader
-function objectManager:tryLoadObjectDefinitions()
-	for key, value in pairs(objectLoader) do
-		if canLoadObjectType(key, value) then
-			objectManager:loadObjectDefinition(key, value)
-		end
-	end
-end
 
 -- Loads a single object
 -- @param objectData - A table, containing fields from 'objectLoader'
@@ -378,7 +65,8 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 				log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
 			else
 				utils:initConfig(config)
-				xpcall(objectManager[objectData.loadFunction], errorhandler, self, config)
+				mj:log(objectData)
+				xpcall(objectData.loadFunction, errorhandler, self, config)
 			end
 
 		else
@@ -1006,7 +694,6 @@ function objectManager:generatePlanHelperObject(config)
 	if availablePlans ~= nil then
 		planHelperModule:setPlansForObject(objectIndex, availablePlans)
 	end
-
 end
 
 ---------------------------------------------------------------------------------
@@ -1482,6 +1169,320 @@ function objectManager:generateSkillDefinition(config)
 
 		if data ~= nil then
 			skillModule:addSkill(data.identifier, data)
+		end
+	end
+end
+
+---------------------------------------------------------------------------------
+-- Configuation and Loading
+---------------------------------------------------------------------------------
+
+--- Data structure which defines how a config is loaded, and in which order.
+--- It will also be used to HOLD the loaded configs, once they've been read from the FS
+--
+-- @field configPath - Path to the folder where the config files can be read. Multiple objects can be generated from the same file.
+-- Each route here maps to a FILE TYPE. The fact that 
+-- file type has no impact herre.
+-- @field moduleDependencies - Table list of modules which need to be loaded before this type of config is loaded
+-- @field loaded - Whether the route has already been loaded
+-- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
+-- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
+-- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
+-- @field configType - Never set here, but the path where configs WILL be loaded, when loaded from lua
+local objectLoader = {
+
+	storage = {
+		configType = configLoader.configTypes.storage,
+		moduleDependencies = {
+			"storage",
+			"resource"
+		},
+		loadFunction = objectManager.generateStorageObject
+	},
+
+	-- Special one: This handles injecting the resources into storage zones
+	storageLinkHandler = {
+		configType = configLoader.configTypes.object,
+		dependencies = {
+			"storage"
+		},
+		loadFunction = objectManager.handleStorageLinks
+	},
+
+	-- Special one: This handles injecting the eat products, after all objects have been created.
+	eatByProductsHandler = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true, -- triggered in gameObject.lua
+		moduleDependencies = {
+			"gameObject"
+		},
+		loadFunction = objectManager.handleEatByProducts
+	},
+
+	evolvingObject = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true,
+		moduleDependencies = {
+			"evolvingObject",
+			"gameObject"
+		},
+		loadFunction = objectManager.generateEvolvingObject
+	},
+
+	resource = {
+		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"typeMaps",
+			"resource"
+		},
+		loadFunction = objectManager.generateResourceDefinition
+	},
+
+	buildable = {
+		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"buildable",
+			"constructable",
+			"plan",
+			"skill",
+			"resource",
+			"action",
+			"craftable",
+			"tool",
+			"actionSequence",
+			"gameObject"
+		},
+		loadFunction = objectManager.generateBuildableDefinition
+	},
+
+	craftable = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true,
+		moduleDependencies = {
+			"gameObject",
+			"constructable",
+			"craftAreaGroup",
+			"skill",
+			"resource",
+			"action",
+			"craftable",
+			"tool",
+			"actionSequence"
+		},
+		loadFunction = objectManager.generateCraftableDefinition
+	},
+
+	modelPlaceholder = {
+		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"modelPlaceholder",
+			"resource",
+			"gameObject",
+			"model"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectManager.generateModelPlaceholder
+	},
+
+	gameObject = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true,
+		moduleDependencies = {
+			"resource",
+			"gameObject",
+			"tool",
+			"harvestable",
+			"seat"
+		},
+		loadFunction = objectManager.generateGameObject
+	},
+
+	harvestable = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true,
+		dependencies = {
+			"gameObject"
+		},
+		moduleDependencies = {
+			"harvestable",
+			"gameObject",
+			"typeMaps"
+		},
+		loadFunction = objectManager.generateHarvestableObject
+	},
+
+	planHelper = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true, -- Custom start triggered from planHelper.lua
+		dependencies = {
+			"gameObject"
+		},
+		moduleDependencies = {
+			"planHelper"
+		},
+		loadFunction = objectManager.generatePlanHelperObject
+	},
+
+	skill = {
+		configType = configLoader.configTypes.skill,
+		disabled = true,
+		moduleDependencies = {
+			"skill"
+		},
+		loadFunction = objectManager.generateSkillDefinition
+	},
+
+
+	---------------------------------------------------------------------------------
+	-- Shared Configs
+	---------------------------------------------------------------------------------
+
+	objectSets = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_object_sets",
+		shared_getter = "getObjectSets",
+		waitingForStart = true, -- Custom start in serverGOM.lua
+		moduleDependencies = {
+			"serverGOM"
+		},
+		loadFunction = objectManager.generateObjectSets
+	},
+
+	resourceGroups = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_resource_groups",
+		shared_getter = "getResourceGroups",
+		moduleDependencies = {
+			"resource",
+			"typeMaps",
+			"gameObject"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectManager.generateResourceGroup
+	},
+
+	seats = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_seat_types",
+		shared_getter = "getSeatTypes",
+		moduleDependencies = {
+			"seat",
+			"typeMaps"
+		},
+		dependencies = {
+			"storage"
+		},
+		loadFunction = objectManager.generateSeatDefinition
+	},
+
+	material = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_materials",
+		shared_getter = "getMaterials",
+		moduleDependencies = {
+			"material"
+		},
+		loadFunction = objectManager.generateMaterialDefinition
+	},
+
+	-- Custom models are esentially handling 
+	customModel = {
+		configType = configLoader.configTypes.shared,
+		waitingForStart = true, -- See model.lua
+		shared_unwrap = "hs_model_remaps",
+		shared_getter = "getModelRemaps",
+		moduleDependencies = {
+			"model"
+		},
+		loadFunction = objectManager.generateCustomModelDefinition
+	}
+}
+
+local function newModuleAdded(modules)
+	objectManager:tryLoadObjectDefinitions()
+end
+
+moduleManager:bind(newModuleAdded)
+
+-- Initialize the full Data Driven API (DDAPI).
+function objectManager:init()
+	if utils:runOnceGuard("ddapi") then return end
+
+	log:schema("ddapi", os.date() .. "\n")
+
+	local logID = log:schema("ddapi", "Initializing DDAPI...")
+	log:schema(logID, "\nInitialized DDAPI.")
+	log:append(logID, "test")
+	log:remove(logID)
+
+	-- Load configs from FS
+	configLoader:loadConfigs()
+end
+
+
+--- Function which tracks whether a particular object type is ready to be loaded. There
+--- are numerious reasons why this might not be the case.
+local function canLoadObjectType(objectName, objectData)
+	-- Wait for configs to be loaded from the FS
+	if configLoader.isInitialized == false then
+		return false
+	end
+
+	-- Some routes wait for custom start logic. Don't start these until triggered!
+	if objectData.waitingForStart == true then
+		return false
+	end
+	
+	-- Don't enable disabled modules
+	if objectData.disabled then
+		return false
+	end
+
+	-- Don't double-load objects
+	if objectData.loaded == true then
+		return false
+	end
+
+	-- Don't load until all moduleDependencies are satisfied.
+	if objectData.moduleDependencies ~= nil then
+		for i, moduleDependency in pairs(objectData.moduleDependencies) do
+			if moduleManager.modules[moduleDependency] == nil then
+				return false
+			end
+		end
+	end
+
+	-- Don't load until all dependencies are satisfied (dependent types loaded first!)
+	if objectData.dependencies ~= nil then
+		for i, dependency in pairs(objectData.dependencies) do
+			if objectLoader[dependency].loaded ~= true then
+				return false
+			end
+		end
+	end
+
+	-- If checks pass, then we can load the object
+	objectData.loaded = true
+	return true
+end
+
+--- Marks an object type as ready to load. 
+-- @param configName the name of the config which is being marked as ready to load
+function objectManager:markObjectAsReadyToLoad(configName)
+	-- log:schema("ddapi", "Object is now ready to start loading: " .. configName)
+	objectLoader[configName].waitingForStart = false
+	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
+end
+
+--- Attempts to load object definitions from the objectLoader
+function objectManager:tryLoadObjectDefinitions()
+	for key, value in pairs(objectLoader) do
+		if canLoadObjectType(key, value) then
+			objectManager:loadObjectDefinition(key, value)
 		end
 	end
 end
