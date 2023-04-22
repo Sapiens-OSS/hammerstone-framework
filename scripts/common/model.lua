@@ -9,6 +9,10 @@ local mod = {
     loadOrder = 1,
 }
 
+local function doesModelExist(model, modelName)
+    return model.modelIndexesByName[modelName]
+end
+
 function mod:onload(model)
     moduleManager:addModule("model", model)
 
@@ -17,6 +21,8 @@ function mod:onload(model)
 		objectManager:markObjectAsReadyToLoad("customModel")
         super_loadRemaps(model_)
     end
+
+    model.doesModelExist  = doesModelExist
 
 end
 

@@ -65,7 +65,6 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 				log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
 			else
 				utils:initConfig(config)
-				mj:log(objectData)
 				xpcall(objectData.loadFunction, errorhandler, self, config)
 			end
 
@@ -197,15 +196,7 @@ function objectManager:generateCustomModelDefinition(modelRemap)
 	log:schema("ddapi", baseModel .. " --> " .. model)
 
 	local materialRemaps = utils:getTable(modelRemap, "material_remaps", {
-		with = function(tbl)
-			local newTbl = {}
-			for j, materialRemap in ipairs(tbl) do
-				local old_material = utils:getField(materialRemap, "from")
-				local new_material = utils:getField(materialRemap, "to")
-				newTbl[old_material] = new_material
-			end
-			return newTbl
-		end
+		default = {}
 	})
 	
 	-- Ensure exists
@@ -289,6 +280,15 @@ local function getSummaryLocKey(identifier)
 	return "object_" .. identifier .. "_summary"
 end
 
+local function getBuildModelName(objectComponent, craftableComponent)
+	local modelName = objectComponent:getOptional("model")
+	if modelName then
+		return modelName
+	end
+	
+	-- TODO
+	return false
+end
 
 function objectManager:generateBuildableDefinition(config)
 	-- Modules
@@ -302,9 +302,9 @@ function objectManager:generateBuildableDefinition(config)
 
 	-- Components
 	local components = config:get("components")
-	local objectComponent = components:get("hs_object")
 
 	-- Optional Components
+	local objectComponent = components:getOptional("hs_object")
 	local buildableComponent = components:getOptional("hs_buildable")
 
 	-- Not everything is a buildable. Expected soft return.
@@ -318,7 +318,7 @@ function objectManager:generateBuildableDefinition(config)
 
 	-- Buildable Specific Stuff
 	newBuildable.classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "build"})
-	newBuildable.modelName = objectComponent:get("model")
+	newBuildable.modelName = getBuildModelName(objectComponent, buildableComponent)
 	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
 	newBuildable.finalGameObjectTypeKey = identifier
 	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(buildableComponent, "build_completion_plan", planModule.types, {optional=true})
@@ -484,11 +484,13 @@ function objectManager:generateResourceDefinition(config)
 
 	log:schema("ddapi", "  " .. identifier)
 	
+	local displayObject = resourceComponent:get("display_object", {default = identifier})
+
 	local newResource = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[identifier]
+		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[displayObject]
 	}
 
 	-- TODO: Missing Properties
@@ -952,12 +954,16 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Components
 	local components = utils:getField(config, "components")
-	local objectComponent = utils:getField(components, "hs_object")
+	local objectComponent = utils:getField(components, "hs_object", {optional = true})
 	local toolComponent = utils:getField(components, "hs_tool", {optional = true})
 	local harvestableComponent = utils:getField(components, "hs_harvestable", {optional = true})
 	local resourceComponent = utils:getField(components, "hs_resource", {optional = true})
 	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
 
+	if objectComponent == nil then
+		log:schema("ddapi", "  WARNING:  " .. identifier .. " is being created without 'hs_object'. This is only acceptable for resources and so forth.")
+		return
+	end
 	if isBuildVariant then
 		log:schema("ddapi", string.format("%s  (build variant)", identifier))
 	else
@@ -1486,5 +1492,4 @@ function objectManager:tryLoadObjectDefinitions()
 		end
 	end
 end
-
 return objectManager

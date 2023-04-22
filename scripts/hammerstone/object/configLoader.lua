@@ -13,6 +13,7 @@ local configLoader = {
 			configPath = "/hammerstone/objects",
 			luaGetter = "getObjectConfigs",
 			jsonStrings = {},
+			luaStrings = {},
 			cachedConfigs = {}
 		},
 		storage = {
@@ -21,6 +22,7 @@ local configLoader = {
 			configPath = "/hammerstone/storage",
 			luaGetter = "getStorageConfigs",
 			jsonStrings = {},
+			luaStrings = {},
 			cachedConfigs = {}
 		},
 		shared = {
@@ -29,6 +31,14 @@ local configLoader = {
 			unwrap = "hammerstone:global_definitions",
 			luaGetter = "getGlobalConfigs",
 			jsonStrings = {},
+			luaStrings = {},
+			cachedConfigs = {}
+		},
+		builder = {
+			key = "builder",
+			configPath = "/hammerstone/builders/",
+			jsonStrings = {},
+			luaStrings = {},
 			cachedConfigs = {}
 		},
 		skill = {
@@ -37,10 +47,13 @@ local configLoader = {
 			configPath = "/hammerstone/skills",
 			luaGetter = "getSkillConfigs",
 			jsonStrings = {},
+			luaStrings = {},
 			cachedConfigs = {}
 		}
 	},
 
+	-- These contain the "shared" version, which uses getters
+	-- The one in the table above are for the individual embeded lua configs
 	luaStrings = {}
 }
 
@@ -103,6 +116,10 @@ end
 function configLoader:loadConfig(path, configData)
 	log:schema("ddapi", "  " .. path)
 
+	if not stringEndsWith(path, ".json") and not stringEndsWith(path, ".lua") then
+		log:schema("ddapi", "  WARNING: " .. path .. " is skipped, since it's not a lua or json file.")
+		return
+	end
 
 	local configString = fileUtils.getFileContents(path)
 	
@@ -110,10 +127,17 @@ function configLoader:loadConfig(path, configData)
 	if stringEndsWith(path, ".json") then
 		table.insert(configData.jsonStrings, configString)
 	end
-
-	-- Load lua configs
+	
+	-- Handle lua configd
 	if stringEndsWith(path, ".lua") then
-		table.insert(configLoader.luaStrings, configString)
+
+		-- Builders are special, and sorted together
+		-- otherwise, sort into the config type
+		if configData.key == "builder" then
+			table.insert(configLoader.luaStrings, configString)
+		else
+			table.insert(configData.luaStrings, configString)
+		end
 	end
 end
 
@@ -158,7 +182,27 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 		end
 	end
 
-	-- Handle Lua Strings
+	-- Handle lua strings (single)
+	for i, luaString in ipairs(configType.luaStrings) do
+		local status, configTable = pcall(loadstring(luaString))
+		if status and configTable ~= {} and configTable ~= nil then
+
+			-- TODO This is copy/pasted
+			if configData.shared_unwrap then
+				configTable = configTable[configData.shared_unwrap]
+				
+				if configTable then
+					for i, data in ipairs(configTable) do
+						table.insert(outConfigs, data)
+					end
+				end
+			else
+				table.insert(outConfigs, configTable)
+			end
+		end
+	end
+
+	-- Handle Lua Strings (shared)
 	mj:log("Lua Strings:" .. #configLoader.luaStrings)
 	for i, luaString in ipairs(configLoader.luaStrings) do
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
