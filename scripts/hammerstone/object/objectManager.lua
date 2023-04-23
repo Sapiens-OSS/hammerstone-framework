@@ -87,14 +87,23 @@ end
 
 -- Takes in a remap table, and returns the 'placeholderModelIndexForObjectTypeFunction' that can handle this data.
 --- @param remaps table string->string mapping
-local function createIndexFunction(remaps)
-	-- Modules
-	local gameObjectModule =  moduleManager:get("gameObject")
-	local typeMapsModule = moduleManager:get("typeMaps")
-	local modelModule = moduleManager:get("model")
-
+local function createIndexFunction(remaps, default)
     local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
+		-- Modules
+		local gameObjectModule =  moduleManager:get("gameObject")
+		local typeMapsModule = moduleManager:get("typeMaps")
+		local modelModule = moduleManager:get("model")
+
         local objectKey = typeMapsModule:indexToKey(objectTypeIndex, gameObjectModule.validTypes)
+
+		mj:log("Look here")
+		mj:log(remaps)
+		mj:log(objectKey)
+		mj:log(default)
+		mj:log("--")
+		mj:log(placeholderInfo)
+		mj:log(placeholderContext)
+
         local remap = remaps[objectKey]
 
         -- Return a remap if exists
@@ -102,9 +111,9 @@ local function createIndexFunction(remaps)
             return modelModule:modelIndexForName(remap)
         end
 
+		-- TODO: We should probbaly re-handle this old default type
         -- Else, return the default model associated with this resource
         local defaultModel = gameObjectModule.types[objectKey].modelName
-
 
         return modelModule:modelIndexForName(defaultModel)
     end
@@ -121,6 +130,7 @@ function objectManager:generateModelPlaceholder(config)
 	local description = config:get("description")
 	local identifier = description:get("identifier")
 
+	-- Components
 	local components = config:get("components")
 	local buildableComponent = components:getOptional("hs_buildable")
 	local objectComponent = components:getOptional("hs_object")
@@ -167,18 +177,14 @@ function objectManager:generateModelPlaceholder(config)
 
 					-- TODO
 					additionalIndexCount = utils:getField(data, "additional_index_count", {optional = true}),
-					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data)
+					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
 				}
 			end
 
 		end
 	})
 
-	if config.debug == true then
-		mj:log(string.format("DEBUGGING '%s'", identifier))
-		mj:log(config)
-		mj:log(modelPlaceholderData)
-	end
+	utils:debug(identifier, config, modelPlaceholderData)
 	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 end
 
@@ -266,6 +272,14 @@ end
 
 local function getBuildIdentifier(identifier)
 	return "build_" .. identifier
+end
+
+local function getNameKey(prefix, identifier)
+	return prefix .. "_" .. identifier
+end
+
+local function getPluralKey(prefix, identifier)
+	return prefix .. "_" .. identifier .. "_plural"
 end
 
 local function getNameLocKey(identifier)
@@ -381,18 +395,15 @@ function objectManager:generateCraftableDefinition(config)
 				optional = true, -- Can also define with 'objectTypesArray'
 				with = function(tbl)
 					local result = {}
-					for _, value in pairs(tbl) do -- Loop through all output objects
-						
-						-- Return if input isn't a valid gameObject
-						if utils:getTypeIndex(gameObjectModule.types, value.input, "Game Object") == nil then return end
-
+					for key, value in pairs(tbl) do -- Loop through all output objects
+			
 						-- Get the input's resource index
-						local index = gameObjectModule.types[value.input].index
+						local index = utils:getTypeIndex(gameObjectModule.types, key, "Game Object")
 
 						-- Convert from schema format to vanilla format
 						-- If the predicate returns nil for any element, map returns nil
 						-- In this case, log an error and return if any output item does not exist in gameObject.types
-						result[index] = utils:map(value.output, function(e)
+						result[index] = utils:map(value, function(e)
 							return utils:getTypeIndex(gameObjectModule.types, e, "Game Object")
 						end)
 					end
@@ -600,7 +611,8 @@ function objectManager:generateStorageObject(config)
 	-- The new storage item
 	local newStorage = {
 		key = identifier,
-		name = utils:getField(description, "name", {default = "storage_" .. identifier}),
+		name = utils:getLocalizedString(description, "name", getNameKey("storage", identifier)),
+
 		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[storageComponent:get("display_object")],
 		resources = utils:getTable(storageComponent, "resources", {
 			default = {},
@@ -751,8 +763,8 @@ function objectManager:generateResourceGroup(groupDefinition)
 	local identifier = utils:getField(groupDefinition, "identifier")
 	log:schema("ddapi", "  " .. identifier)
 
-	local name = utils:getField(groupDefinition, "name", {default = "group_" .. identifier})
-	local plural = utils:getField(groupDefinition, "plural", {default = "group_" .. identifier .. "_plural"})
+	local name = utils:getLocalizedString(groupDefinition, "name", getNameKey("group", identifier))
+	local plural = utils:getLocalizedString(groupDefinition, "plural", getPluralKey("group", identifier))
 
 	local newResourceGroup = {
 		key = identifier,
@@ -869,7 +881,6 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	local skillModule = moduleManager:get("skill")
 	local craftableModule = moduleManager:get("craftable")
 	local toolModule = moduleManager:get("tool")
-	local constructableModule = moduleManager:get("constructable")
 	local actionSequenceModule = moduleManager:get("actionSequence")
 	local gameObjectModule = moduleManager:get("gameObject")
 
@@ -913,6 +924,7 @@ function objectManager:getCraftableBase(description, craftableComponent)
 			required = utils:getFieldAsIndex(craftableComponent, "skill", skillModule.types, {optional = true})
 		},
 
+		-- TODO throw a warning here
 		iconGameObjectType = utils:getFieldAsIndex(craftableComponent, "display_object", gameObjectModule.types, {
 			default = identifier
 		}),
