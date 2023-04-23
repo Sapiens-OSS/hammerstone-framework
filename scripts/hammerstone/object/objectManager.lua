@@ -613,7 +613,9 @@ function objectManager:generateStorageObject(config)
 		key = identifier,
 		name = utils:getLocalizedString(description, "name", getNameKey("storage", identifier)),
 
-		displayGameObjectTypeIndex = typeMapsModule.types.gameObject[storageComponent:get("display_object")],
+		-- TODO: This is crashing.
+		-- displayGameObjectTypeIndex = typeMapsModule.types.gameObject[storageComponent:get("display_object")],
+		
 		resources = utils:getTable(storageComponent, "resources", {
 			default = {},
 			map = function(value)
