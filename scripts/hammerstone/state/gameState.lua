@@ -9,6 +9,9 @@ local gameState = {
 
 	-- The C bridge for the world
 	worldBridge = nil,
+
+	-- The filePath for the world
+	worldPath = nil
 }
 
 function gameState:OnWorldLoaded(world)

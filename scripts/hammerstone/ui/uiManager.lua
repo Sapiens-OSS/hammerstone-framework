@@ -135,8 +135,6 @@ function uiManager:hideAllManageElements()
 	-- This is usually called when switching to a native manage element, or
 	-- when the manage UI closes.
 
-	logger:log("Hiding all manage elements.")
-
 	for _, element in ipairs(self.manageElements) do
 
 		uiStandardButton:setSelected(element.button, false)

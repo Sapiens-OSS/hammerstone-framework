@@ -1,6 +1,6 @@
 --- Hammerstone: resource.lua.
---- Mostly used to extend the resource module with additional helpers.
---- @Author SirLich
+-- Mostly used to extend the resource module with additional helpers.
+-- @author SirLich
 
 local mod = {
 	-- A low load-order makes the most since, as we need these methods to be available
@@ -11,21 +11,24 @@ local mod = {
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
+-- Hammerstone
+local log = mjrequire "hammerstone/logging"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
+
 function mod:onload(resource)
+
+	--- Allows adding a resource.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
 	function resource:addResource(key, objectType)
-		--- Allows adding a resource.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
-
-		local typeIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
-
-		local index = typeIndexMap[key]
+		local resourceIndexMap = typeMaps.types.resources -- Created automatically in resource.lua
+		local index = resourceIndexMap[key]
 		if not index then
-			mj:error("Attempt to add resource type that isn't in typeIndexMap:", key)
+			log:error("Attempt to add resource type that isn't in typeIndexMap:", key)
 		else
 			if resource.types[key] then
-				mj:warn("Overwriting resource type:", key)
-				mj:log(debug.traceback())
+				log:warn("Overwriting resource type:", key)
+				log:log(debug.traceback())
 			end
 	
 			objectType.key = key
@@ -34,6 +37,21 @@ function mod:onload(resource)
 
 			-- Recache the type maps
 			resource.validTypes = typeMaps:createValidTypesArray("resource", resource.types)
+
+			-- TODO: This is a hack to ensure ordering somewhat functions
+			if resource.alphabeticallyOrderedTypes == nil then
+				resource.alphabeticallyOrderedTypes = {}
+			end
+
+			for index, value in ipairs(resource.validTypes) do
+				if value.key ~= nil and value.key == key then
+					table.insert(resource.alphabeticallyOrderedTypes, resource.validTypes[index])
+					table.sort(resource.alphabeticallyOrderedTypes, function(a, b)
+						return a.name < b.name
+					end)
+					break
+				end
+			end
 		end
 
 		return index
@@ -52,20 +70,19 @@ function mod:onload(resource)
 		end
 	end
 
+	--- Allows adding a resource group.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
 	function resource:addResourceGroup(key, objectType)
-		--- Allows adding a resource group.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
-
 		local typeIndexMap = typeMaps.types.resourceGroups -- Created automatically in resource.lua
 
 		local index = typeIndexMap[key]
 		if not index then
-			mj:error("Attempt to add resource group type that isn't in typeIndexMap:", key)
+			log:error("Attempt to add resource group type that isn't in typeIndexMap:", key)
 		else
 			if resource.groups[key] then
-				mj:warn("Overwriting resource group type:", key)
-				mj:log(debug.traceback())
+				log:warn("Overwriting resource group type:", key)
+				log:log(debug.traceback())
 			end
 	
 			objectType.key = key
@@ -78,6 +95,8 @@ function mod:onload(resource)
 
 		return index
 	end
+
+	moduleManager:addModule("resource", resource)
 end
 
 return mod

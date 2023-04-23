@@ -31,7 +31,6 @@ function mod:onload(gameUI)
 	function gameUI:hasUIPanelDisplayed()
 		return superHasUIPanelDisplayed(gameUI) or uiManager:hasUIPanelDisplayed()
 	end
-	
 end
 
 return mod

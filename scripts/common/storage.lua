@@ -10,21 +10,24 @@ local mod = {
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
-function mod:onload(storage)
-	function storage:addStorage(key, objectType)
-		--- Allows adding a storage.
-		--- @param key: The key to add, such as 'cake'
-		--- @param objectType: The object to add, containing all fields.
+-- Hammerstone
+local log = mjrequire "hammerstone/logging"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
+function mod:onload(storage)
+	--- Allows adding a storage.
+	--- @param key: The key to add, such as 'cake'
+	--- @param objectType: The object to add, containing all fields.
+	function storage:addStorage(key, objectType)
 		local typeIndexMap = typeMaps.types.storage -- Created automatically in storage.lua
 
 		local index = typeIndexMap[key]
 		if not index then
-			mj:log("ERROR: attempt to add storage type that isn't in typeIndexMap:", key)
+			log:error("attempt to add storage type that isn't in typeIndexMap:", key)
 		else
 			if storage.types[key] then
-				mj:log("WARNING: overwriting storage type:", key)
-				mj:log(debug.traceback())
+				log:warn("overwriting storage type:", key)
+				log:warn(debug.traceback())
 			end
 	
 			objectType.key = key
@@ -33,8 +36,15 @@ function mod:onload(storage)
 			storage.types[index] = objectType
 
 		end
+
+		-- Recache local storage data
+		-- TODO: Is this safe?
+		storage:mjInit()
+
 		return index
 	end
+
+	moduleManager:addModule("storage", storage)
 end
 
 return mod

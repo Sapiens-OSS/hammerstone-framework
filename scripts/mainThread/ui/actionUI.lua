@@ -10,7 +10,7 @@ local mod = {
 local uiManager = mjrequire "hammerstone/ui/uiManager"
 
 function mod:onload(actionUI)
-
+	
 	-- Handle init
 	local super_init = actionUI.init
 	function actionUI:init(gameUI, hubUI, world)
