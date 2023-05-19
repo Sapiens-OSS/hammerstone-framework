@@ -22,3 +22,12 @@ The first release of Hammerstone
 # 0.0.5
 
  - Fix import issue in 0.0.4
+
+# 1.0.0
+
+ - The first release of Hammerstone DDAPI, too many changes to count
+
+# 1.0.1
+
+ - GameObject props are now based on `hs_object` component instead of `hs_buildable` component.
+ 
