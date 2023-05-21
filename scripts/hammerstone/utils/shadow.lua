@@ -8,7 +8,6 @@ local shadow = {}
 -- @param loadOrder - The order in which this module should be called
 -- @example - 'return shadow:shadow(sapienConstants, 0)' (to shadow sapienConstants)
 function shadow:shadow(outerModule, loadOrder)
-	mj:log("ttt SHADOW")
 	-- Provide a load order for the module
 	outerModule.loadOrder = loadOrder
 
@@ -19,9 +18,6 @@ function shadow:shadow(outerModule, loadOrder)
 		if outerModule.preload ~= nil then
 			outerModule:preload(parentModule)
 		end
-
-		mj:log("ttt ON LOAD")
-		mj:log(parentModule)
 
 		-- Loop over the parent module, and implement shadows
 		for k, v in pairs(parentModule) do
@@ -35,8 +31,6 @@ function shadow:shadow(outerModule, loadOrder)
 				-- If function exists in the outer, configure the shadow
 				if outerModule[functionName] ~= nil then
 
-					mj:log("ttt Shadowing: " .. functionName)
-
 					local superFunction = functionValue
 					parentModule[functionName] = function(...)
 
@@ -47,8 +41,6 @@ function shadow:shadow(outerModule, loadOrder)
 						table.insert(packedArgs, 2, superFunction) -- Insert super into second position, so it's available, but not treated as the 'self' arg.
 						return outerModule[functionName](unpack(packedArgs)) -- Return and call the result
 					end
-				else
-					mj:log("ttt NOT Shadowing: (didn't implement function in file) " .. functionName)
 				end
 			end
 		end
@@ -66,9 +58,6 @@ function shadow:shadow(outerModule, loadOrder)
 				parentModule[k] = v
 			end
 		end
-
-		mj:log("after")
-		mj:log(parentModule)
 
 		if outerModule.postload ~= nil then
 			outerModule:postload(parentModule)
