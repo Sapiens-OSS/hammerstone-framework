@@ -820,6 +820,9 @@ end
 function objectManager:generateEvolvingObject(config)
 	-- Modules
 	local evolvingObjectModule = moduleManager:get("evolvingObject")
+	mj:log("EVILVIG evolvingObjectModule")
+	mj:log(evolvingObjectModule)
+
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
