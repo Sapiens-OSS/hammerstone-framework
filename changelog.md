@@ -24,12 +24,9 @@ The first release of Hammerstone
  - Fix import issue in 0.0.4
 
 # 1.0.0
-
  - The first release of the DDAPI, introducing an entire framework for data driven mod development.
 
+
 # 1.1.0
-
  - Introduces a new 'shadow' syntax for mods to use
- - Fixed a DDAPI bug, where the 'props' for game object were being pulled from the wrong object.
-
- 
+ - GameObject props are now based on `hs_object` component instead of `hs_buildable` component. 

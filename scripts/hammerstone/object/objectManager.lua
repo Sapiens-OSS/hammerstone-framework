@@ -1084,7 +1084,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		}
 	}
 
-	utils:addProps(newGameObject, buildableComponent, "props", {
+	utils:addProps(newGameObject, objectComponent, "props", {
 		-- No defaults, that's OK
 	})
 
