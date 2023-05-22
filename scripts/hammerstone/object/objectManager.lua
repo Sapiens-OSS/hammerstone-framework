@@ -88,37 +88,30 @@ end
 -- Takes in a remap table, and returns the 'placeholderModelIndexForObjectTypeFunction' that can handle this data.
 --- @param remaps table string->string mapping
 local function createIndexFunction(remaps, default)
-    local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
+	local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
 		-- Modules
 		local gameObjectModule =  moduleManager:get("gameObject")
 		local typeMapsModule = moduleManager:get("typeMaps")
 		local modelModule = moduleManager:get("model")
 
-        local objectKey = typeMapsModule:indexToKey(objectTypeIndex, gameObjectModule.validTypes)
+		local objectKey = typeMapsModule:indexToKey(objectTypeIndex, gameObjectModule.validTypes)
 
-		mj:log("Look here")
-		mj:log(remaps)
-		mj:log(objectKey)
-		mj:log(default)
-		mj:log("--")
-		mj:log(placeholderInfo)
-		mj:log(placeholderContext)
 
-        local remap = remaps[objectKey]
+		local remap = remaps[objectKey]
 
-        -- Return a remap if exists
-        if remap ~= nil then
-            return modelModule:modelIndexForName(remap)
-        end
+		-- Return a remap if exists
+		if remap ~= nil then
+			return modelModule:modelIndexForName(remap)
+		end
 
 		-- TODO: We should probbaly re-handle this old default type
-        -- Else, return the default model associated with this resource
-        local defaultModel = gameObjectModule.types[objectKey].modelName
+		-- Else, return the default model associated with this resource
+		local defaultModel = gameObjectModule.types[objectKey].modelName
 
-        return modelModule:modelIndexForName(defaultModel)
-    end
+		return modelModule:modelIndexForName(defaultModel)
+	end
 
-    return inner
+	return inner
 end
 
 function objectManager:generateModelPlaceholder(config)
@@ -820,9 +813,6 @@ end
 function objectManager:generateEvolvingObject(config)
 	-- Modules
 	local evolvingObjectModule = moduleManager:get("evolvingObject")
-	mj:log("EVILVIG evolvingObjectModule")
-	mj:log(evolvingObjectModule)
-
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
