@@ -29,4 +29,4 @@ The first release of Hammerstone
 
 # 1.1.0
  - Introduces a new 'shadow' syntax for mods to use
- - GameObject props are now based on `hs_object` component instead of `hs_buildable` component. 
+ - GameObject props are now based on `hs_object` component instead of `hs_buildable` component.
