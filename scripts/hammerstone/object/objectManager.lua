@@ -1280,6 +1280,7 @@ local objectLoader = {
 			"action",
 			"craftable",
 			"tool",
+			"resourceGroups",
 			"actionSequence"
 		},
 		loadFunction = objectManager.generateCraftableDefinition

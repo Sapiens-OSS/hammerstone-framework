@@ -109,9 +109,6 @@ function uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 			-- Default behavior is to show the element view.
 			element.view.hidden = false
 
-			-- manageUI:show()
-			-- manageUI.mainView.hidden = true
-
 			-- Custom binding from the mod (optional)
 			if element.onClick then
 				element.onClick()
