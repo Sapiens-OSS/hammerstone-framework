@@ -9,7 +9,9 @@ local shadow = {}
 -- @example - 'return shadow:shadow(sapienConstants, 0)' (to shadow sapienConstants)
 function shadow:shadow(outerModule, loadOrder)
 	-- Provide a load order for the module
-	outerModule.loadOrder = loadOrder
+	if loadOrder ~= nil then
+		outerModule.loadOrder = loadOrder
+	end
 
 	-- @param parentModule is the actual base file from Sapiens
 	-- @param outerModule is the current outer module (shadow), passed into shadow:shadow

@@ -34,3 +34,4 @@ The first release of Hammerstone
 # 1.1.1
 
  - Fixed issue where craftables could load before resource groups, causing them to fail to generate
+ - The 'loadOrder' argument for shadow:shadow will no longer overwrite a locally defined variable, if it's nil.

@@ -545,6 +545,39 @@ function objectManager:handleEatByProducts(config)
 	gameObjectModule.types[identifier].eatByProducts = eatByProducts
 end
 
+---------------------------------------------------------------------------------
+-- storageDisplayGameObjectTypeIndex
+---------------------------------------------------------------------------------
+
+function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
+	-- Modules
+	local gameObjectModule =  moduleManager:get("gameObject")
+	local storageModule = moduleManager:get("storage")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	-- Components
+	local components = config:get("components")
+	local storageComponent = components:get("hs_storage")
+
+	if storageComponent == nil then
+		return
+	end
+
+	local displayObject = storageComponent:get("display_object", {default = identifier})
+	local displayIndex = typeMapsModule.types.gameObject[displayObject]
+	-- local displayIndex = typeMapsModule.types.gameObject.hay
+
+	-- Inject into the object
+	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
+	storageModule.types[identifier].displayGameObjectTypeIndex = displayIndex
+	storageModule:mjInit()
+end
+
+
 
 ---------------------------------------------------------------------------------
 -- Storage Links
@@ -582,8 +615,8 @@ end
 function objectManager:generateStorageObject(config)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
-	local typeMapsModule = moduleManager:get("typeMaps")
 	local resourceModule = moduleManager:get("resource")
+	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Load structured information
 	local description = config:get("description")
@@ -600,14 +633,18 @@ function objectManager:generateStorageObject(config)
 	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
 		default = {} -- Allow this field to be undefined, but don't use nil, since we will pull props from here later, with their *own* defaults
 	})
-	
+
+
+	local displayObject = storageComponent:get("display_object", {default = identifier})
+	local displayIndex = typeMapsModule.types.gameObject[displayObject]
+	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
+
 	-- The new storage item
 	local newStorage = {
 		key = identifier,
 		name = utils:getLocalizedString(description, "name", getNameKey("storage", identifier)),
 
-		-- TODO: This is crashing.
-		-- displayGameObjectTypeIndex = typeMapsModule.types.gameObject[storageComponent:get("display_object")],
+		displayGameObjectTypeIndex = displayIndex,
 		
 		resources = utils:getTable(storageComponent, "resources", {
 			default = {},
@@ -1231,6 +1268,15 @@ local objectLoader = {
 		},
 		loadFunction = objectManager.handleEatByProducts
 	},
+
+	-- Special one: This handles injecting 'displayGameObjectTypeIndex' into the storage, once game objects have been created.
+	-- storageDisplayGameObjectTypeIndexHandler = {
+	-- 	configType = configLoader.configTypes.storage,
+	-- 	dependencies = {
+	-- 		"gameObject"
+	-- 	},
+	-- 	loadFunction = objectManager.handleStorageDisplayGameObjectTypeIndex
+	-- },
 
 	evolvingObject = {
 		configType = configLoader.configTypes.object,
