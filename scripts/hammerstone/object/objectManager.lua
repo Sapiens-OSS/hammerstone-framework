@@ -11,7 +11,6 @@ local objectManager = {
 
 -- Sapiens
 local rng = mjrequire "common/randomNumberGenerator"
-local animationGroups = mjrequire "common/animations/animationGroups" -- TODO: Add to module manager
 
 -- Math
 local mjm = mjrequire "common/mjm"
@@ -535,12 +534,14 @@ function objectManager:handleEatByProducts(config)
 	if foodComponent == nil then
 		return
 	end
-
+	
 	local eatByProducts = utils:getTable(foodComponent, "items_when_eaten", {
 		map = function(value)
 			return utils:getTypeIndex(gameObjectModule.types, value, "Game Object")
 		end
 	})
+
+	log:schema("ddapi", string.format("  Adding  eatByProducts to '%s'", identifier))
 
 	-- Inject into the object
 	gameObjectModule.types[identifier].eatByProducts = eatByProducts
@@ -749,7 +750,7 @@ function objectManager:generateMobObject(config)
 	-- Modules
 	local mobModule = moduleManager:get("mob")
 	local gameObjectModule = moduleManager:get("gameObject")
-
+	local animationGroupsModule = moduleManager:get("animationGroups")
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
@@ -763,11 +764,12 @@ function objectManager:generateMobObject(config)
 	log:schema("ddapi", "  " .. identifier)
 
 	local mobObject = {
+		gameObjectTypeIndex = gameObjectModule.types[identifier].index,
 		deadObjectTypeIndex = utils:getFieldAsIndex(mobComponent, "dead_object", gameObjectModule.types),
-		animationGroup = utils:getFieldAsIndex(mobComponent, "animation_group", animationGroups),
+		animationGroupIndex = utils:getFieldAsIndex(mobComponent, "animation_group", animationGroupsModule),
 	}
 
-	utils:addProps(mobComponent, mobComponent, "props", {
+	utils:addProps(mobObject, mobComponent, "props", {
 		-- No defaults, that's OK
 	})
 
@@ -779,7 +781,8 @@ function objectManager:generateMobObject(config)
 
 	-- Lastly, inject mob index, if required
 	if objectComponent then
-		gameObjectModule.types[identifier].mobTypeIndex = mobModule.typeIndexMap[identifier]
+		log:schema("ddapi", string.format("  Linking '%s' to ", identifier))
+		gameObjectModule.types[identifier].mobTypeIndex = mobModule.types[identifier].index
 	end
 end
 
@@ -1408,7 +1411,8 @@ local objectLoader = {
 		waitingForStart = true, -- Set to true in `mob.lua`
 		moduleDependencies = {
 			"mob",
-			"gameObject"
+			"gameObject",
+			"animationGroups"
 		},
 		loadFunction = objectManager.generateMobObject
 	},
