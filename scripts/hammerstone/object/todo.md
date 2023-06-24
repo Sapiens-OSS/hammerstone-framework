@@ -2,9 +2,7 @@
  - Musical instruments
  - Tutorial integration
  - Plants
- - Tools
  - Fuel
- - Item groups
  - Medicine
  - Localization wrapping for name/plural.
  - Buildable
@@ -14,11 +12,6 @@
  - Wind strength for models
  
  # In Progress
- - Craftables
-    - Add definable build sequences
-    - Add tool and resource props
- - Materials
-    - Add variants
  - Skill
  - Harvestable
 
@@ -27,4 +20,8 @@
  - Objects
  - Storages
  - Evolving Objects
- - Schemas
+ - Schemas 
+ - Craftables
+ - Materials
+- Tools
+ - Item groups

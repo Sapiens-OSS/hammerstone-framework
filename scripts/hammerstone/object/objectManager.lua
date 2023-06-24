@@ -11,6 +11,7 @@ local objectManager = {
 
 -- Sapiens
 local rng = mjrequire "common/randomNumberGenerator"
+local animationGroups = mjrequire "common/animations/animationGroups" -- TODO: Add to module manager
 
 -- Math
 local mjm = mjrequire "common/mjm"
@@ -741,6 +742,39 @@ function objectManager:generatePlanHelperObject(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Mob Object
+---------------------------------------------------------------------------------
+
+function objectManager:generateMobObject(config)
+	-- Modules
+	local mobModule = moduleManager:get("mob")
+	local gameObjectModule = moduleManager:get("gameObject")
+
+	-- Setup
+	local description = config:get("description")
+	local identifier = description:get("identifier")
+	local components = config:get("components")
+	local mobComponent = components:getOptional("hs_mob")
+
+	if mobComponent == nil then
+		return
+	end
+
+	local mobObject = {
+		deadObjectTypeIndex = utils:getFieldAsIndex(mobComponent, "dead_object", gameObjectModule.types),
+		animationGroup = utils:getFieldAsIndex(mobComponent, "animation_group", animationGroups),
+	}
+
+	utils:addProps(mobComponent, mobComponent, "props", {
+		-- No defaults, that's OK
+	})
+
+	-- Insert
+	mobModule:addType(identifier, mobObject)
+
+end
+
+---------------------------------------------------------------------------------
 -- Harvestable  Object
 ---------------------------------------------------------------------------------
 
@@ -925,6 +959,8 @@ function objectManager:getCraftableBase(description, craftableComponent)
 			tool
 		}
 	end
+
+	-- TODO: mobTypeIndex
 
 	-- TODO: copy/pasted
 	local buildSequenceData
@@ -1356,6 +1392,16 @@ local objectLoader = {
 			"seat"
 		},
 		loadFunction = objectManager.generateGameObject
+	},
+
+	mob = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true, -- Set to true in `mob.lua`
+		moduleDependencies = {
+			"mob",
+			"gameObject"
+		},
+		loadFunction = objectManager.generateMobObject
 	},
 
 	harvestable = {
