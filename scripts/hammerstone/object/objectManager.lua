@@ -755,10 +755,12 @@ function objectManager:generateMobObject(config)
 	local identifier = description:get("identifier")
 	local components = config:get("components")
 	local mobComponent = components:getOptional("hs_mob")
+	local objectComponent = utils:getField(components, "hs_object", {optional = true})
 
 	if mobComponent == nil then
 		return
 	end
+	log:schema("ddapi", "  " .. identifier)
 
 	local mobObject = {
 		deadObjectTypeIndex = utils:getFieldAsIndex(mobComponent, "dead_object", gameObjectModule.types),
@@ -770,8 +772,15 @@ function objectManager:generateMobObject(config)
 	})
 
 	-- Insert
+	mj:log("LOOK HERE")
+	mj:log(identifier)
+	mj:log(mobObject)
 	mobModule:addType(identifier, mobObject)
 
+	-- Lastly, inject mob index, if required
+	if objectComponent then
+		gameObjectModule.types[identifier].mobTypeIndex = mobModule.typeIndexMap[identifier]
+	end
 end
 
 ---------------------------------------------------------------------------------
@@ -936,7 +945,7 @@ function objectManager:generateEvolvingObject(config)
 end
 
 ---------------------------------------------------------------------------------
--- Game Object
+-- Craftable
 ---------------------------------------------------------------------------------
 
 --- Returns a lua table, containing the shared keys between craftables and buildables
@@ -959,8 +968,6 @@ function objectManager:getCraftableBase(description, craftableComponent)
 			tool
 		}
 	end
-
-	-- TODO: mobTypeIndex
 
 	-- TODO: copy/pasted
 	local buildSequenceData
@@ -1021,6 +1028,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local harvestableModule = moduleManager:get("harvestable")
 	local seatModule = moduleManager:get("seat")
 	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
+	local mobModule = moduleManager:get("mob")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -1124,7 +1132,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 			newBuildableKeys.seatTypeIndex = utils:getFieldAsIndex(buildableComponent, "seat_type", seatModule.types, {optional=true})
 		end
 	end
-	
+
 	local newGameObject = {
 		name = utils:getLocalizedString(description, "name", getNameLocKey(nameKey)),
 		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(nameKey)),
@@ -1132,6 +1140,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		scale = utils:getField(objectComponent, "scale", {default = 1}),
 		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
 		resourceTypeIndex = resourceTypeIndex,
+		-- mobTypeIndex = mobModule.typeIndexMap[identifier], Injected Later
 		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsages = toolUsage,
 		craftAreaGroupTypeIndex = utils:getFieldAsIndex(buildableComponent, "craft_area", craftAreaGroupModule.types, {

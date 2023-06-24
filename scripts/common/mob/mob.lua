@@ -9,14 +9,14 @@ local mob = {}
 
 --- @override
 function mob:preload(parent)
-	moduleManager:addModule("mob", self)
+	moduleManager:addModule("mob", parent)
 end
 
 --- @shadow
 function mob:load(super, gameObject)
 	objectManager:markObjectAsReadyToLoad("mob")
-	super(gameObject)
+	super(self, gameObject)
 end
 
 
-return shadow:shadow(mob, 1)
+return shadow:shadow(mob, 0)

@@ -17,7 +17,6 @@ end
 
 --- @shadow
 function harvestable:load(super, gameObject)
-	mj:log("LOOK HERE load")
 	super(self, gameObject)
 	objectManager:markObjectAsReadyToLoad("harvestable")
 end

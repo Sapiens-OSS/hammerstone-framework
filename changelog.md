@@ -40,3 +40,4 @@ The first release of Hammerstone
 
  - Code cleanup
  - Fixed issue where 'harvestables' were not generating correctly.
+ - Added initial support for mobs
