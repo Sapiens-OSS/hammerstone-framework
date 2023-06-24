@@ -10,21 +10,23 @@ local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local objectManager = mjrequire "hammerstone/object/objectManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
+--- @implement
 function harvestable:preload(parent)
 	moduleManager:addModule("harvestable", parent)
 end
 
 --- @shadow
-function load(super, harvestable_, gameObject)
-	super(harvestable_, gameObject)
+function harvestable:load(super, gameObject)
+	mj:log("LOOK HERE load")
+	super(self, gameObject)
 	objectManager:markObjectAsReadyToLoad("harvestable")
 end
 
 
--- Expose new simpler harvestable function. This one doesn't have any fancy processing; It just allows you to drop some items.
---- @param key the name of the harvestabl
---- @param key objectTypesArray the types to drop.
---- @param completionIndex: Int representing WHEN you want to finish the harvest, and drop the remaining item.
+--- @expose new simpler harvestable function. This one doesn't have any fancy processing; It just allows you to drop some items.
+--- @param key the name of the harvestable
+--- @param objectTypesArray the types to drop.
+--- @param completionIndex Int representing WHEN you want to finish the harvest, and drop the remaining item.
 function harvestable:addHarvestableSimple(key, objectTypesArray, completionIndex)
 	local additionInfo = {
 		key = key,
@@ -32,7 +34,8 @@ function harvestable:addHarvestableSimple(key, objectTypesArray, completionIndex
 		completionIndex = completionIndex
 	}
 
-	typeMaps:insert("harvestable", harvestable.types, additionInfo)
+	typeMaps:insert("harvestable", self.types, additionInfo)
 end
+
 
 return shadow:shadow(harvestable)

@@ -143,11 +143,9 @@ end
 
 -- @param configData - The table, holding information on the kind of config to fetch
 function configLoader:fetchRuntimeCompatibleConfigs(configData)
-	mj:log("Fetching Runtime Compatible Configs:")
 	local configType = configData.configType
 
-	mj:log("Json Strings: " .. #configType.jsonStrings)
-
+	-- TODO: Reimplement Cache
 	-- -- Access from the cache, if available
 	-- local cachedConfigs = configType.cachedConfigs
 	-- if cachedConfigs ~= nil and cachedConfigs ~= {} then
@@ -203,7 +201,6 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 	end
 
 	-- Handle Lua Strings (shared)
-	mj:log("Lua Strings:" .. #configLoader.luaStrings)
 	for i, luaString in ipairs(configLoader.luaStrings) do
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 

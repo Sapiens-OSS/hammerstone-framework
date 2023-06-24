@@ -38,13 +38,13 @@ local crashes = true
 -- Loads a single object
 -- @param objectData - A table, containing fields from 'objectLoader'
 function objectManager:loadObjectDefinition(objectName, objectData)
-	log:schema("ddapi", string.format("\nGenerating %s definitions:", objectName))
+	log:schema("ddapi", string.format("\n\nGenerating %s definitions:", objectName))
 	local configs = configLoader:fetchRuntimeCompatibleConfigs(objectData)
-	log:schema("ddapi", "  Available Configs: " .. #configs)
+	log:schema("ddapi", "Available Configs: " .. #configs)
 
 
 	if configs == nil or #configs == 0 then
-		log:schema("ddapi", "  (none)")
+		log:schema("ddapi", "  (no objects of this type created)")
 		return
 	end
 
@@ -509,14 +509,14 @@ function objectManager:generateResourceDefinition(config)
 	end
 	
 	utils:addProps(newResource, resourceComponent, "props", {
-		-- No defaults, that's OK :)
+		-- Add defaults here, if needed
 	})
 
 	resourceModule:addResource(identifier, newResource)
 end
 
 ---------------------------------------------------------------------------------
--- Eat By Products
+-- Eat By Products Handler
 ---------------------------------------------------------------------------------
 
 function objectManager:handleEatByProducts(config)
@@ -524,8 +524,8 @@ function objectManager:handleEatByProducts(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
+	local description = config:get("description")
+	local identifier = description:get("identifier")
 
 	-- Components
 	local components = config:get("components")
@@ -551,7 +551,6 @@ end
 
 function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 	-- Modules
-	local gameObjectModule =  moduleManager:get("gameObject")
 	local storageModule = moduleManager:get("storage")
 	local typeMapsModule = moduleManager:get("typeMaps")
 
@@ -569,7 +568,6 @@ function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 
 	local displayObject = storageComponent:get("display_object", {default = identifier})
 	local displayIndex = typeMapsModule.types.gameObject[displayObject]
-	-- local displayIndex = typeMapsModule.types.gameObject.hay
 
 	-- Inject into the object
 	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
@@ -752,14 +750,15 @@ function objectManager:generateHarvestableObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local harvestableComponent = config.components.hs_harvestable
+	local components = config:get("components")
+	local harvestableComponent = components:getOptional("hs_harvestable")
 	local identifier = config.description.identifier
 
 	if harvestableComponent == nil then
 		return -- This is allowed
-	else
-		log:schema("ddapi", "  " .. identifier)
 	end
+	
+	log:schema("ddapi", "  " .. identifier)
 
 	local resourcesToHarvest = utils:getTable(harvestableComponent, "resources_to_harvest", {
 		map = function(value)
@@ -1533,7 +1532,7 @@ end
 --- Marks an object type as ready to load. 
 -- @param configName the name of the config which is being marked as ready to load
 function objectManager:markObjectAsReadyToLoad(configName)
-	-- log:schema("ddapi", "Object is now ready to start loading: " .. configName)
+	log:schema("ddapi", "Object has been marked for load: " .. configName)
 	objectLoader[configName].waitingForStart = false
 	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
 end

@@ -4,9 +4,6 @@ local mod = {
 	loadOrder = 0
 }
 
--- Sapiens
-local gameObject = mjrequire "common/gameObject"
-
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local objectManager = mjrequire "hammerstone/object/objectManager"
