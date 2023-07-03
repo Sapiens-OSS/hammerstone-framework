@@ -1,8 +1,8 @@
 --- Hammerstone: material.lua
---- @author earmuffs
+--- @author earmuffs, SirLich
 
-local mod = {
-	loadOrder = 1
+local materialShadow = {
+	loadOrder = 0
 }
 
 -- Math
@@ -12,35 +12,41 @@ local vec3 = mjm.vec3
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/object/objectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
+local shadow = mjrequire "hammerstone/utils/shadow"
 
-function mod:onload(material)
-    --- Allows adding a material.
-	--- @param key string: The key to add, such as 'leather'.
-	--- @param color mjm.vec3: The vec3 containing rgb values, from 0 to 1.
-	--- @param roughness number: How glossy the material should be, from 0 to 1.
-	--- @param metal number: How reflective the material should be, from 0 to 1.
-    function material:addMaterial(key, color, roughness, metal, materialB)
-        local newMaterial = {
-            key = key,
-            color = color,
-            roughness = roughness,
-            metal = metal or 0.0
-        }
-
-        -- TODO make this use the 'merge' function (move to utils?)
-        if materialB ~= nil then
-            newMaterial.colorB = materialB.color
-            newMaterial.roughnessB = materialB.roughness
-            newMaterial.metalB = materialB.metal
-        end
-
-        mj:insertIndexed(material.types, newMaterial)
-    end
-
+--- @implements
+function materialShadow:postload(parent)
     -- Load DDAPI
     objectManager:init()
-
-	moduleManager:addModule("material", material)
+    moduleManager:addModule("material", parent)
 end
 
-return mod
+--- Allows adding a material.
+--- @param key string: The key to add, such as 'leather'.
+--- @param color mjm.vec3: The vec3 containing rgb values, from 0 to 1.
+--- @param roughness number: How glossy the material should be, from 0 to 1.
+--- @param metal number: How reflective the material should be, from 0 to 1.
+function materialShadow:addMaterial(key, color, roughness, metal, materialB)
+    local newMaterial = {
+        key = key,
+        color = color,
+        roughness = roughness,
+        metal = metal or 0.0
+    }
+
+    -- TODO make this use the 'merge' function (move to utils?)
+    if materialB ~= nil then
+        newMaterial.colorB = materialB.color
+        newMaterial.roughnessB = materialB.roughness
+        newMaterial.metalB = materialB.metal
+    end
+
+    mj:insertIndexed(self.types, newMaterial)
+end
+
+--- Adds a material, automatically creating materialB from a mixed variant of the main material
+function materialShadow:addMaterialMixed(key, color, roughness, metal, mixRatio)
+    
+end
+
+return shadow:shadow(materialShadow)

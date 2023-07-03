@@ -751,9 +751,11 @@ function objectManager:generateMobObject(config)
 	local mobModule = moduleManager:get("mob")
 	local gameObjectModule = moduleManager:get("gameObject")
 	local animationGroupsModule = moduleManager:get("animationGroups")
+
 	-- Setup
 	local description = config:get("description")
 	local identifier = description:get("identifier")
+	local name = utils:getLocalizedString(description, "name", getNameLocKey(identifier))
 	local components = config:get("components")
 	local mobComponent = components:getOptional("hs_mob")
 	local objectComponent = utils:getField(components, "hs_object", {optional = true})
@@ -764,6 +766,7 @@ function objectManager:generateMobObject(config)
 	log:schema("ddapi", "  " .. identifier)
 
 	local mobObject = {
+		name = name,
 		gameObjectTypeIndex = gameObjectModule.types[identifier].index,
 		deadObjectTypeIndex = utils:getFieldAsIndex(mobComponent, "dead_object", gameObjectModule.types),
 		animationGroupIndex = utils:getFieldAsIndex(mobComponent, "animation_group", animationGroupsModule),
@@ -774,14 +777,10 @@ function objectManager:generateMobObject(config)
 	})
 
 	-- Insert
-	mj:log("LOOK HERE")
-	mj:log(identifier)
-	mj:log(mobObject)
 	mobModule:addType(identifier, mobObject)
 
 	-- Lastly, inject mob index, if required
 	if objectComponent then
-		log:schema("ddapi", string.format("  Linking '%s' to ", identifier))
 		gameObjectModule.types[identifier].mobTypeIndex = mobModule.types[identifier].index
 	end
 end

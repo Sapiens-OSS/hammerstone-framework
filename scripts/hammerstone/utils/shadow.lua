@@ -8,7 +8,7 @@ local shadow = {}
 -- @param loadOrder - The order in which this module should be called
 -- @example - 'return shadow:shadow(sapienConstants, 0)' (to shadow sapienConstants)
 function shadow:shadow(outerModule, loadOrder)
-	-- Provide a load order for the module
+	-- Provide a load order for the module (optional)
 	if loadOrder ~= nil then
 		outerModule.loadOrder = loadOrder
 	end

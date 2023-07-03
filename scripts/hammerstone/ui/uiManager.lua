@@ -51,14 +51,13 @@ local example_manage_element = {
 }
 
 
+--- Allows you to register a new manage element.
+--- Paramaters are passed via table:
+--- name: The name of the element (eg. "Creative Mode Cheats")
+--- icon: The name of the icon (eg. "icon_configure")
+--- ui: The ui managing the view. Should contain .view.
+--- onClick [Optional]: The function that is called when the element is clicked.
 function uiManager:registerManageElement(element)
-	--- Allows you to register a new manage element.
-	-- Paramaters are passed via table:
-	-- name: The name of the element (eg. "Creative Mode Cheats")
-	-- icon: The name of the icon (eg. "icon_configure")
-	-- ui: The ui managing the view. Should contain .view.
-	-- onClick [Optional]: The function that is called when the element is clicked.
-
 	mj:log("Registering manage element:", element.name)
 	table.insert(self.manageElements, element)
 end
@@ -144,34 +143,32 @@ end
 -- Action Elements.
 -- ==========================================================================================
 
+--- Action Elements are rendered alongside the radial menu, in a vertical tray.
+--- @param element table - The element class represnting this action element.
 function uiManager:registerActionElement(element)
-	--- Action Elements are rendered alongside the radial menu, in a vertical tray.
-	--- @param element table - The element class represnting this action element.
-
 	table.insert(uiManager.actionElements, element)
 end
 
+--- This function is called when the Radial Menu is opened for the first time,
+--- and will be used to generate the action element view.
+--- @param gameUI - The general GameUI which holds most/all in-game UI
+--- @param hubUI - Unknown
+--- @param world - Unknown
 function uiManager:initActionView(gameUI, hubUI, world)
-	--- This function is called when the Radial Menu is opened for the first time,
-	--- and will be used to generate the action element view.
-	--- @param gameUI - The general GameUI which holds most/all in-game UI
-	--- @param hubUI - Unknown
-	--- @param world - Unknown
-	
 	-- Create a view container for the views to be rendered in.
 	self.actionContainerView = View.new(gameUI.view)
 	self.actionContainerView.relativePosition = ViewPosition(MJPositionCenter, MJPositionCenter)
 	self.actionContainerView.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers!
 end
 
+
+--- This function is called when the Radial Menu is opened, and will be used to render
+--- the action elements, based on their own internal logic and structure.
+--- TODO: Consider adding a priority function.
+--- @param baseObjectInfo table - Object info for single objects.localecategory
+--- @param multiSelectAllObjects table - Object info for multi-select objects
+--- @param lookAtPos unknown - 
 function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
-	--- This function is called when the Radial Menu is opened, and will be used to render
-	--- the action elements, based on their own internal logic and structure.
-	--- TODO: Consider adding a priority function.
-	--- @param baseObjectInfo table - Object info for single objects.localecategory
-	--- @param multiSelectAllObjects table - Object info for multi-select objects
-	--- @param lookAtPos unknown - 
-	
 	-- Does this destroy the internal view?
 	-- TODO: No it doesn't, maybe cause refs are still kept in the container view.
 	

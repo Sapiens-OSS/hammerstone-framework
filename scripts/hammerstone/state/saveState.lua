@@ -221,8 +221,6 @@ function saveState:getValueClient(key, defaultOrNil)
 	return ret
 end
 
-flipflipflip = 12
-
 function saveState:setValueClient(key, value)
 	--- Set a value in the clients privateShared state. May only be called from the client.
 	--- @param key string The 'key' you want to set, e.g. "vt.allowedPlansPerFollower".
