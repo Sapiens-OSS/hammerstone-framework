@@ -1372,7 +1372,7 @@ local objectLoader = {
 			"action",
 			"craftable",
 			"tool",
-			"resourceGroups",
+			-- "resourceGroups", -- Adding this dependency breaks the craftable menu. Why was this originally added?
 			"actionSequence"
 		},
 		loadFunction = objectManager.generateCraftableDefinition
