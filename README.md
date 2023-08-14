@@ -15,7 +15,7 @@ If you need more control over the version, or need bleedging-edge features, you 
 | Platform       	| File Path                                                                                                           	|
 |----------------	|---------------------------------------------------------------------------------------------------------------------	|
 | Windows        	| `%AppData%\majicjungle\sapiens\mods`                                                                                	|
-| MacOS          	| ?                                                                                                                   	|
+| MacOS          	| `~/Library/Application\ Support/majicjungle/sapiens/mods`                                                            	|
 | Linux (Proton) 	| `~/.steam/steam/steamapps/compatdata/1060230/pfx/drive_c/users/steamuser/AppData/Roaming/majicjungle/sapiens/mods/` 	|
 
 ## Developers
