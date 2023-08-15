@@ -1536,6 +1536,9 @@ function objectManager:init()
 	log:append(logID, "test")
 	log:remove(logID)
 
+	-- Load handlers from FS
+	configLoader:loadHandlers()
+
 	-- Load configs from FS
 	configLoader:loadConfigs()
 end

@@ -2,9 +2,11 @@
 -- Config loader is responsible for loading and staging all configs, read from the filesystem.
 -- @author SirLich & earmuffs
 
-local configLoader = {
+local loader = {
 	-- Whether the configs have been read from the FS
 	isInitialized = false,
+
+	handlers = {},
 
 	configTypes = {
 		object = {
@@ -57,12 +59,14 @@ local configLoader = {
 	luaStrings = {}
 }
 
+-- Sapiens
+local modManager = mjrequire "common/modManager"
 
 -- Hammerstone
 local json = mjrequire "hammerstone/utils/json"
 local log = mjrequire "hammerstone/logging"
 
-function configLoader:addConfig()
+function loader:addConfig()
 	-- TODO Continue here
 end
 
@@ -74,37 +78,49 @@ local function stringEndsWith(str, suffix)
     return string.sub(str, -#suffix) == suffix
 end
 
-
 -- Loops over known config locations and attempts to load them
 -- @param objectLoader a table with a very specific structure where the loaded configs will be delivered.
-function configLoader:loadConfigs()
-	configLoader.isInitialized = true
+function loader:loadConfigs()
+	loader.isInitialized = true
 	log:schema("ddapi", "Loading configuration files from FileSystem:")
 
-	-- Loads files at path to dbTable for each active mod
-	local modManager = mjrequire "common/modManager"
+	-- Find all the enabled world mods
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	
-	for i, mod in ipairs(mods) do
-		for routeName, config in pairs(configLoader.configTypes) do
+    -- Loop through enabled world mods and check if they have a DDAPI directory
+	for _, mod in ipairs(mods) do
+
+		-- TODO loop through handlers and add them to their queues
+
+		-- Loop through config types
+		for _, config in pairs(loader.configTypes) do
 			if config["configPath"] ~= nil then
 				local objectConfigDir = mod.path .. config.configPath
-				configLoader:loadConfigsInFolder(objectConfigDir, config)
+                
+				-- Fetch all DDAPI object files
+				local files = loader:discoverRecursive(objectConfigDir, {".json", ".lua"})
+				for _, file in ipairs(files) do
+					loader:loadConfig(file, config)
+				end
 			end
 		end
 	end
 end
 
-function configLoader:loadConfigsInFolder(objectConfigDir, config)
-	mj:log("Fetching Configs from " .. objectConfigDir)
-	local configPaths = fileUtils.getDirectoryContents(objectConfigDir)
-	for j, configPath in ipairs(configPaths) do
-		local fullPath =  objectConfigDir .. "/" .. configPath
-		
-		if stringEndsWith(fullPath, ".lua") or stringEndsWith(fullPath, ".json") then
-			configLoader:loadConfig(fullPath, config)
-		else
-			configLoader:loadConfigsInFolder(fullPath, config)
+function loader:loadHandlers()
+	-- Find all the enabled world mods
+	local mods = modManager.enabledModDirNamesAndVersionsByType.world
+
+	-- Loop through enabled world mods and find their handlers
+	for _, mod in ipairs(mods) do
+		local handlersPath = mod.path .. "/hammerstone/handlers"
+		local handlers = loader:discoverRecursive(handlersPath, {".lua"})
+		for _, handlerPath in ipairs(handlers) do
+			local handlerRaw = fileUtils.getFileContents(handlerPath)
+			local status, handler = pcall(loadstring(handlerRaw))
+			if status and handler ~= nil then
+				table.insert(loader.handlers, handler)
+			end
 		end
 	end
 end
@@ -113,19 +129,23 @@ end
 -- @param path
 -- @param type - The type of the config
 -- @param unwrap - The top level of the config, which we optionally 'unwrap' to expose the inner definitions.
-function configLoader:loadConfig(path, configData)
+function loader:loadConfig(path, configData)
 	log:schema("ddapi", "  " .. path)
 
+	-- No longer need this check because the discoverRecursive function only returns .json and .lua files
+	--[[
 	if not stringEndsWith(path, ".json") and not stringEndsWith(path, ".lua") then
 		log:schema("ddapi", "  WARNING: " .. path .. " is skipped, since it's not a lua or json file.")
 		return
 	end
+	]]
 
 	local configString = fileUtils.getFileContents(path)
 	
 	-- Load json configs
 	if stringEndsWith(path, ".json") then
 		table.insert(configData.jsonStrings, configString)
+		return
 	end
 	
 	-- Handle lua configd
@@ -134,15 +154,18 @@ function configLoader:loadConfig(path, configData)
 		-- Builders are special, and sorted together
 		-- otherwise, sort into the config type
 		if configData.key == "builder" then
-			table.insert(configLoader.luaStrings, configString)
+			table.insert(loader.luaStrings, configString)
 		else
 			table.insert(configData.luaStrings, configString)
 		end
+		return
 	end
+
+
 end
 
 -- @param configData - The table, holding information on the kind of config to fetch
-function configLoader:fetchRuntimeCompatibleConfigs(configData)
+function loader:fetchRuntimeCompatibleConfigs(configData)
 	local configType = configData.configType
 
 	-- TODO: Reimplement Cache
@@ -201,7 +224,7 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 	end
 
 	-- Handle Lua Strings (shared)
-	for i, luaString in ipairs(configLoader.luaStrings) do
+	for i, luaString in ipairs(loader.luaStrings) do
 		local configFile = loadstring(luaString, "ERROR: Failed to load string as lua file")
 
 		if configFile then
@@ -230,5 +253,33 @@ function configLoader:fetchRuntimeCompatibleConfigs(configData)
 	return outConfigs
 end
 
+-- Discovers files recursively
+--@param dir The directory to search
+--@param validEndings A table of strings with valid endings (eg ".json" and ".lua")
+function loader:discoverRecursive(dir, validEndings)
+	local files = {}
+	local dirContents = fileUtils.getDirectoryContents(dir)
+	for _, path in ipairs(dirContents) do
+		local fullPath = dir .. "/" .. path
 
-return configLoader
+		-- Check if we match any file endings
+		for _, ending in ipairs(validEndings) do
+			if stringEndsWith(fullPath, ending) then
+				table.insert(files, {
+					path = fullPath,
+					matchedEnding = ending
+				})
+				goto nextPath				
+			end
+		end
+
+		-- If not, we recurse
+		files = {table.unpack(files), table.unpack(loader:discoverRecursive(fullPath, validEndings))}
+		::nextPath::
+	end
+
+	return files
+end
+
+
+return loader
