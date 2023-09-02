@@ -12,6 +12,9 @@ local mjm = mjrequire "common/mjm"
 local vec3 = mjm.vec3
 local json = mjrequire "hammerstone/utils/json"
 
+-- util
+local utils = mjrequire "hammerstone/utils/utils"
+
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
 
@@ -131,10 +134,8 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 			if tbl then
 				log:schema("ddapi", "    HINT: Try one of these:")
 				log:schema("ddapi", "{")
-				for k, _ in pairs(tbl) do
-					if type(k) == "string" then
-						log:schema("ddapi", "      " .. k)
-					end
+				for _, tbl_k in ipairs(utils:sortedTableKeys(tbl, "string")) do
+					log:schema("ddapi", "      " .. tbl_k)
 				end
 				log:schema("ddapi", "}")
 			else
@@ -155,6 +156,22 @@ end
 function objectUtils:logNotImplemented(featureName)
 	log:schema("ddapi", "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
+
+
+--- Returns the type, or nil if not found. Logs error.
+-- @param tbl The table where the key can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" which will be cast to type.
+function objectUtils:getType(tbl, key, displayAlias)
+        if displayAlias == nil then
+                displayAlias = objectUtils:coerceToString(key)
+        end
+
+        if tbl[key] ~= nil then
+                return tbl[key]   
+        end
+        return objectUtils:logMissing(displayAlias, key, tbl)
+end
+
 
 --- Returns the index of a type, or nil if not found.
 -- @param tbl The table where the index can be found in. e.g., gameObject.types
