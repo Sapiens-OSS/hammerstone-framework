@@ -20,4 +20,24 @@ function utils:resourceExists(resourceKey)
     end
 end
 
+
+-- Returns the sorted keys of a table
+-- @param inputTable The table to sort the keys of.
+-- @param onlyType The only key type to consider for sorting.
+function utils:sortedTableKeys(inputTable, onlyType)
+    local sortedKeys = {}
+
+    -- Extract and sort the keys
+    for key, _ in pairs(inputTable) do
+        if type(key) == onlyType then
+            table.insert(sortedKeys, key)
+        end
+    end
+
+    table.sort(sortedKeys)
+
+    return sortedKeys
+end
+
+
 return utils

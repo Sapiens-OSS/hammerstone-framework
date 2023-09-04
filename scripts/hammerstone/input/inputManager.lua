@@ -36,13 +36,10 @@ function inputManager:keyChanged(mapIndexes, isDown, isRepeat)
 		if keyMap[mapIndex] then
 			local index = tablefind(keyDampen, mapIndex)
 			if index ~= -1 then
-				mj:log("Dampened key event")
 				table.remove(keyDampen, index)
 			else
-				mj:log("Didn't dampen key event")
 				keyMap[mapIndex](isDown, isRepeat)
 				table.insert(keyDampen, mapIndex)
-				mj:log(keyDampen)
 			end
 		end
 	end
@@ -57,7 +54,6 @@ function inputManager:addMapping(groupKey, mapKey, defaultKeyCode, defaultMod, d
 end
 
 function inputManager:addGroup(groupKey)
-	mj:log("Adding groupkey: " ..groupKey)
 	keyMapping.addGroup(groupKey)
 end
 

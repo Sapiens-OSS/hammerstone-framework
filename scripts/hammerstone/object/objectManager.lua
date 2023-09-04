@@ -587,6 +587,7 @@ end
 function objectManager:handleStorageLinks(config)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
+	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
 	local description = utils:getField(config, "description")
@@ -602,7 +603,7 @@ function objectManager:handleStorageLinks(config)
 		local storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
 
 		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
-		table.insert(storageModule.types[storageIdentifier].resources, moduleManager:get("resource").types[identifier].index)
+		table.insert(utils:getType(storageModule.types, storageIdentifier, "storage").resources, utils:getTypeIndex(resourceModule.types, identifier))
 	end
 
 	storageModule:mjInit()
