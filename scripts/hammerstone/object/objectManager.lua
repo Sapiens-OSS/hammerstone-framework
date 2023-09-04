@@ -170,6 +170,7 @@ function objectManager:generateModelPlaceholder(config)
 
 					-- TODO
 					additionalIndexCount = utils:getField(data, "additional_index_count", {optional = true}),
+					defaultModelShouldOverrideResourceObject = utils:getField(data, "use_default_model", {optional = true}),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
 				}
 			end
@@ -1163,6 +1164,16 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Combine keys
 	local outObject = utils:merge(newGameObject, newBuildableKeys)
+
+	-- Debug
+	local debug = config:get("debug", {default = false})
+	if debug then
+		log:schema("ddapi", "[GameObject] Debugging: " .. identifier)
+		log:schema("ddapi", "Config:")
+		log:schema("ddapi", config)
+		log:schema("ddapi", "Output:")
+		log:schema("ddapi", outObject)
+	end
 
 	-- Actually register the game object
 	gameObjectModule:addGameObject(identifier, outObject)
