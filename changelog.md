@@ -43,3 +43,4 @@ The first release of Hammerstone
  - Added initial support for mobs
  - Fixed issue where craftables were no longer showing in the UI panel, likely re-introducing an issue with craftables using resource groups failing
  - Added support for 'defaultModelShouldOverrideResourceObject' in hs_buildable
+ - Unknown storage_identifier no longer crashes without log message
