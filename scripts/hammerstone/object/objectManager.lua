@@ -859,6 +859,35 @@ function objectManager:generateResourceGroup(groupDefinition)
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
 end
 
+-- Special handler which allows resources to inject themselves into existing resource groups. Runs
+-- after resource groups are already created
+function objectManager:handleResourceGroups(config)
+	-- Modules
+	local resourceModule = moduleManager:get("resource")
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	-- Components
+	local components = config:get("components")
+	local resourceComponent = components:get("hs_resource")
+	if resourceComponent == nil then
+		return
+	end
+
+	local resourceGroups = resourceComponent:get("resource_groups")
+	if resourceGroups == nil then
+		return
+	end
+
+	-- Loop over every group this resource wants to add itself to
+	for i, resourceGroup in ipairs(resourceGroups) do
+		log:schema("ddapi", string.format("  Adding resource '%s' to resourceGroup '%s'", identifier, resourceGroup))
+		resourceModule:addResourceToGroup(identifier, resourceGroup)
+	end
+end
+
 ---------------------------------------------------------------------------------
 -- Seat
 ---------------------------------------------------------------------------------
@@ -1462,7 +1491,15 @@ local objectLoader = {
 		},
 		loadFunction = objectManager.generateSkillDefinition
 	},
-
+	
+	resourceGroupHandler = {
+		configType = configLoader.configTypes.object,
+		dependencies = {
+			"resourceGroups",
+			"resource"
+		},
+		loadFunction = objectManager.handleResourceGroups
+	},
 
 	---------------------------------------------------------------------------------
 	-- Shared Configs
@@ -1493,6 +1530,7 @@ local objectLoader = {
 		},
 		loadFunction = objectManager.generateResourceGroup
 	},
+
 
 	seats = {
 		configType = configLoader.configTypes.shared,

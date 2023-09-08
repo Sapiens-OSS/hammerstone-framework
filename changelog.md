@@ -44,3 +44,8 @@ The first release of Hammerstone
  - Fixed issue where craftables were no longer showing in the UI panel, likely re-introducing an issue with craftables using resource groups failing
  - Added support for 'defaultModelShouldOverrideResourceObject' in hs_buildable
  - Unknown storage_identifier no longer crashes without log message
+
+# 1.3.0 [UNRELEASED]
+
+ - Add 'resource:addResourceToGroup'
+ - Add support for DDAPI resources to inject themselves into existing groups
