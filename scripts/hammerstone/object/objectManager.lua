@@ -303,6 +303,7 @@ function objectManager:generateBuildableDefinition(config)
 	local buildableModule = moduleManager:get("buildable")
 	local constructableModule = moduleManager:get("constructable")
 	local planModule = moduleManager:get("plan")
+	local researchModule = moduleManager:get("research")
 
 	-- Setup
 	local description = config:get("description")
@@ -331,6 +332,13 @@ function objectManager:generateBuildableDefinition(config)
 	newBuildable.finalGameObjectTypeKey = identifier
 	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(buildableComponent, "build_completion_plan", planModule.types, {optional=true})
 
+	local research = utils:getField(buildableComponent, "research", {optional = true})
+	if research ~= nil then
+		mj:log("Look here")
+		mj:log(researchModule)
+		newBuildable.disabledUntilAdditionalResearchDiscovered = researchModule.typeIndexMap[research]
+	end
+	
 	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
 		allowYTranslation = true,
@@ -871,12 +879,12 @@ function objectManager:handleResourceGroups(config)
 
 	-- Components
 	local components = config:get("components")
-	local resourceComponent = components:get("hs_resource")
+	local resourceComponent = components:getOptional("hs_resource")
 	if resourceComponent == nil then
 		return
 	end
 
-	local resourceGroups = resourceComponent:get("resource_groups")
+	local resourceGroups = resourceComponent:getOptional("resource_groups")
 	if resourceGroups == nil then
 		return
 	end
@@ -1396,7 +1404,9 @@ local objectLoader = {
 			"craftable",
 			"tool",
 			"actionSequence",
-			"gameObject"
+			"gameObject",
+
+			"research" -- TODO: Test to ensure this isn't causing load order issues. See research.lua
 		},
 		loadFunction = objectManager.generateBuildableDefinition
 	},

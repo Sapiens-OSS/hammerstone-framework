@@ -162,14 +162,14 @@ end
 -- @param tbl The table where the key can be found in. e.g., gameObject.types
 -- @param key The key such as "inca:rat_skull" which will be cast to type.
 function objectUtils:getType(tbl, key, displayAlias)
-        if displayAlias == nil then
-                displayAlias = objectUtils:coerceToString(key)
-        end
+	if displayAlias == nil then
+		displayAlias = objectUtils:coerceToString(key)
+	end
 
-        if tbl[key] ~= nil then
-                return tbl[key]   
-        end
-        return objectUtils:logMissing(displayAlias, key, tbl)
+	if tbl[key] ~= nil then
+			return tbl[key]   
+	end
+	return objectUtils:logMissing(displayAlias, key, tbl)
 end
 
 

@@ -45,7 +45,11 @@ The first release of Hammerstone
  - Added support for 'defaultModelShouldOverrideResourceObject' in hs_buildable
  - Unknown storage_identifier no longer crashes without log message
 
-# 1.3.0 [UNRELEASED]
+# 1.3.0
 
  - Add 'resource:addResourceToGroup'
- - Add support for DDAPI resources to inject themselves into existing groups
+ - Add support for DDAPI resources to inject themselves into existing groups (i.e., fertilizer)
+ - Fixed log spam when using `locale:getUnchecked'
+ - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)\
+
+# 1.4.0
