@@ -52,4 +52,5 @@ The first release of Hammerstone
  - Fixed log spam when using `locale:getUnchecked'
  - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)
 
-# 1.4.0
+# 1.3.1
+ - Hotfix: Add utils:capsCase to avoid breaking furniture mod
