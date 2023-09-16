@@ -50,6 +50,6 @@ The first release of Hammerstone
  - Add 'resource:addResourceToGroup'
  - Add support for DDAPI resources to inject themselves into existing groups (i.e., fertilizer)
  - Fixed log spam when using `locale:getUnchecked'
- - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)\
+ - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)
 
 # 1.4.0

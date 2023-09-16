@@ -334,8 +334,6 @@ function objectManager:generateBuildableDefinition(config)
 
 	local research = utils:getField(buildableComponent, "research", {optional = true})
 	if research ~= nil then
-		mj:log("Look here")
-		mj:log(researchModule)
 		newBuildable.disabledUntilAdditionalResearchDiscovered = researchModule.typeIndexMap[research]
 	end
 	
