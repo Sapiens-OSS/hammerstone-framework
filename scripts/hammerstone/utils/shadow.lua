@@ -17,6 +17,15 @@ function shadow:shadow(outerModule, loadOrder)
 	-- @param outerModule is the current outer module (shadow), passed into shadow:shadow
 	function outerModule:onload(parentModule)
 
+		-- if the parentModule is a string, it means an error occured during "require"
+		-- (probably due to patching)
+		-- the string is the error message returned by pcall(require, ...) in the vanilla code
+		-- of common/modManager
+		if type(parentModule) == "string" then
+			mj:error(parentModule)
+			return
+		end
+
 		if outerModule.preload ~= nil then
 			outerModule:preload(parentModule)
 		end
