@@ -65,10 +65,11 @@ local function applyPatch(path)
             mj:log("Loading patch file at ", patchFilePath)
 
             local patchFileContent = fileUtils.getFileContents(patchFilePath)
-            local module = loadstring(patchFileContent, patchFilePath)
+            local module, errorMsg = loadstring(patchFileContent, "patched " .. path)
 
             if not module then
-                mj:error("Failed to load patch file at path:", patchFilePath)
+                mj:error(errorMsg)
+                mj:error("Failed to load patch file at path:", patchFilePath)                
             else
                 local function errorhandler(err)
                     mj:error("Patch error:", patchFilePath, "\n", err)
@@ -87,8 +88,10 @@ local function applyPatch(path)
                         path = patchFilePath, 
                         patchOrder = patchObject.patchOrder or 1, 
                         patchObject = patchObject, 
-                        debugCopy = patchObject.debugCopy, 
-                        patchObject.version, 
+                        debugCopyAfter = patchObject.debugCopyAfter, 
+                        debugCopyBefore = patchObject.debugCopyBefore, 
+                        debugOnly = patchObject.debugOnly, 
+                        version = patchObject.version, 
                         modPath = modPath
                     })
                 end
@@ -137,7 +140,7 @@ local function applyPatch(path)
             local fileFullPathWithoutExtension = fileUtils.removeExtensionForPath(patchModule.path)
 
             -- if the patch mod requests it, save a "before" copy of the file for debug purposes
-            if patchModule.debugCopy then
+            if patchModule.debugCopyBefore then
                 fileUtils.writeToFile(fileFullPathWithoutExtension .. "_before.lua.temp", fileContent)
             end
 
@@ -153,17 +156,20 @@ local function applyPatch(path)
                 mj:log("patch done. success: ", success, " file length:", newFileContent:len())
 
                 -- if the patch mod requests it, save an "after" copy of the file for debug purposes
-                if patchModule.debugCopy then
+                if patchModule.debugCopyAfter then
                     fileUtils.writeToFile(fileFullPathWithoutExtension .. "_after.lua.temp", newFileContent)
                 end
 
                 if not success then
                     mj:error("Patching did not succeed for patch at ", patchModule.path)
-                else
+
+                elseif not patchModule.debugOnly then
                     -- test that the new fileContent is valid
-                    patchedModule = loadstring(newFileContent)
+                    local errorMsg = nil 
+                    patchedModule, errorMsg = loadstring(newFileContent)
                     if not patchedModule then
-                        mj:error("Patch failed for mod file at ", patchModule.path)
+                        mj:error(errorMsg)
+                        mj:error("Patch failed for patch file at ", patchModule.path)
                     else
                         mj:log("Patching successful")
                         fileContent = newFileContent

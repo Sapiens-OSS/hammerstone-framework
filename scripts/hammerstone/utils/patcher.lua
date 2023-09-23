@@ -28,14 +28,18 @@ function patcher:indentChunk(chunk, indent)
     return newChunk
 end
 
-function patcher:runOperations(operations, fileContent)
+function patcher:runOperations(operations, fileContent, verbrose)
     local success = nil
     local newFileContent = fileContent
 
-    for _, operation in pairs(operations) do
+    for index, operation in pairs(operations) do
         newFileContent, success = operation(newFileContent)
 
         if not success then
+            if verbrose then
+                mj:log("Patch operation failed at index " .. index)
+            end
+
             return fileContent, false
         end
     end
@@ -110,31 +114,100 @@ function patcher:localVariableToGlobal(variableName, objectName, fileContent)
     return fileContent, true
 end
 
-function patcher:insertAfter(nodes, chunk, fileContent)
-    mj:log("insertAfter nodes:", nodes, " chunk:", chunk)
-    local success = false 
-
-    local index = 1
+local function searchNodes(nodes, fileContent, startAt)
     local fileLength = fileContent:len()
+    local lastStart = nil
+    local lastEnd = nil
+    local index = startAt or 1
 
     for _, node in pairs(nodes) do
-        local nodeStart, nodeEnd = fileContent:find(node.text, index, node.plain)
+        local text = nil
+        local plain = nil
 
-        mj:log("nodeStart: ", nodeStart, " nodeEnd:", nodeEnd)
+        local nodeType = type(node)
+
+        if nodeType == "string" then
+            text = node
+            plain = true
+        elseif nodeType == "table" then
+            text = node.text
+            plain = node.plain
+        elseif nodeType == "function" then
+            text, plain = node(fileContent, lastEnd +1)
+        else
+            mj:error("Unrecognized node type")
+            error()
+            return nil
+        end
+
+        local nodeStart, nodeEnd = fileContent:find(text, index, plain)
 
         if not nodeStart then
             return fileContent, false
         end
 
-        index = nodeEnd + 1
+        lastStart = nodeStart
+        lastEnd = nodeEnd
+        index = lastEnd + 1
+
         if index >= fileLength then
-            return fileContent, false
+            return nil
         end
     end
 
-    local newFileContent = fileContent:sub(1, index -1) .. chunk ..fileContent:sub(index, fileLength)
+    return lastStart, lastEnd
+end
+
+function patcher:insertAfter(nodes, chunk, fileContent)
+    local success = false 
+
+    local lastStart, lastEnd = searchNodes(nodes, fileContent)
+
+    if not lastEnd then return fileContent, false end
+
+    local newFileContent = fileContent:sub(1, lastEnd) .. chunk ..fileContent:sub(lastEnd + 1, fileLength)
 
     return newFileContent, true
+end
+
+function patcher:removeAt(startNodes, endNodes, fileContent)
+    local success = false
+
+    local removeStart, startEnd = searchNodes(startNodes, fileContent)
+
+    if not removeStart then return fileContent, false end
+
+    local _, removeEnd = searchNodes(endNodes, fileContent, startEnd + 1)
+
+    if not removeEnd then return fileContent, false end 
+
+    local newFileContent = fileContent:sub(1, removeStart - 1) .. fileContent:sub(removeEnd + 1, fileContent:len())
+
+    return newFileContent, true
+end
+
+function patcher:replaceAt(startNodes, endNodes, chunk, fileContent)
+    local success = false
+
+    local removeStart, startEnd = searchNodes(startNodes, fileContent)
+
+    if not removeStart then return fileContent, false end
+
+    local _, removeEnd = searchNodes(endNodes, fileContent, startEnd + 1)
+
+    if not removeEnd then return fileContent, false end 
+
+    local newFileContent = fileContent:sub(1, removeStart - 1) .. chunk .. fileContent:sub(removeEnd + 1, fileContent:len())
+
+    return newFileContent, true
+end
+
+function patcher:replace(pattern, replacement, fileContent)
+    local count = nil
+
+    fileContent, count = fileContent:gsub(pattern, replacement)
+
+    return fileContent, count ~= 0
 end
 
 return patcher

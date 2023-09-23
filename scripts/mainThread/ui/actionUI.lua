@@ -2,60 +2,72 @@
 --- It will communicate with the uiManager to handle the creation of action-views in the action-view-slot.
 --- @author SirLich
 
-local mod = {
-	loadOrder = 1
-}
+local actionUI = {}
+
+-- Sapiens
+local inspectUI = mjrequire "mainThread/ui/inspect/inspectUI"
 
 -- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
+local shadow = mjrequire "hammerstone/utils/shadow"
 
-function mod:onload(actionUI)
-	
-	-- Handle init
-	local super_init = actionUI.init
-	function actionUI:init(gameUI, hubUI, world)
-		super_init(actionUI, gameUI, hubUI, world)
-		-- Interface with the uiManager
-		uiManager:initActionView(gameUI, hubUI, world)
-	end
+local gameUI = nil
 
-	-- Handle show
-	local super_show = actionUI.show
-	function actionUI:show()
-		super_show(self)
+-- Handle init
+function actionUI:init(super, gameUI_, hubUI, world)
+	super(self, gameUI_, hubUI, world)
 
-		-- Interface with the uiManager
-		uiManager:showActionElements()
-	end
+	gameUI = gameUI_
 
-	-- Handle hide
-	local super_hide = actionUI.hide
-	function actionUI:hide()
-		super_hide(self)
-		
-		-- Interface with the uiManager
-		uiManager:hideActionElements()
-	end
-	
-	-- Handle terrain actionUI:showTerrain
-	local super_showTerrain = actionUI.showTerrain
-	function actionUI.showTerrain(self, vertInfo, multiSelectAllVerts, lookAtPos)
-		super_showTerrain(self, vertInfo, multiSelectAllVerts, lookAtPos)
-
-		-- Interface with the uiManager
-		uiManager:renderActionElements(vertInfo, multiSelectAllVerts, lookAtPos, true)
-	end
-
-	-- Handle object selection
-	-- actionUI:showObjects(baseObjectInfo_, multiSelectAllObjects, lookAtPos_)
-	local super_showObjects = actionUI.showObjects
-	function actionUI:showObjects(baseObjectInfo, multiSelectAllObjects, lookAtPos)
-		super_showObjects(self, baseObjectInfo, multiSelectAllObjects, lookAtPos)
-		
-		-- Interface with the uiManager
-		uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, false)
-	end
+	-- Interface with the uiManager
+	uiManager:initActionView(gameUI, hubUI, world)
 end
 
-return mod
+-- Handle show
+function actionUI:show(super)
+	super(self)
+
+	-- Interface with the uiManager
+	uiManager:showActionElements()
+end
+
+-- Handle hide
+function actionUI:hide(super)
+	super(self)
+
+	-- Interface with the uiManager
+	uiManager:hideActionElements()
+end
+
+-- Handle terrain actionUI:showTerrain
+function actionUI:showTerrain(super, vertInfo, multiSelectAllVerts, lookAtPos)
+	super(self, vertInfo, multiSelectAllVerts, lookAtPos)
+
+	-- Interface with the uiManager
+	uiManager:renderActionElements(vertInfo, multiSelectAllVerts, lookAtPos, true)
+end
+
+-- Handle object selection
+function actionUI:showObjects(super, baseObjectInfo, multiSelectAllObjects, lookAtPos)
+	super(self, baseObjectInfo, multiSelectAllObjects, lookAtPos)
+		
+	-- Interface with the uiManager
+	uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, false)
+end
+
+-- replace zoomShortcut with proper handling following patch changes
+function actionUI:zoomShortcut(super)
+    if inspectUI.baseObjectOrVertInfo then
+        gameUI:followObject(inspectUI.baseObjectOrVertInfo, inspectUI.isTerrain, false, true, false)
+    end
+end
+
+-- replace multiselectShortcut with proper handling following patch changes
+function actionUI:multiselectShortcut(super)
+    if inspectUI.baseObjectOrVertInfo then
+        gameUI:selectMulti(inspectUI.baseObjectOrVertInfo, inspectUI.isTerrain)
+    end
+end
+
+return shadow:shadow(actionUI)
 
