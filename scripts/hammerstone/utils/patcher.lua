@@ -2,6 +2,9 @@
 --- @author Witchy
 --- Allows vanilla files to be patched
 
+--- Hammerstone
+local logging = mjrequire "hammerstone/logging"
+
 local patcher = {}
 
 local fileContent = nil
@@ -24,7 +27,7 @@ local function loadChunk(chunkTable)
     local chunkName = chunkTable.chunk
 
     if not chunks[chunkName] then
-        mj:error("Invalid chunk name: ", chunkName)
+        logging:error("Invalid chunk name: ", chunkName)
         return nil
     else
         local chunk = chunks[chunkName]
@@ -56,7 +59,7 @@ local function getStringParameter(obj, parameterName)
         elseif obj["chunk"] then
             return loadChunk(obj)
         else
-            mj:error("Could not find ", parameterName)
+            logging:error("Could not find ", parameterName)
             return nil
         end
 
@@ -66,7 +69,7 @@ local function getStringParameter(obj, parameterName)
     elseif objType == "nil" then
         return nil
     else
-        mj:error("Unsupported type")
+        logging:error("Unsupported type")
         return nil
     end
 end
@@ -80,7 +83,7 @@ local function searchNodes(nodes, startAt)
     elseif nodesType == "function" then
         return nodes(index)
     elseif nodesType ~= "table" then
-        mj:error("Unrecognized node type")
+        logging:error("Unrecognized node type")
         return nil
     elseif nodes.text then
         return fileContent:find(nodes.text, index, nodes.plain)
@@ -104,7 +107,7 @@ local function searchNodes(nodes, startAt)
             elseif nodeType == "function" then
                 text, plain = node(fileContent, lastEnd +1)
             else
-                mj:error("Unrecognized node type")
+                logging:error("Unrecognized node type")
                 error()
                 return nil
             end
@@ -133,14 +136,14 @@ local function localFunctionToGlobal(functionName, moduleName)
     functionName = getStringParameter(functionName, "functionName")
 
     if not functionName then
-        mj:error("'functionName' is nil")
+        logging:error("'functionName' is nil")
         return false
     end
 
     moduleName = getStringParameter(moduleName, "moduleName")
 
     if not moduleName then
-        mj:error("'moduleName' is nil")
+        logging:error("'moduleName' is nil")
         return false
     end
 
@@ -167,14 +170,14 @@ local function localVariableToGlobal(variableName, moduleName)
     variableName = getStringParameter(variableName, "variableName")
 
     if not functionName then
-        mj:error("'variableName' is nil")
+        logging:error("'variableName' is nil")
         return false
     end
 
     moduleName = getStringParameter(moduleName, "moduleName")
 
     if not moduleName then
-        mj:error("'moduleName' is nil")
+        logging:error("'moduleName' is nil")
         return false
     end
 
@@ -222,14 +225,14 @@ end
 
 local function insertAfter(after, repl)
     if not after then
-        mj:error("'after' is nil")
+        logging:error("'after' is nil")
         return false
     end
 
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        mj:error("'repl' is nil")
+        logging:error("'repl' is nil")
         return false
     end
 
@@ -244,14 +247,14 @@ end
 
 local function insertBefore(before, repl)
     if not before then
-        mj:error("'before' is nil")
+        logging:error("'before' is nil")
         return false
     end
 
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        mj:error("'repl' is nil")
+        logging:error("'repl' is nil")
         return false
     end
 
@@ -266,7 +269,7 @@ end
 
 local function removeAt(startAt, endAt)
     if not startAt then
-        mj:error("'startAt' is nil")
+        logging:error("'startAt' is nil")
         return false
     end
 
@@ -291,14 +294,14 @@ end
 
 local function replaceAt(startAt, endAt, repl)
     if not startAt then
-        mj:error("'startAt' is nil")
+        logging:error("'startAt' is nil")
         return false
     end
 
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        mj:error("'repl' is nil")
+        logging:error("'repl' is nil")
         return false
     end
 
@@ -321,19 +324,19 @@ end
 
 local function replaceBetween(startAt, endAt, repl)
     if not startAt then
-        mj:error("'startAt' is nil")
+        logging:error("'startAt' is nil")
         return false
     end
 
     if not endAt then
-        mj:error("'endAt' is nil")
+        logging:error("'endAt' is nil")
         return false
     end
 
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        mj:error("'repl' is nil")
+        logging:error("'repl' is nil")
         return false
     end
 
@@ -358,7 +361,7 @@ local function replace(pattern, repl)
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        mj:error("'repl' is nil")
+        logging:error("'repl' is nil")
         return false
     end
 
@@ -385,7 +388,7 @@ function patcher:runOperations(operations)
 
             if canExecute then
                 if not opType then
-                    mj:error("Operation ", key, " did not declare a type")
+                    logging:error("Operation ", key, " did not declare a type")
                     return false
                 elseif opType == "replace" then
                     success = replace(operation.pattern, operation.repl)
@@ -404,14 +407,14 @@ function patcher:runOperations(operations)
                 elseif opType == "localFunctionToGlobal" then
                     success = localFunctionToGlobal(operation.functionName, operation.moduleName)
                 else
-                    mj:error("Invalid operation type:", opType)
+                    logging:error("Invalid operation type:", opType)
                     return false
                 end
             end
         end
 
         if not success then
-            mj:error("Operation failed: ", key)
+            logging:error("Operation failed: ", key)
             return false
         end
     end
@@ -421,7 +424,7 @@ end
 
 function patcher:applyPatch(patchInfos, fileContent_)
     if not patchInfos.operations then
-        mj:error("Patch does not have operations")
+        logging:error("Patch does not have operations")
         return fileContent_, false
     end
 
@@ -432,7 +435,7 @@ function patcher:applyPatch(patchInfos, fileContent_)
         for chunkName, chunkFilePath in pairs(patchInfos.chunkFiles) do 
             local fullPath = patchInfos.modDirPath .. "/" .. chunkFilePath .. ".chunk"
             if not fileUtils.fileExistsAtPath(fullPath) then
-                mj:error("Chunk file does not exist at ", fullPath)
+                logging:error("Chunk file does not exist at ", fullPath)
                 return fileContent, false
             end
 

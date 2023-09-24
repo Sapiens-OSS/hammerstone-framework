@@ -10,30 +10,22 @@ local logging = {
 	modDirectoryPath = nil
 }
 
-local function enforceValid(msg)
-	if msg == nil then
-		return "Nil"
-	else
-		return msg
-	end
-end
-
-function logging:log(msg)
-	mj:log("[Hammerstone] ", enforceValid(msg))
-	logging:schema("_main", msg)
+function logging:log(...)
+	mj:log("[Hammerstone] ", ...)
+	logging:schema("_main", ...)
 end
 
 --- @deprecated, use logging:warn instead
-function logging:warning(msg)
-	mj:warn("[Hammerstone] ", enforceValid(msg))
+function logging:warning(...)
+	mj:warn("[Hammerstone] ", ...)
 end
 
-function logging:warn(msg)
-	mj:warn("[Hammerstone] ", enforceValid(msg))
+function logging:warn(...)
+	mj:warn("[Hammerstone] ", ...)
 end
 
-function logging:error(msg)
-	mj:error("[Hammerstone] ", enforceValid(msg))
+function logging:error(...)
+	mj:error("[Hammerstone] ", ...)
 end
 
 ---------------------------------------------------------------------------------
@@ -114,16 +106,27 @@ function getLogByID(logID)
 	end
 end
 
+local function paramsToString(...)
+	local string = ""
+	local count = select("#",...)
+	for i = 1, count do
+		string = string .. mj:tostring(select(i,...), 0)
+	end
+
+	return string
+end
+
 --- Log to Hammerstone log files, which are separate from mainLog.
 --- @param file_or_logID string or integer
---- @param msg string
+--- @param ... msg strings
 --- @return integer
-function logging:schema(fileName_or_logID, msg)
+function logging:schema(fileName_or_logID, ...)
 	-- Even though we have our own logging now, we still want main logs too:
-	mj:log(msg)
+	mj:log(...)
 
 	local logPath = getLogDirectoryPath()
-	local msgString = mj:tostring(msg, 0)
+
+	local msgString = paramsToString(...)
 
 	-- Add log to specific file
 	if fileName_or_logID ~= nil then
@@ -163,11 +166,11 @@ end
 
 --- Append to a Hammerstone log entry using a logID.
 --- @param logID integer
---- @param msg string
+--- @param ... msg strings
 --- @return integer
-function logging:append(logID, msg)
+function logging:append(logID, ...)
 	local logObject = getLogByID(logID)
-	local msgString = mj:tostring(msg, 0)
+	local msgString = paramsToString(...)
 
 	if logObject ~= nil then
 		logObject.table[logObject.index] = logObject.table[logObject.index] .. msgString
@@ -182,7 +185,6 @@ end
 
 --- Removes a log entry in a Hammerstone log file.
 --- @param logID integer
---- @param msg string
 function logging:remove(logID)
 	local logObject = getLogByID(logID)
 

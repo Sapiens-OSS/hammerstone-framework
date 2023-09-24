@@ -1,6 +1,7 @@
--- fix reflection on "bottom" model
+-- planHelper refactoring
+-- planManager refactoring
 
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 new actionUI module "allInOne"
 ~~~~~~~~~~~~~~~
 {

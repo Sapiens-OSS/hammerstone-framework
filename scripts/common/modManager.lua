@@ -1,6 +1,8 @@
 --- Hammerstone: modManager.lua
 --- @author Witchy
 
+--- Hammerstone
+local logging = mjrequire "hammerstone/logging"
 local patcher = mjrequire "hammerstone/utils/patcher"
 
 local mod = {
@@ -11,10 +13,10 @@ local mod = {
 local patchedModules = {}
 
 -- a list of patch files per path
-local patchFilesPerPath = {}
+local orderedPatchInfos = {}
 
 -- Recursively finds all "lua" scripts within patch mods
-local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modPath)
+local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modPath, patchFilesPerPath)
     local patchDirContents = fileUtils.getDirectoryContents(patchDirPath)
 
     for i, subFileOrDir in ipairs(patchDirContents) do
@@ -36,7 +38,7 @@ local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modP
             if requirePath then
                 subDirName = requirePath .. "/" .. subDirName
             end
-            recursivelyFindScripts(patchDirPath .. "/" .. subFileOrDir, subDirName, localPath .. "/" .. subFileOrDir, modPath)
+            recursivelyFindScripts(patchDirPath .. "/" .. subFileOrDir, subDirName, localPath .. "/" .. subFileOrDir, modPath, patchFilesPerPath)
         end
     end
 end
@@ -44,120 +46,70 @@ end
 -- applies a patch to the file requested in 'path'
 local function applyPatch(path)
 
-    local orderedPatchInfos = {}
     local scriptsFolder = fileUtils.getResourcePath("scripts")
     local originalFilePath = scriptsFolder .. "/" .. path .. ".lua"
 
-    if not patchFilesPerPath[path] then
-        -- shouldn't happen as we check for the existence in the package.loader function
-        mj:error("No patch files found for path:", path)
-
-    elseif not fileUtils.fileExistsAtPath(originalFilePath) then
+    if not fileUtils.fileExistsAtPath(originalFilePath) then
         -- checks that we are patching a real 'vanilla' file found in the game's "scripts" folder
-        mj:error("No file to patch found at ", originalFilePath, "\n This file may have been deleted by the dev or you are attempting to patch a mod, which is not allowed.")
-
-    else
-        -- load all patch files found in mods and ensures they are valid
-        for _, patchFile in pairs(patchFilesPerPath[path]) do
-            local patchFilePath = patchFile.path
-            local modPath = patchFile.modPath
-
-            mj:log("Loading patch file at ", patchFilePath)
-
-            local patchFileContent = fileUtils.getFileContents(patchFilePath)
-            local module, errorMsg = loadstring(patchFileContent, "patched " .. path)
-
-            if not module then
-                mj:error(errorMsg)
-                mj:error("Failed to load patch file at path:", patchFilePath)                
-            else
-                local function errorhandler(err)
-                    mj:error("Patch error:", patchFilePath, "\n", err)
-                end
-
-                local ok, patchInfos = xpcall(module, errorhandler)
-
-                if not patchInfos then
-                    mj:error("Patch load failed:", patchFilePath, "\nPlease make sure that you are returning the mod object at the end of this file")
-                elseif not ok then
-                    mj:error("Patch load failed:", patchFilePath)
-                elseif not patchInfos.operations then
-                    mj:error("Patch does not provide operations")
-                else
-                    patchInfos.patchOrder = patchInfos.patchOrder or 1
-                    patchInfos.filePath = patchFilePath
-                    patchInfos.modDirPath = modPath
-                    table.insert(orderedPatchInfos, patchInfos)
-                end
-            end
-        end
+        logging:error("No file to patch found at ", originalFilePath, "\n This file may have been deleted by the dev or you are attempting to patch a mod, which is not allowed.")
     end
 
-    if not next(orderedPatchInfos) then
-        mj:error("No valid patch files found for path:", path)
-    else
-        -- sort all of the patch modules by their "patchOrder"
-        table.sort(orderedPatchInfos, function(a,b) return a.patchOrder < b.patchOrder end)
+    -- load the vanilla file content
+	local fileContent = fileUtils.getFileContents(originalFilePath)
+    if not fileContent then
+        logging:error("Failed to load original sapiens file at ", path)
+        return nil
+    end
 
-        -- load the vanilla file content
-	    local fileContent = fileUtils.getFileContents(originalFilePath)
-        if not fileContent then
-            mj:error("Failed to load original sapiens file at ", path)
-            return nil
+    local patchedModule = nil 
+    local newFileContent = fileContent
+
+    logging:log("Applying patches for ", path)  
+
+    for _, patchInfos in ipairs(orderedPatchInfos[path]) do
+        logging:log("Applying patch mod for version:", patchInfos.version, " with filepath:", patchInfos.filePath)
+
+        local fileFullPathWithoutExtension = fileUtils.removeExtensionForPath(patchInfos.filePath)
+
+        -- if the patch mod requests it, save a "before" copy of the file for debug purposes
+        if patchInfos.debugCopyBefore then
+            fileUtils.writeToFile(fileFullPathWithoutExtension .. "_before.lua.temp", newFileContent)
         end
 
-        local patchedModule = nil 
-        local newFileContent = fileContent
-
-        mj:log("Applying patch for ", path)  
-
-        for _, patchInfos in ipairs(orderedPatchInfos) do
-            mj:log("Applying patch mod for version:", patchInfos.version, " with filepath:", patchInfos.filePath)
-
-            local fileFullPathWithoutExtension = fileUtils.removeExtensionForPath(patchInfos.filePath)
-
-            -- if the patch mod requests it, save a "before" copy of the file for debug purposes
-            if patchInfos.debugCopyBefore then
-                fileUtils.writeToFile(fileFullPathWithoutExtension .. "_before.lua.temp", newFileContent)
-            end
-
-            -- call the patch module's "applyPatch" function and get the new fileContent
-            local success = nil 
+        -- call the patch module's "applyPatch" function and get the new fileContent
+        local success = nil 
             
-            newFileContent, success = patcher:applyPatch(patchInfos, newFileContent)
+        newFileContent, success = patcher:applyPatch(patchInfos, newFileContent)
 
-            if not newFileContent then
-                mj:error("Patching resulted in an empty file")
-            else
-                mj:log("patch done. success: ", success, " file length:", newFileContent:len())
+        if not newFileContent then
+            logging:error("Patching resulted in an empty file")
+        else
+            -- if the patch mod requests it, save an "after" copy of the file for debug purposes
+            if patchInfos.debugCopyAfter then
+                fileUtils.writeToFile(fileFullPathWithoutExtension .. "_after.lua.temp", newFileContent)
+            end
 
-                -- if the patch mod requests it, save an "after" copy of the file for debug purposes
-                if patchInfos.debugCopyAfter then
-                    fileUtils.writeToFile(fileFullPathWithoutExtension .. "_after.lua.temp", newFileContent)
-                end
+            if not success then
+                logging:error("Patching did not succeed for patch at ", patchInfos.path)
 
-                if not success then
-                    mj:error("Patching did not succeed for patch at ", patchInfos.path)
-
-                elseif not patchInfos.debugOnly then
-                    -- test that the new fileContent is valid
-                    local errorMsg = nil 
-                    patchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
-                    if not patchedModule then
-                        mj:error(errorMsg)
-                        mj:error("Patch failed for patch file at ", patchInfos.path)
-                    else
-                        mj:log("Patching successful")
-                        fileContent = newFileContent
-                    end
+            elseif not patchInfos.debugOnly then
+                -- test that the new fileContent is valid
+                local errorMsg = nil 
+                patchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
+                if not patchedModule then
+                    logging:error(errorMsg)
+                    logging:error("Patch failed for patch file at ", patchInfos.path)
+                else
+                    logging:log("Patching successful")
+                    fileContent = newFileContent
                 end
             end
         end
-
-        patchedModules[path] = patchedModule
-
-        return patchedModule
     end
+
+    patchedModules[path] = patchedModule
+
+    return patchedModule
 end
 
 function mod:onload(modManager)
@@ -172,7 +124,7 @@ function mod:onload(modManager)
                 return patchedModules[path]
             
             -- if mods provide a file with the same path, attempt to patch it
-            elseif patchFilesPerPath[path] then
+            elseif orderedPatchInfos[path] then
                 return applyPatch(path)
             end
         end)
@@ -180,14 +132,57 @@ function mod:onload(modManager)
 
     -- modManager provides a list of enabled mods per type (app or world)
     -- we go through that list to find all of the lua files of the mods in their "patches" folder
+    local patchFilesPerPath = {}
 	for _, modsByType in pairs(modManager.enabledModDirNamesAndVersionsByType) do
         for index, mod in ipairs(modsByType) do 
             local patchesPath = mod.path .. "/patches"
             if fileUtils.isDirectoryAtPath(patchesPath) then
-                recursivelyFindScripts(patchesPath, nil, "scripts", mod.path)
+                recursivelyFindScripts(patchesPath, nil, "scripts", mod.path, patchFilesPerPath)
             end
         end
 	end
+
+    -- load all patch files found in mods and ensures they are valid
+    for path, patchFiles in pairs(patchFilesPerPath) do
+        orderedPatchInfos[path] = {}
+
+        for _, patchFile in pairs(patchFiles) do
+
+            local patchFilePath = patchFile.path
+            local modPath = patchFile.modPath
+
+            logging:log("Loading patch mod at ", patchFilePath)
+
+            local patchFileContent = fileUtils.getFileContents(patchFilePath)
+            local module, errorMsg = loadstring(patchFileContent, "patched " .. path)
+
+            if not module then
+                logging:error("Failed to load patch mod at path:", patchFilePath, "errorMsg: ", errorMsg)                
+            else
+                local function errorhandler(err)
+                    logging:error("Patch error:", patchFilePath, "\n", err)
+                end
+
+                local ok, patchInfos = xpcall(module, errorhandler)
+
+                if not patchInfos then
+                    logging:error("Patch load failed:", patchFilePath, "\nPlease make sure that you are returning the mod object at the end of this file")
+                elseif not ok then
+                    logging:error("Patch load failed:", patchFilePath)
+                elseif not patchInfos.operations then
+                    logging:error("Patch does not provide operations")
+                else
+                    patchInfos.patchOrder = patchInfos.patchOrder or 1
+                    patchInfos.filePath = patchFilePath
+                    patchInfos.modDirPath = modPath
+                    table.insert(orderedPatchInfos[path], patchInfos)
+                end
+            end
+        end
+
+        -- sort all of the patch modules by their "patchOrder"
+        table.sort(orderedPatchInfos[path], function(a,b) return a.patchOrder < b.patchOrder end)
+    end
 end
 
 return mod
