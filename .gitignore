@@ -3,3 +3,4 @@
 /.vs/hammerstone-framework/v17
 *.sqlite
 *.json
+/patches/mainThread/ui/actionUI_after.lua.temp

@@ -1,121 +1,28 @@
-local patcher = mjrequire "hammerstone/utils/patcher"
-
 local patch = {
 	version = "0.4.2.5",
 	debugCopyAfter = true,
-	debugOnly = false
-}
-
-function patch:registerChunkFiles()
-	return {
+	debugOnly = false, 
+	chunkFiles = {
 		["innerWheel"] = "patches/mainThread/ui/actionUI_innerWheel",
 		["innerWheelInit"] = "patches/mainThread/ui/actionUI_innerWheelInit",
 		["updateButtons"] = "patches/mainThread/ui/actionUI_updateButtons",
+	}, 
+	operations = {
+		[1] = { type = "replaceAt", startAt = "local innerSegmentModelNames = {", endAt = { "local innerSegmentToolTipInfos = {", "\r\n}" }, repl = { chunk = "innerWheel" } },
+		[2] = { type = "replace", pattern = "local function addInnerSegment%(addOffsetIndex%)", repl = "local function addInnerSegment(parentView, innerSegmentInfos)\r\n    " }, 
+		[3] = { type = "replace", pattern = "innerSegmentModelNames%[addOffsetIndex%]", repl = "innerSegmentInfos.modelName" }, 
+		[4] = { type = "replace", pattern = "innerSegmentControllerShortcuts%[addOffsetIndex%]", repl = "innerSegmentInfos.controllerShortcut" }, 
+		[5] = { type = "replace", pattern = "vec3%(innerSegmentControllerShortcutKeyImageXOffsets%[addOffsetIndex%],2,0%)", repl = "innerSegmentInfos.controllerShortcutKeyImageOffset" },
+		[6] = { type = "replace", pattern = "innerSegmentIconNames%[addOffsetIndex%]", repl = "innerSegmentInfos.iconName" },
+		[7] = { type = "replace", pattern = "innerSegmentIconOffsets%[addOffsetIndex%]", repl = "innerSegmentInfos.iconOffset" },
+		[8] = { type = "replace", pattern = "innerSegmentFunctions%[addOffsetIndex%]", repl = "innerSegmentInfos.clickFunction"},
+		[9] = { type = "replace", pattern = "innerSegmentToolTipInfos%[addOffsetIndex%]", repl = "innerSegmentInfos.tooltipInfos"},
+		[10] = { type = "replace", pattern = "addInnerSegment%(1%)[%s\r\n]+addInnerSegment%(2%)[%s\r\n]+", repl = { chunk = "innerWheelInit", indent = 1 } },
+		[11] = { type = "replaceAt", startAt = "local function updateButtons(", endAt = "\r\nend", repl = { chunk = "updateButtons" } },
+		[12] = { type = "replaceBetween", startAt = "local innerSegmentView = View.new(", endAt = ")", repl = "parentView" },
+		[13] = { type = "replaceBetween", startAt = { "function actionUI:selectDeconstructAction", "local buttonInfo = buttonInfos[" }, endAt = "]", repl = "getButtonIndexFromDisplayIndex(index)" },
+		[14] = { type = "replaceBetween", startAt = { "function actionUI:selectCloneAction", "local buttonInfo = buttonInfos["}, endAt = "]", repl = "getButtonIndexFromDisplayIndex(index)" },
 	}
-end
-
-function patch:applyPatch(fileContent_)
-	local operations = {
-		[1] = 
-			function(fileContent)
-				return patcher:replaceAt(
-					{
-						"local innerSegmentModelNames = {"
-					}, 
-					{
-						"local innerSegmentToolTipInfos = {", 
-						"\r\n}"
-					}, 
-					patcher:getChunk("innerWheel"),
-					fileContent
-				)
-			end, 
-		[2] = 
-			function(fileContent)
-				return patcher:replace("local function addInnerSegment%(addOffsetIndex%)", 
-				"local function addInnerSegment(parentView, innerSegmentInfos)\r\n    ",
-				fileContent)
-			end,
-		[3] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentModelNames%[addOffsetIndex%]", "innerSegmentInfos.modelName", fileContent)
-			end,
-		[4] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentControllerShortcuts%[addOffsetIndex%]", "innerSegmentInfos.controllerShortcut", fileContent)
-			end, 
-		[5] = 
-			function(fileContent)
-				return patcher:replace("vec3%(innerSegmentControllerShortcutKeyImageXOffsets%[addOffsetIndex%],2,0%)", "innerSegmentInfos.controllerShortcutKeyImageOffset", fileContent)
-			end, 
-		[6] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentIconNames%[addOffsetIndex%]", "innerSegmentInfos.iconName", fileContent)
-			end,
-		[7] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentIconOffsets%[addOffsetIndex%]", "innerSegmentInfos.iconOffset", fileContent)
-			end, 
-		[8] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentFunctions%[addOffsetIndex%]", "innerSegmentInfos.clickFunction", fileContent)
-			end,
-		[9] = 
-			function(fileContent)
-				return patcher:replace("innerSegmentToolTipInfos%[addOffsetIndex%]", "innerSegmentInfos.tooltipInfos", fileContent)
-			end,
-		[10] = 
-			function(fileContent)
-				return patcher:replace("addInnerSegment%(1%)[%s\r\n]+addInnerSegment%(2%)[%s\r\n]+", patcher:getChunk("innerWheelInit"), fileContent)
-			end,
-		[11] = 
-			function(fileContent)
-				return patcher:replaceAt(
-					{
-						"local function updateButtons("
-					}, 
-					{
-						"\r\nend"
-					},
-					patcher:getChunk("updateButtons"), 
-					fileContent
-				)
-			end,
-		[12] = 
-			function(fileContent)
-				return patcher:replace("local innerSegmentView = View%.new%(actionUI%.backgroundView%)", "local innerSegmentView = View.new(parentView)", fileContent)
-			end, 
-		[13] = 
-			function(fileContent)
-				return patcher:replaceAt(
-					{
-						"function actionUI:selectDeconstructAction",
-						"local buttonInfo = buttonInfos["
-					},
-					{
-						"]"
-					},
-					"local buttonInfo = buttonInfos[getButtonIndexFromDisplayIndex(index)]",
-					fileContent
-				)
-			end,
-		[14] = 
-			function(fileContent)
-				return patcher:replaceAt(
-					{
-						"function actionUI:selectCloneAction",
-						"local buttonInfo = buttonInfos["
-					},
-					{
-						"]"
-					},
-					"local buttonInfo = buttonInfos[getButtonIndexFromDisplayIndex(index)]",
-					fileContent
-				)
-			end,
-	}
-
-	return patcher:runOperations(operations, fileContent_, true)
-end
+}
 
 return patch
