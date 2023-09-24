@@ -478,15 +478,15 @@ function patcher:applyPatch(patchInfos, fileContent_)
     fileContent = fileContent_
     chunks = {}
 
-    if patchInfos.chunkFiles then
-        for chunkName, chunkFilePath in pairs(patchInfos.chunkFiles) do 
-            local fullPath = patchInfos.modDirPath .. "/" .. chunkFilePath .. ".chunk"
-            if not fileUtils.fileExistsAtPath(fullPath) then
-                logging:error("Chunk file does not exist at ", fullPath)
-                return fileContent, false
+    local chunksFolder = patchInfos.modDirPath .. "/chunks"
+    if fileUtils.isDirectoryAtPath(chunksFolder) then
+        local dirContent = fileUtils.getDirectoryContents(chunksFolder)
+        for i, subFileOrDir in ipairs(dirContent) do
+            local extension = fileUtils.fileExtensionFromPath(subFileOrDir)
+            if extension and extension == ".lua" then
+                local chunkName = fileUtils.removeExtensionForPath(subFileOrDir)
+                chunks[chunkName] = fileUtils.getFileContents(chunksFolder .. "/" .. subFileOrDir)
             end
-
-            chunks[chunkName] = fileUtils.getFileContents(fullPath)
         end
     end
 
