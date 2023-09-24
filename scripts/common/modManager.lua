@@ -15,6 +15,9 @@ local patchedModules = {}
 -- a list of patch files per path
 local orderedPatchInfos = {}
 
+-- path for the hammerstone mod
+local hammerstonePath = nil
+
 -- Recursively finds all "lua" scripts within patch mods
 local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modPath, patchFilesPerPath)
     local patchDirContents = fileUtils.getDirectoryContents(patchDirPath)
@@ -95,16 +98,31 @@ local function applyPatch(path)
             elseif not patchInfos.debugOnly then
                 -- test that the new fileContent is valid
                 local errorMsg = nil 
-                patchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
-                if not patchedModule then
+                local newPatchedModule = nil 
+
+                newPatchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
+
+                if not newPatchedModule then
                     logging:error(errorMsg)
                     logging:error("Patch failed for patch file at ", patchInfos.path)
                 else
                     logging:log("Patching successful")
                     fileContent = newFileContent
+                    patchedModule = newPatchedModule
                 end
             end
         end
+    end
+
+    -- Save a final copy into hammerstone's "patched" folder
+    -- This is to help modders see the changes to the files
+    if patchedModule then
+        local patchedDir = hammerstonePath .. "/patched/" .. path
+        local patchedFilename = patchedDir .. ".lua"
+        fileUtils.createDirectoriesIfNeededForDirPath(patchedDir)
+        fileUtils.writeToFile(patchedFilename, fileContent)
+
+        logging:log("Saved final patched copy at ", patchedFilename)
     end
 
     patchedModules[path] = patchedModule
@@ -138,6 +156,10 @@ function mod:onload(modManager)
             local patchesPath = mod.path .. "/patches"
             if fileUtils.isDirectoryAtPath(patchesPath) then
                 recursivelyFindScripts(patchesPath, nil, "scripts", mod.path, patchFilesPerPath)
+            end
+
+            if mod.name == "hammerstone-framework" then
+                hammerstonePath = mod.path
             end
         end
 	end
