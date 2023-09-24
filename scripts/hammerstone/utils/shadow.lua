@@ -1,6 +1,9 @@
 -- Hammerstone: shadow.lua
 -- @author SirLich
 
+-- Hammerstone
+local logging = mjrequire "hammerstone/logging"
+
 local shadow = {}
 
 -- Prepares a file to be shadowed by the base game.
@@ -22,7 +25,7 @@ function shadow:shadow(outerModule, loadOrder)
 		-- the string is the error message returned by pcall(require, ...) in the vanilla code
 		-- of common/modManager
 		if type(parentModule) == "string" then
-			mj:error(parentModule)
+			logging:error("Error reading base game file:", parentModule)
 			return
 		end
 
