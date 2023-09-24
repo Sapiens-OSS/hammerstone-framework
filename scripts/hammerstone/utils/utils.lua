@@ -4,6 +4,7 @@
 
 local typeMaps = mjrequire "common/typeMaps"
 
+
 local utils = {}
 
 --- Checks the resource type map if the resource exists.
@@ -39,5 +40,16 @@ function utils:sortedTableKeys(inputTable, onlyType)
     return sortedKeys
 end
 
+function utils:rstrip(s, suffix)
+    return s:gsub(suffix.."$", "")
+end
+
+function utils:strip(s, prefix)
+    return (s:sub(0, #prefix) == prefix) and s:sub(#prefix+1) or s
+end
+
+function utils:capsCase(s)
+    return s:gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
+end
 
 return utils

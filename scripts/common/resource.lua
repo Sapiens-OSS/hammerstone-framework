@@ -70,6 +70,27 @@ function mod:onload(resource)
 		end
 	end
 
+	-- Allows injecting a resource into an existing group
+	-- @param resourceKey the key of the resource to add, such as 'bone_meal'
+	-- @param groupKey the key of the group, such as 'fertilizer'
+	function resource:addResourceToGroup(resourceKey, groupKey)
+		local typeIndexMap = typeMaps.types.resourceGroups -- Created automatically in resource.lua
+
+		local index = typeIndexMap[groupKey]
+		if not index then
+			log:error("Attempt addResourceToGroup, but the group doesn't exist:", groupKey)
+		else
+			-- Inject resource into existing group
+			table.insert(resource.groups[groupKey].resourceTypes, resource.types[resourceKey].index)
+			
+
+			-- Recache the type maps
+			createGroupHashesForBuiltInTypes()
+		end
+
+		return index
+	end
+
 	--- Allows adding a resource group.
 	--- @param key: The key to add, such as 'cake'
 	--- @param objectType: The object to add, containing all fields.
