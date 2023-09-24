@@ -5,3 +5,4 @@
 *.json
 /patches/mainThread/ui/actionUI_after.lua.temp
 /patches/mainThread/ui/TODO.txt
+/patched/mainThread/ui
