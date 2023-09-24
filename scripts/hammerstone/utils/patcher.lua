@@ -454,8 +454,12 @@ function patcher:runOperations(operations)
         end
 
         if not success then
-            logging:error("Operation failed: ", key)
-            return false
+            if not operation.skipOnError then
+                logging:error("Operation failed: ", key)
+                return false
+            else
+                logging:warn("Operation failed: ", key)
+            end
         end
     end
 
