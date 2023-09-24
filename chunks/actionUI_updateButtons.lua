@@ -216,14 +216,7 @@ local function updateButtons(showForPageChange)
                 end
             end)
 
-            local customButtonInfos = actionUI:getCustomButtonsInfos()
-
-            if customButtonInfos then
-                for _, customButtonInfo in ipairs(customButtonInfos) do
-                    buttonCount = buttonCount + 1
-                    buttonInfos[buttonCount] = customButtonInfo
-                end
-            end
+            -- TODO : Insert registered wheel elements here
                 
         else
             mj:error("No selectedVertInfo or actionUI.selectedObjects")
@@ -328,10 +321,6 @@ end
 function actionUI:displayWheelPage(pageOffset)
 	actionUI.wheelPageIndex = actionUI.wheelPageIndex + pageOffset	
 	updateButtons(true)
-end
-
--- to be used by modders to add buttons to the wheel that are not added by plans
-function actionUI:getCustomButtonsInfos()
 end
 
 function actionUI:wheelOptionsButtonClicked(planInfo)
