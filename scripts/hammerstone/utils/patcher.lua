@@ -11,18 +11,28 @@ local fileContent = nil
 
 local chunks = {}
 
+--- Clears the current list of chunks
 function patcher:clearChunks()
     chunks = {}
 end
 
+--- Adds a chunk to the chunk list
+--- @param chunkName string
+--- @param chunk string
 function patcher:addChunk(chunkName, chunk)
     chunks[chunkName] = chunk
 end
 
+--- Gets a chunk by chunkName
+--- @param chunkName string
+--- @return string
 function patcher:getChunk(chunkName)
     return chunks[chunkName]
 end
 
+--- Loads a chunk from a table and indents it if needs be
+--- Valid table example:
+--- { chunk = [chunkName], indent = [number] (optional) }
 local function loadChunk(chunkTable)
     local chunkName = chunkTable.chunk
 
@@ -46,6 +56,12 @@ local function loadChunk(chunkTable)
     end
 end
 
+--- Returns a string from an object
+--- The object can be: 
+---   a string (which will return itself)
+---   a table containing the parameterName
+---   a table containing a chunk
+---   a function which will return the string
 local function getStringParameter(obj, parameterName)
     local objType = type(obj)
 
@@ -74,17 +90,26 @@ local function getStringParameter(obj, parameterName)
     end
 end
 
+--- Searches nodes to locate indexes within the fileContent
+--- If 'nodes' is a string, executes string.find with plain text
+--- If 'nodes' is a function, executes it
+--- If 'nodes' is a table, either executes string.find with the parameters provided by the table
+---   or executes the nodes
+--- Returns the start and end of the last searched string
 local function searchNodes(nodes, startAt)
     local index = startAt or 1
     local nodesType = type(nodes)
 
     if nodesType == "string" or nodesType == "number" then
         return fileContent:find(nodes, index, true)
+
     elseif nodesType == "function" then
-        return nodes(index)
+        return nodes(fileContent, index)
+
     elseif nodesType ~= "table" then
         logging:error("Unrecognized node type")
         return nil
+
     elseif nodes.text then
         return fileContent:find(nodes.text, index, nodes.plain)
     else
@@ -105,7 +130,7 @@ local function searchNodes(nodes, startAt)
                 text = node.text
                 plain = node.plain
             elseif nodeType == "function" then
-                text, plain = node(fileContent, lastEnd +1)
+                text, plain = node(fileContent, index)
             else
                 logging:error("Unrecognized node type")
                 error()
@@ -131,7 +156,7 @@ local function searchNodes(nodes, startAt)
     end
 end
 
---TODO : Transform that into an operation sequence?
+--- Turns a local function into a global function
 local function localFunctionToGlobal(functionName, moduleName)
     functionName = getStringParameter(functionName, "functionName")
 
@@ -146,6 +171,8 @@ local function localFunctionToGlobal(functionName, moduleName)
         logging:error("'moduleName' is nil")
         return false
     end
+
+    --TODO : Transform that into an operation sequence?
 
     local count = nil
 
@@ -166,7 +193,8 @@ local function localFunctionToGlobal(functionName, moduleName)
     return count ~= 0
 end
 
-local function localVariableToGlobal(variableName, moduleName)
+--- Turns a local variable into a variable part of the module
+local function localVariableToModule(variableName, moduleName)
     variableName = getStringParameter(variableName, "variableName")
 
     if not functionName then
@@ -223,16 +251,17 @@ local function localVariableToGlobal(variableName, moduleName)
     return count ~=0
 end
 
-local function insertAfter(after, repl)
+--- Inserts a string after position "after"
+local function insertAfter(after, string)
     if not after then
         logging:error("'after' is nil")
         return false
     end
 
-    repl = getStringParameter(repl, "repl")
+    string = getStringParameter(string, "string")
 
-    if not repl then
-        logging:error("'repl' is nil")
+    if not string then
+        logging:error("'string' is nil")
         return false
     end
 
@@ -245,16 +274,17 @@ local function insertAfter(after, repl)
     return true
 end
 
-local function insertBefore(before, repl)
+--- Inserts a string before position "before"
+local function insertBefore(before, string)
     if not before then
         logging:error("'before' is nil")
         return false
     end
 
-    repl = getStringParameter(repl, "repl")
+    string = getStringParameter(repl, "string")
 
-    if not repl then
-        logging:error("'repl' is nil")
+    if not string then
+        logging:error("'string' is nil")
         return false
     end
 
@@ -267,6 +297,9 @@ local function insertBefore(before, repl)
     return true
 end
 
+--- Removes content starting at "startAt" and ending at "endAt"
+--- Both startAt and endAt are inclusive
+--- If endAt is nil, the operation will remove content until end of file
 local function removeAt(startAt, endAt)
     if not startAt then
         logging:error("'startAt' is nil")
@@ -292,6 +325,9 @@ local function removeAt(startAt, endAt)
     return true
 end
 
+--- Replaces content starting at "startAt" and ending at "endAt"
+--- Both startAt and endAt are inclusive
+--- If endAt is nil, the operation will remove content until end of file
 local function replaceAt(startAt, endAt, repl)
     if not startAt then
         logging:error("'startAt' is nil")
@@ -322,6 +358,8 @@ local function replaceAt(startAt, endAt, repl)
     return true
 end
 
+--- Replaces content between "startAt" and ending before "endAt"
+--- Both startAt and endAt are exclusive
 local function replaceBetween(startAt, endAt, repl)
     if not startAt then
         logging:error("'startAt' is nil")
@@ -357,6 +395,7 @@ local function replaceBetween(startAt, endAt, repl)
     return true
 end
 
+--- Replaces content according to a pattern
 local function replace(pattern, repl)
     repl = getStringParameter(repl, "repl")
 
@@ -372,6 +411,7 @@ local function replace(pattern, repl)
     return count ~= 0
 end
 
+--- Runs operations sequentially. If one fails, it stops the process
 function patcher:runOperations(operations)
     for key, operation in pairs(operations) do 
         local success = nil
@@ -399,11 +439,11 @@ function patcher:runOperations(operations)
                 elseif opType == "removeAt" then
                     success = removeAt(operation.startAt, operation.endAt)
                 elseif opType == "insertAfter" then
-                    success = insertAfter(operation.after, operation.repl)
+                    success = insertAfter(operation.after, operation.string)
                 elseif opType == "insertBefore" then
-                    success = insertBefore(operation.before, operation.repl)
-                elseif opType == "localVariableToGlobal" then
-                    success = localVariableToGlobal(operation.variableName, operation.moduleName)
+                    success = insertBefore(operation.before, operation.string)
+                elseif opType == "localVariableToModule" then
+                    success = localVariableToModule(operation.variableName, operation.moduleName)
                 elseif opType == "localFunctionToGlobal" then
                     success = localFunctionToGlobal(operation.functionName, operation.moduleName)
                 else
@@ -422,6 +462,9 @@ function patcher:runOperations(operations)
     return true
 end
 
+--- Applies a patch
+--- @param patchInfos patchInfos (see modManager)
+--- @param fileContent_ string
 function patcher:applyPatch(patchInfos, fileContent_)
     if not patchInfos.operations then
         logging:error("Patch does not have operations")

@@ -118,7 +118,7 @@ end
 
 --- Log to Hammerstone log files, which are separate from mainLog.
 --- @param file_or_logID string or integer
---- @param ... msg strings
+--- @param ... parameters
 --- @return integer
 function logging:schema(fileName_or_logID, ...)
 	-- Even though we have our own logging now, we still want main logs too:
@@ -166,7 +166,7 @@ end
 
 --- Append to a Hammerstone log entry using a logID.
 --- @param logID integer
---- @param ... msg strings
+--- @param ... parameters
 --- @return integer
 function logging:append(logID, ...)
 	local logObject = getLogByID(logID)
