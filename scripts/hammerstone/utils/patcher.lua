@@ -269,7 +269,7 @@ local function insertAfter(after, string)
 
     if not lastEnd then return false end
 
-    fileContent = fileContent:sub(1, lastEnd) .. repl ..fileContent:sub(lastEnd + 1)
+    fileContent = fileContent:sub(1, lastEnd) .. string ..fileContent:sub(lastEnd + 1)
 
     return true
 end
@@ -292,7 +292,7 @@ local function insertBefore(before, string)
 
     if not lastStart then return false end
 
-    fileContent = fileContent:sub(1, lastStart - 1) .. repl .. fileContent:sub(lastStart)
+    fileContent = fileContent:sub(1, lastStart - 1) .. string .. fileContent:sub(lastStart)
 
     return true
 end
