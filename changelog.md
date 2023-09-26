@@ -66,3 +66,4 @@ The first release of Hammerstone
  # 1.4.1
 
  - Fixed an issue where the "fill" icon would be the same as the "dig" icon on the wheel
+ - Fixed an issue where both inner wheels would show
