@@ -53,3 +53,9 @@ The first release of Hammerstone
  - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)
 
 # 1.4.0
+
+ - Added patching mods support
+ - Patched mainThread/ui/actionUI to support more than 6 buttons in the wheel
+ - Created the uiController to be able to retrieve all views
+ - Patched all UI modules to register with the uiController
+ - Fixed logging so it allows for more than one message arguments

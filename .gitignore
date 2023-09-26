@@ -1,1 +1,7 @@
 .idea/
+/.vs/hammerstone-framework/FileContentIndex
+/.vs/hammerstone-framework/v17
+*.sqlite
+*.json
+*.temp
+/patched/*
