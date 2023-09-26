@@ -413,7 +413,7 @@ end
 
 --- Runs operations sequentially. If one fails, it stops the process
 function patcher:runOperations(operations)
-    for key, operation in pairs(operations) do 
+    for key, operation in ipairs(operations) do 
         local success = nil
 
         if type(operation) == "function" then
@@ -456,7 +456,7 @@ function patcher:runOperations(operations)
         end
 
         if not success then
-            if not operation.skipOnError then
+            if not operation.skipOnFail then
                 logging:error("Operation failed: ", key)
                 return false
             else
