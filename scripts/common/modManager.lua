@@ -13,7 +13,7 @@ local mod = {
 local patchedModules = {}
 
 -- a list of patch files per path
-local orderedPatchInfos = {}
+local patchInfosPerPath = {}
 
 -- path for the hammerstone mod
 local hammerstonePath = nil
@@ -26,16 +26,29 @@ local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modP
         local extension = fileUtils.fileExtensionFromPath(subFileOrDir)
         if extension and extension == ".lua" then
             local moduleName = fileUtils.removeExtensionForPath(subFileOrDir)
-            if requirePath then
-                moduleName = requirePath .. "/" .. moduleName
+
+            -- mods that apply to more than one file are placed at the root
+            if patchDirPath == modPath .. "/patches" then
+                if not patchFilesPerPath[""] then
+                    patchFilesPerPath[""] = {}
+                end
+
+                table.insert(patchFilesPerPath[""], {
+                    path = patchDirPath .. "/" .. subFileOrDir,
+                    modPath = modPath
+                })
+            else
+                if requirePath then
+                    moduleName = requirePath .. "/" .. moduleName
+                end
+                if not patchFilesPerPath[moduleName] then
+                    patchFilesPerPath[moduleName] = {}
+                end
+                table.insert(patchFilesPerPath[moduleName],{
+                    path = patchDirPath .. "/" .. subFileOrDir,
+                    modPath = modPath
+                })
             end
-            if not patchFilesPerPath[moduleName] then
-                patchFilesPerPath[moduleName] = {}
-            end
-            table.insert(patchFilesPerPath[moduleName],{
-                path = patchDirPath .. "/" .. subFileOrDir,
-                modPath = modPath
-            })
         else
             local subDirName = subFileOrDir
             if requirePath then
@@ -46,8 +59,48 @@ local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modP
     end
 end
 
+local function getPatchInfosMatchingPath(path)
+    local orderedPatchInfos = {}
+
+    for p, patchInfosList in pairs(patchInfosPerPath) do
+        local pattern = "^" .. p .. "$"
+        if path:match(pattern) == path then
+            for _, patchInfos in pairs(patchInfosList) do
+                table.insert(orderedPatchInfos, patchInfos)
+            end
+        end
+    end
+
+    table.sort(orderedPatchInfos, function(a,b) return a.patchOrder < b.patchOrder end)
+
+    return orderedPatchInfos
+end
+
+local function getDirPathFromPath(path)
+    local directories = {}
+
+    for match in path:gmatch("[^/]+") do
+        table.insert(directories, match)
+    end
+
+    table.remove(directories, #directories)
+
+    local dirPath = ""
+    for _, dir in pairs(directories) do
+        dirPath = dirPath .. "/" .. dir
+    end
+
+    return dirPath
+end
+
 -- applies a patch to the file requested in 'path'
 local function applyPatch(path)
+
+    local orderedPatchInfos = getPatchInfosMatchingPath(path)
+
+    if not next(orderedPatchInfos) then
+        return nil -- no patch to apply
+    end
 
     local scriptsFolder = fileUtils.getResourcePath("scripts")
     local originalFilePath = scriptsFolder .. "/" .. path .. ".lua"
@@ -67,29 +120,27 @@ local function applyPatch(path)
     local patchedModule = nil 
     local newFileContent = fileContent
 
-    logging:log("Applying patches for ", path)  
-
-    for _, patchInfos in ipairs(orderedPatchInfos[path]) do
-        logging:log("Applying patch mod for version:", patchInfos.version, " with filepath:", patchInfos.filePath)
-
-        local fileFullPathWithoutExtension = fileUtils.removeExtensionForPath(patchInfos.filePath)
+    for _, patchInfos in ipairs(orderedPatchInfos) do
+        --logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
 
         -- if the patch mod requests it, save a "before" copy of the file for debug purposes
         if patchInfos.debugCopyBefore then
-            fileUtils.writeToFile(fileFullPathWithoutExtension .. "_before.lua.temp", newFileContent)
+            fileUtils.createDirectoriesIfNeededForDirPath(patchInfos.modDirPath .. "/patches" .. getDirPathFromPath(path))
+            fileUtils.writeToFile(patchInfos.modDirPath .. "/patches/" ..path .. "_before.lua.temp", newFileContent)
         end
 
         -- call the patch module's "applyPatch" function and get the new fileContent
         local success = nil 
             
-        newFileContent, success = patcher:applyPatch(patchInfos, newFileContent)
+        newFileContent, success = patcher:applyPatch(patchInfos, newFileContent, path)
 
         if not newFileContent then
-            logging:error("Patching resulted in an empty file")
+            logging:error("Patching resulted in an empty file for patch at ", patchInfos.path)
         else
             -- if the patch mod requests it, save an "after" copy of the file for debug purposes
             if patchInfos.debugCopyAfter then
-                fileUtils.writeToFile(fileFullPathWithoutExtension .. "_after.lua.temp", newFileContent)
+                fileUtils.createDirectoriesIfNeededForDirPath(patchInfos.modDirPath .. "/patches" .. getDirPathFromPath(path))
+                fileUtils.writeToFile(patchInfos.modDirPath .. "/patches/" ..path .. "_after.lua.temp", newFileContent)
             end
 
             if not success then
@@ -106,7 +157,6 @@ local function applyPatch(path)
                     logging:error(errorMsg)
                     logging:error("Patch failed for patch file at ", patchInfos.path)
                 else
-                    logging:log("Patching successful")
                     fileContent = newFileContent
                     patchedModule = newPatchedModule
                 end
@@ -117,12 +167,10 @@ local function applyPatch(path)
     -- Save a final copy into hammerstone's "patched" folder
     -- This is to help modders see the changes to the files
     if patchedModule then
-        local patchedDir = hammerstonePath .. "/patched/" .. path
-        local patchedFilename = patchedDir .. ".lua"
+        local patchedDir = hammerstonePath .. "/patched/" .. getDirPathFromPath(path)
+        local patchedFilename = hammerstonePath .. "/patched/" .. path .. ".lua"
         fileUtils.createDirectoriesIfNeededForDirPath(patchedDir)
         fileUtils.writeToFile(patchedFilename, fileContent)
-
-        logging:log("Saved final patched copy at ", patchedFilename)
     end
 
     patchedModules[path] = patchedModule
@@ -141,8 +189,8 @@ function mod:onload(modManager)
             if patchedModules[path] then
                 return patchedModules[path]
             
-            -- if mods provide a file with the same path, attempt to patch it
-            elseif orderedPatchInfos[path] then
+            -- attempt to patch it                
+            else
                 return applyPatch(path)
             end
         end)
@@ -164,46 +212,81 @@ function mod:onload(modManager)
         end
 	end
 
-    -- load all patch files found in mods and ensures they are valid
-    for path, patchFiles in pairs(patchFilesPerPath) do
-        orderedPatchInfos[path] = {}
+    local function loadPatchMod(patchFile)
+        local patchFilePath = patchFile.path
+        local modPath = patchFile.modPath
 
-        for _, patchFile in pairs(patchFiles) do
+        logging:log("Loading patch mod at ", patchFilePath)
 
-            local patchFilePath = patchFile.path
-            local modPath = patchFile.modPath
+        local patchFileContent = fileUtils.getFileContents(patchFilePath)
+        local module, errorMsg = loadstring(patchFileContent, patchFilePath)
 
-            logging:log("Loading patch mod at ", patchFilePath)
+        if not module then
+            logging:error("Failed to load patch mod at path:", patchFilePath, "errorMsg: ", errorMsg)                
+        else
+            local function errorhandler(err)
+                logging:error("Patch error:", patchFilePath, "\n", err)
+            end
 
-            local patchFileContent = fileUtils.getFileContents(patchFilePath)
-            local module, errorMsg = loadstring(patchFileContent, "patched " .. path)
+            local ok, patchInfos = xpcall(module, errorhandler)
 
-            if not module then
-                logging:error("Failed to load patch mod at path:", patchFilePath, "errorMsg: ", errorMsg)                
+            if not patchInfos then
+                logging:error("Patch load failed:", patchFilePath, "\nPlease make sure that you are returning the mod object at the end of this file")
+            elseif not ok then
+                logging:error("Patch load failed:", patchFilePath)
+            elseif not patchInfos.operations then
+                logging:error("Patch does not provide operations")
             else
-                local function errorhandler(err)
-                    logging:error("Patch error:", patchFilePath, "\n", err)
-                end
+                patchInfos.patchOrder = patchInfos.patchOrder or 1
+                patchInfos.filePath = patchFilePath
+                patchInfos.modDirPath = modPath
+                return patchInfos
+            end
+        end
+    end
 
-                local ok, patchInfos = xpcall(module, errorhandler)
+    local function addUniversalPatchToExistingPaths(patchInfos, path)
+        if patchInfosPerPath[path] then
+            table.insert(patchInfosPerPath[path], patchInfos)
+        else
+            patchInfosPerPath[path] = { patchInfos }
+        end
+    end
 
-                if not patchInfos then
-                    logging:error("Patch load failed:", patchFilePath, "\nPlease make sure that you are returning the mod object at the end of this file")
-                elseif not ok then
-                    logging:error("Patch load failed:", patchFilePath)
-                elseif not patchInfos.operations then
-                    logging:error("Patch does not provide operations")
-                else
-                    patchInfos.patchOrder = patchInfos.patchOrder or 1
-                    patchInfos.filePath = patchFilePath
-                    patchInfos.modDirPath = modPath
-                    table.insert(orderedPatchInfos[path], patchInfos)
+    -- load universal patches
+    if patchFilesPerPath[""] then
+        for _, patchFile in pairs(patchFilesPerPath[""]) do
+            local patchInfos = loadPatchMod(patchFile)
+
+            if not patchInfos.appliesTo then
+                logging:error("Universal patch at ", patchFile, " does not contain field 'appliesTo'")
+
+            elseif type(patchInfos.appliesTo) == "string" then
+                addUniversalPatchToExistingPaths(patchInfos, patchInfos.appliesTo)
+
+            elseif type(patchInfos.appliesTo) == "table" then
+                for _, path in pairs(patchInfos.appliesTo) do
+                    addUniversalPatchToExistingPaths(patchInfos, path)
                 end
             end
         end
 
-        -- sort all of the patch modules by their "patchOrder"
-        table.sort(orderedPatchInfos[path], function(a,b) return a.patchOrder < b.patchOrder end)
+        patchFilesPerPath[""] = nil
+    end
+
+    -- load all patch files found in mods and ensures they are valid
+    for path, patchFiles in pairs(patchFilesPerPath) do
+        if not patchInfosPerPath[path] then
+            patchInfosPerPath[path] = {}
+        end
+
+        for _, patchFile in pairs(patchFiles) do
+            local patchInfos = loadPatchMod(patchFile)
+            
+            if patchInfos then
+                table.insert(patchInfosPerPath[path], patchInfos)
+            end
+        end
     end
 end
 

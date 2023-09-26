@@ -11,6 +11,10 @@ local fileContent = nil
 
 local chunks = {}
 
+local keywords = {}
+
+local logSkippedErrors = false
+
 --- Clears the current list of chunks
 function patcher:clearChunks()
     chunks = {}
@@ -28,6 +32,14 @@ end
 --- @return string
 function patcher:getChunk(chunkName)
     return chunks[chunkName]
+end
+
+local function replaceKeywords(value)
+    for k, v in pairs(keywords) do
+        value = value:gsub(k, v)
+    end
+
+    return value
 end
 
 --- Loads a chunk from a table and indents it if needs be
@@ -49,7 +61,7 @@ local function loadChunk(chunkTable)
                 newChunk = newChunk .. string.rep("    ", chunkTable.indent) .. chunkLine .. lineEnd
             end
 
-            return newChunk
+            return replaceKeywords(newChunk)
         end
 
         return chunk
@@ -65,7 +77,10 @@ end
 local function getStringParameter(obj, parameterName)
     local objType = type(obj)
 
-    if objType == "string" or objType == "number" then
+    if objType == "string" then
+        return replaceKeywords(obj)
+
+    elseif objType == "number" then
         return obj
 
     elseif objType == "table" then
@@ -99,6 +114,61 @@ end
 local function searchNodes(nodes, startAt)
     local index = startAt or 1
     local nodesType = type(nodes)
+    local fileLength = fileContent:len()
+    local lastStart = nil
+    local lastEnd = nil
+
+    local function searchNode(node)
+        local text = nil
+        local plain = nil
+        local reps = nil
+
+        local nodeType = type(node)
+
+        if nodeType == "string" then
+            text = node
+            plain = true
+        elseif nodeType == "table" then
+            text = node.text
+            plain = node.plain
+            reps = node.reps
+        elseif nodeType == "function" then
+            text, plain, reps = node(fileContent, index)
+        else
+            logging:error("Unrecognized node type")
+            error()
+            return nil
+        end
+
+        if not reps then reps = 1 end
+        local currentRep = 0 
+
+        while currentRep ~= reps do
+            currentRep = currentRep + 1
+
+            local nodeStart, nodeEnd = fileContent:find(replaceKeywords(text), index, plain)
+
+            if not nodeStart then
+                if reps == -1 then
+                    break
+                else
+                    return false
+                end
+            end
+
+            lastStart = nodeStart
+            lastEnd = nodeEnd
+            index = lastEnd + 1
+
+            if index >= fileLength then
+                if reps == -1 then
+                    break
+                else
+                    return nil
+                end
+            end
+        end
+    end
 
     if nodesType == "string" or nodesType == "number" then
         return fileContent:find(nodes, index, true)
@@ -111,49 +181,14 @@ local function searchNodes(nodes, startAt)
         return nil
 
     elseif nodes.text then
-        return fileContent:find(nodes.text, index, nodes.plain)
+        searchNode(nodes)
     else
-        local fileLength = fileContent:len()
-        local lastStart = nil
-        local lastEnd = nil
-
         for _, node in pairs(nodes) do
-            local text = nil
-            local plain = nil
-
-            local nodeType = type(node)
-
-            if nodeType == "string" then
-                text = node
-                plain = true
-            elseif nodeType == "table" then
-                text = node.text
-                plain = node.plain
-            elseif nodeType == "function" then
-                text, plain = node(fileContent, index)
-            else
-                logging:error("Unrecognized node type")
-                error()
-                return nil
-            end
-
-            local nodeStart, nodeEnd = fileContent:find(text, index, plain)
-
-            if not nodeStart then
-                return false
-            end
-
-            lastStart = nodeStart
-            lastEnd = nodeEnd
-            index = lastEnd + 1
-
-            if index >= fileLength then
-                return nil
-            end
+            searchNode(node)
         end
-
-        return lastStart, lastEnd
     end
+
+    return lastStart, lastEnd
 end
 
 --- Turns a local function into a global function
@@ -168,8 +203,7 @@ local function localFunctionToGlobal(functionName, moduleName)
     moduleName = getStringParameter(moduleName, "moduleName")
 
     if not moduleName then
-        logging:error("'moduleName' is nil")
-        return false
+        moduleName = keywords["#MODULENAME#"]
     end
 
     --TODO : Transform that into an operation sequence?
@@ -205,8 +239,7 @@ local function localVariableToModule(variableName, moduleName)
     moduleName = getStringParameter(moduleName, "moduleName")
 
     if not moduleName then
-        logging:error("'moduleName' is nil")
-        return false
+        moduleName = keywords["#MODULENAME#"]
     end
 
     local count = nil
@@ -253,11 +286,6 @@ end
 
 --- Inserts a string after position "after"
 local function insertAfter(after, string)
-    if not after then
-        logging:error("'after' is nil")
-        return false
-    end
-
     string = getStringParameter(string, "string")
 
     if not string then
@@ -265,34 +293,37 @@ local function insertAfter(after, string)
         return false
     end
 
-    local lastStart, lastEnd = searchNodes(after)
+    if not after then
+        fileContent = fileContent .. string
+    else
+        local lastStart, lastEnd = searchNodes(after)
 
-    if not lastEnd then return false end
+        if not lastEnd then return false end
 
-    fileContent = fileContent:sub(1, lastEnd) .. repl ..fileContent:sub(lastEnd + 1)
+        fileContent = fileContent:sub(1, lastEnd) .. string ..fileContent:sub(lastEnd + 1)
+    end
 
     return true
 end
 
 --- Inserts a string before position "before"
 local function insertBefore(before, string)
-    if not before then
-        logging:error("'before' is nil")
-        return false
-    end
-
-    string = getStringParameter(repl, "string")
+    string = getStringParameter(string, "string")
 
     if not string then
         logging:error("'string' is nil")
         return false
     end
 
-    local lastStart = searchNodes(before)
+    if not before then
+        fileContent = string .. fileContent
+    else
+        local lastStart = searchNodes(before)
 
-    if not lastStart then return false end
+        if not lastStart then return false end
 
-    fileContent = fileContent:sub(1, lastStart - 1) .. repl .. fileContent:sub(lastStart)
+        fileContent = fileContent:sub(1, lastStart - 1) .. string .. fileContent:sub(lastStart)
+    end
 
     return true
 end
@@ -413,8 +444,8 @@ end
 
 --- Runs operations sequentially. If one fails, it stops the process
 function patcher:runOperations(operations)
-    for key, operation in pairs(operations) do 
-        local success = nil
+    for key, operation in ipairs(operations) do 
+        local success = true
 
         if type(operation) == "function" then
             fileContent, success = operation(fileContent)
@@ -423,7 +454,7 @@ function patcher:runOperations(operations)
             local canExecute = true 
 
             if operation.condition then
-                canExecute = operation.condition(fileContent)
+                canExecute = operation.condition(fileContent, { path = keywords["#PATH#"], moduleName = keywords["#MODULENAME#"] })
             end
 
             if canExecute then
@@ -454,11 +485,11 @@ function patcher:runOperations(operations)
         end
 
         if not success then
-            if not operation.skipOnError then
+            if not operation.skipOnFail then
                 logging:error("Operation failed: ", key)
                 return false
-            else
-                logging:warn("Operation failed: ", key)
+            elseif logSkippedErrors then
+                logging:log("Operation failed and was skipped: ", key)
             end
         end
     end
@@ -466,10 +497,20 @@ function patcher:runOperations(operations)
     return true
 end
 
+local function getModuleNameFromPath(path)
+    local moduleName = nil
+    
+    for match in path:gmatch("[^/]+") do
+        moduleName = match
+    end
+
+    return moduleName        
+end
+
 --- Applies a patch
 --- @param patchInfos patchInfos (see modManager)
 --- @param fileContent_ string
-function patcher:applyPatch(patchInfos, fileContent_)
+function patcher:applyPatch(patchInfos, fileContent_, path)
     if not patchInfos.operations then
         logging:error("Patch does not have operations")
         return fileContent_, false
@@ -489,6 +530,9 @@ function patcher:applyPatch(patchInfos, fileContent_)
             end
         end
     end
+
+    keywords["#PATH#"] = path
+    keywords["#MODULENAME#"] = getModuleNameFromPath(path)
 
     local success = patcher:runOperations(patchInfos.operations)
 
