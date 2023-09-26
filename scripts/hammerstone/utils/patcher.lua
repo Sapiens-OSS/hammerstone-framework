@@ -481,6 +481,8 @@ function patcher:runOperations(operations)
                     logging:error("Invalid operation type:", opType)
                     return false
                 end
+            else
+                success = true
             end
         end
 
