@@ -356,7 +356,7 @@ function actionUI:getAvailibityRequestPlan(planInfo, objectOrVertIDs)
     }
 
     if planTypeIndex == plan.types.fill.index then
-        addInfo.constructableTypeIndex = fillConstructionTypeIndex
+        addInfo.constructableTypeIndex = actionUI:getFillConstructionTypeIndex(planInfo)
         addInfo.restrictedResourceObjectTypes = world:getConstructableRestrictedObjectTypes(addInfo.constructableTypeIndex, false)
         addInfo.restrictedToolObjectTypes = world:getConstructableRestrictedObjectTypes(addInfo.constructableTypeIndex, true)
     end
@@ -444,7 +444,7 @@ function actionUI:getAddPlansInfos(planInfo, objectOrVertIDs)
     end
 
     if planInfo.planTypeIndex == plan.types.fill.index then
-        addInfo.constructableTypeIndex = fillConstructionTypeIndex
+        addInfo.constructableTypeIndex = actionUI:getFillConstructionTypeIndex(planInfo)
         addInfo.restrictedResourceObjectTypes = world:getConstructableRestrictedObjectTypes(addInfo.constructableTypeIndex, false)
         addInfo.restrictedToolObjectTypes = world:getConstructableRestrictedObjectTypes(addInfo.constructableTypeIndex, true)
     end
