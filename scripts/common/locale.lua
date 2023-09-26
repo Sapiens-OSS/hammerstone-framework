@@ -17,15 +17,21 @@ function mod:onload(locale)
     local addedLocaleData = {}
     local currentLocaleKey = nil
 
-    --- Fetches a localization string, or returns the string itself.
+    --- Fetches a localization string, or returns the string itself. No warnings will be printed.
     --- @param key - The localization key, such as 'skill_gathering_description'
     function locale:getUnchecked(key)
-        local success, value = pcall(locale.get, self, key)
-        if success then
-            return value
-        else
-            return key
+        local entry = nil
+        if locale.currentLocale.values then
+            entry = locale.currentLocale.values[key]
         end
+        if (not entry) then
+            entry = locale.defaultLocale.values[key]
+            if not entry then
+                entry = key
+            end
+        end
+    
+        return entry
     end
 
     -- Use this method to add dynamic locale keys

@@ -1,0 +1,338 @@
+******************* C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/logs/internalServerLog.log 0.4.2.5 Fri Sep 15 20:07:50 2023 *******************
+34.351383:mkdir:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/serverdb
+34.352214:Found DB map size:0.0078MB Setting max map size to:8MB - C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/serverdb
+34.353844:mkdir:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/http
+34.354159:mkdir:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/http/public
+34.354300:Creating world named Nena Ale with id e1e9ce0262f834c9c280458742486a6e03ce977c seed 451a7
+34.355335:mkdir:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/worlddb
+34.356190:Found DB map size:0.0078MB Setting max map size to:8MB - C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/worlddb
+34.359383:mkdir:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/players/76561198172720785/worlds/e1e9ce0262f834c9c280458742486a6e03ce977c/mods
+34.359596:Mod hammerstone-framework not found in world directory, checking available mods directory:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/mods/hammerstone-framework
+34.359682:Mod sapiens-bone-crafting not found in world directory, checking available mods directory:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/mods/sapiens-bone-crafting
+34.359758:Mod sapiens-creative-mode not found in world directory, checking available mods directory:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/mods/sapiens-creative-mode
+34.359830:Mod sapiens-vanilla-tweaks not found in world directory, checking available mods directory:C:/Users/lrkoe/AppData/Roaming/majicjungle/sapiens/mods/sapiens-vanilla-tweaks
+34.360533:modManager:init enabledAppMods:nil enabledWorldMods:{
+    sapiens-creative-mode = true,
+    sapiens-vanilla-tweaks = true,
+    hammerstone-framework = true,
+    sapiens-bone-crafting = true,
+}
+34.360778:Skipping disabled world mod:animal-kingdom
+34.360887:Skipping disabled world mod:basic-buildables
+34.360980:Skipping disabled world mod:ddapi-moa
+34.361069:Skipping disabled world mod:foodies
+34.361192:Loading enabled world mod:hammerstone-framework
+34.362725:Loading mod at path:C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework info:{
+    description = Hammerstone is modding API/Library. It is a required dependency for many mods on the workshop.,
+    preview = assets/hammerstone.png,
+    developer = SirLich & Sapiens Modding Community,
+    name = Hammerstone Framework,
+    directory = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework,
+    version = 1.2.0,
+    type = world,
+    website = https://github.com/Sapiens-OSS/hammerstone-framework,
+    dirName = hammerstone-framework,
+    isLocal = true,
+} cmodDirContents:{
+}
+34.363020:Skipping disabled world mod:hammerstone-test-mod
+34.363124:Skipping disabled world mod:nomads
+34.363287:Loading enabled world mod:sapiens-bone-crafting
+34.363504:Loading mod at path:C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting info:{
+    loadOrder = 1,
+    description = An expansion mod for Sapiens, introducing a collection of bone-crafted decorations, tools, and buildables.,
+    preview = assets/preview.jpg,
+    developer = SirLich,
+    name = Bone Crafting,
+    directory = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting,
+    version = 1.1.0,
+    type = world,
+    dirName = sapiens-bone-crafting,
+    isLocal = true,
+} cmodDirContents:{
+}
+34.364406:Skipping disabled world mod:sapiens-building-decorations
+34.364513:Loading enabled world mod:sapiens-creative-mode
+34.365112:Loading mod at path:C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode info:{
+    description = Creative Mode in Sapiens! Instant Building, free skill unlocks, etc. 
+
+This mod requires you to also install the Hammerstone Modding Framework.,
+    preview = assets/preview.jpg,
+    developer = SirLich,
+    name = Creative Mode,
+    directory = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode,
+    version = 1.2.0,
+    type = world,
+    dirName = sapiens-creative-mode,
+    isLocal = true,
+} cmodDirContents:{
+}
+34.365374:Skipping disabled world mod:sapiens-furnature
+34.365540:Skipping disabled world mod:sapiens-icons
+34.365643:Skipping disabled world mod:sapiens-inca-empire
+34.365743:Loading enabled world mod:sapiens-vanilla-tweaks
+34.366299:Loading mod at path:C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks info:{
+    description = A collection of 'tweaks' to the base game, exposed to the settings panel. You have full control!,
+    preview = assets/preview.png,
+    developer = SirLich,
+    name = Vanilla Tweaks,
+    directory = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks,
+    version = 1.0.0,
+    type = world,
+    dirName = sapiens-vanilla-tweaks,
+    isLocal = true,
+} cmodDirContents:{
+}
+34.366531:Skipping disabled world mod:test-wall
+34.366632:Skipping disabled world mod:test_mod
+34.366734:Skipping disabled world mod:2739619930
+34.367249:Skipping disabled app mod:sapiens-black-and-white
+34.367360:Skipping disabled app mod:sapiens-hair
+34.367478:Skipping disabled app mod:2833015040
+34.367573:Skipping disabled app mod:2841127168
+34.367666:Skipping disabled app mod:2852735269
+34.367757:Skipping disabled app mod:2852807650
+34.368401:found mod override:models/boneMeal.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneMeal.glb
+34.368433:found mod override:models/boneWindChimes.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneWindChimes.glb
+34.368452:found mod override:models/bone_chairBack.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/bone_chairBack.glb
+34.368470:found mod override:models/bone_chairLeg.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/bone_chairLeg.glb
+34.368486:found mod override:models/bone_chairSeat.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/bone_chairSeat.glb
+34.368506:found mod override:models/craftBoneBroth.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/craftBoneBroth.glb
+34.368528:found mod override:models/giantBone.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/giantBone.glb
+34.368545:found mod override:models/mammothTuskDecoration.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/mammothTuskDecoration.glb
+34.368562:found mod override:models/moonMask.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/moonMask.glb
+34.368578:found mod override:models/ropeBuild_m.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/ropeBuild_m.glb
+34.368598:found mod override:models/ropeSection_m.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/ropeSection_m.glb
+34.368618:found mod override:models/sheepSkull.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/sheepSkull.glb
+34.368641:found mod override:models/boneBroth.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneBroth.glb
+34.368663:found mod override:models/sunMask.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/sunMask.glb
+34.368683:found mod override:models/boneChair.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneChair.glb
+34.368746:found mod override:models/boneMask.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneMask.glb
+34.368767:found mod override:models/windChime_bone2.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/windChime_bone2.glb
+34.368790:found mod override:models/windChime_bone1.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/windChime_bone1.glb
+34.368808:found mod override:models/windChime_top.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/windChime_top.glb
+34.368824:found mod override:models/boneHatchet.glb -> C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/models/boneHatchet.glb
+34.760753:newWorldGenOptionsFromLua:000001CA89DE1A10
+34.760823:spHeightInit
+35.043154:pregeneration complete in 0.28s
+35.045559:10242 verts totalsize:573552 (560.11KB)
+35.060520:found localization:C:\Program Files (x86)\Steam\steamapps\common\Sapiens\GameResources/localizations/en_us
+35.060735:modLocalizations:{
+    en_us = {
+        [1] = {
+            path = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/localizations/en_us,
+            loadOrder = 1,
+        },
+    },
+}
+35.061045:availableLocalizations:{
+    en_us = {
+        displayName = English,
+        fileNames = {
+            [1] = keyboardNames.lua,
+            [2] = localizations.lua,
+        },
+        basePaths = {
+            [1] = C:\Program Files (x86)\Steam\steamapps\common\Sapiens\GameResources/localizations/en_us,
+            [2] = C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/localizations/en_us,
+        },
+    },
+}
+35.071360:Fri Sep 15 20:07:50 2023
+
+35.072100:[Hammerstone] Bound event 1 to callback function: 0x01ca19bf2048
+35.072134:Bound event 1 to callback function: 0x01ca19bf2048
+35.072158:Initializing DDAPI...
+35.072177:
+Initialized DDAPI.
+35.072197:Loading configuration files from FileSystem:
+35.072216:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework/hammerstone/builders/
+35.072278:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework/hammerstone/shared/
+35.072333:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework/hammerstone/storage
+35.072384:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework/hammerstone/objects
+35.072434:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/hammerstone-framework/hammerstone/skills
+35.072506:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/builders/
+35.072558:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/shared/
+35.072651:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/shared//materials.shared.json
+35.072750:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/shared//model_remaps.shared.json
+35.072841:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/shared//seats.shared.json
+35.072948:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/storage
+35.073041:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/storage/large_bone.storage.json
+35.073191:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/storage/mask.storage.json
+35.073365:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/storage/skull.storage.json
+35.073455:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects
+35.073545:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/build
+35.073634:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/build/bone_chair.build.json
+35.073726:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/build/wind_chimes.object.json
+35.073814:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft
+35.073914:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/bone_hatchet.object.json
+35.074000:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/bone_mask.object.json
+35.074083:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/bone_meal.object.lua
+35.074169:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/giant_bone.object.json
+35.074252:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/moon_mask.object.json
+35.074331:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/sheep_skull.object.json
+35.074413:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/sun_mask.object.json
+35.074497:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/craft/tusk.object.json
+35.074579:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/food
+35.074662:  C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/objects/food/bone_broth.object.json
+35.074747:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-bone-crafting/hammerstone/skills
+35.074802:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode/hammerstone/builders/
+35.074857:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode/hammerstone/shared/
+35.074907:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode/hammerstone/storage
+35.074956:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode/hammerstone/objects
+35.075003:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-creative-mode/hammerstone/skills
+35.075055:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks/hammerstone/builders/
+35.075107:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks/hammerstone/shared/
+35.075155:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks/hammerstone/storage
+35.075203:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks/hammerstone/objects
+35.075250:Fetching Configs from C:\Users\lrkoe\AppData\Roaming\majicjungle\sapiens\mods/sapiens-vanilla-tweaks/hammerstone/skills
+35.075305:
+
+Generating material definitions:
+35.076041:Available Configs: 5
+35.076078:  darkBone
+35.076179:  boneMealBowl
+35.076218:  boneRed
+35.076252:  boneBlack
+35.076283:  broth
+35.092650:Object has been marked for load: customModel
+35.092702:
+
+Generating customModel definitions:
+35.093273:Available Configs: 7
+35.093375:windChime_top --> windChime_top_apple
+35.093443:windChime_top --> windChime_top_orange
+35.093503:windChime_top --> windChime_top_peach
+35.093562:windChime_top --> windChime_top_willow
+35.093610:windChime_top --> windChime_top_coconut
+35.093671:windChime_top --> windChime_top_elderberry
+35.093697:windChime_top --> windChime_top_light
+35.106446:
+
+Generating resource definitions:
+35.108041:Available Configs: 11
+35.108196:  bone_hatchet
+35.108411:  bone_mask
+35.108535:  giant_bone
+35.108625:  moon_mask
+35.108669:  sheep_skull
+35.108751:  sun_mask
+35.108819:  tusk
+35.108919:  bone_broth
+35.109127:  bone_meal
+35.111711:
+
+Generating storage definitions:
+35.112037:Available Configs: 3
+35.112075:  large_bone_storage
+35.112103:  Adding display_object 'giant_bone' to storage 'large_bone_storage', with index '400'
+35.184996:  mask_storage
+35.185062:  Adding display_object 'bone_mask' to storage 'mask_storage', with index '397'
+35.248511:  skull_storage
+35.248581:  Adding display_object 'sheep_skull' to storage 'skull_storage', with index '406'
+35.324286:
+
+Generating storageLinkHandler definitions:
+35.325150:Available Configs: 11
+35.460881:  Adding resource 'bone_hatchet' to storage 'hatchet'
+35.531644:  Adding resource 'bone_mask' to storage 'mask_storage'
+35.606835:  Adding resource 'giant_bone' to storage 'large_bone_storage'
+35.672117:  Adding resource 'moon_mask' to storage 'mask_storage'
+35.744000:  Adding resource 'sheep_skull' to storage 'skull_storage'
+35.819642:  Adding resource 'sun_mask' to storage 'mask_storage'
+35.888797:  Adding resource 'tusk' to storage 'large_bone_storage'
+35.946907:  Adding resource 'bone_broth' to storage 'bowl'
+36.019387:  Adding resource 'bone_meal' to storage 'manure'
+36.156987:
+
+Generating seats definitions:
+36.157465:Available Configs: 1
+36.157504:  bone_chair
+36.182291:Object has been marked for load: gameObject
+36.182359:
+
+Generating gameObject definitions:
+36.183948:Available Configs: 11
+36.184013:  bone_chair
+36.184052:build_bone_chair  (build variant)
+36.184695:  wind_chimes
+36.184792:build_wind_chimes  (build variant)
+36.185053:  bone_hatchet
+36.185144:  bone_mask
+36.185218:  giant_bone
+36.185271:  moon_mask
+36.185387:  sheep_skull
+36.185452:  sun_mask
+36.185531:  tusk
+36.185686:  bone_broth
+36.185963:  bone_meal
+36.187014:Object has been marked for load: harvestable
+36.187176:
+
+Generating resourceGroups definitions:
+36.188039:Available Configs: 0
+36.188072:  (no objects of this type created)
+36.188096:
+
+Generating harvestable definitions:
+36.188967:Available Configs: 11
+36.199548:Object has been marked for load: craftable
+36.199603:
+
+Generating resourceGroupHandler definitions:
+36.200241:Available Configs: 11
+36.200474:  Adding resource 'bone_meal' to resourceGroup 'fertilizer'
+36.200553:
+
+Generating craftable definitions:
+36.201175:Available Configs: 11
+36.201262:  bone_hatchet
+36.201387:  bone_mask
+36.201445:  giant_bone
+36.201495:  moon_mask
+36.201565:  sheep_skull
+36.201645:  sun_mask
+36.201811:  tusk
+36.201970:  bone_broth
+36.202075:  bone_meal
+36.202206:Object has been marked for load: mob
+36.202236:
+
+Generating mob definitions:
+36.202832:Available Configs: 11
+36.203017:adding path model:pathNode_dirt
+36.203135:adding path model:pathNode_sand
+36.203236:adding path model:pathNode_rock
+36.203330:adding path model:pathNode_clay
+36.203424:adding path model:pathNode_firedTile
+36.204131:
+
+Generating buildable definitions:
+36.204694:Available Configs: 11
+36.204733:  bone_chair
+36.204808:Look here
+36.204837:{
+    preload = function: 0x01ca1cdc2ce0,
+    onload = function: 0x01ca232cc010,
+    load = function: 0x01ca232cbfd0,
+}
+36.204860:WARNING: Object failed to generate, discarding: buildable
+36.204878:[string "hammerstone-framework/..ject/objectManager.lua"]:339: attempt to index field 'typeIndexMap' (a nil value)
+36.204896:--------
+36.204937:stack traceback:
+	[string "hammerstone-framework/..ject/objectManager.lua"]:57: in function '__index'
+	[string "hammerstone-framework/..ject/objectManager.lua"]:339: in function <[string "hammerstone-framework/..ject/objectManager.lua"]:301>
+	[C]: in function 'xpcall'
+	[string "hammerstone-framework/..ject/objectManager.lua"]:68: in function 'loadObjectDefinition'
+	[string "hammerstone-framework/..ject/objectManager.lua"]:1662: in function 'tryLoadObjectDefinitions'
+	[string "hammerstone-framework/..ject/objectManager.lua"]:1583: in function 'f'
+	[string "hammerstone-framework/..tate/moduleManager.lua"]:18: in function 'callBindings'
+	[string "hammerstone-framework/..tate/moduleManager.lua"]:32: in function 'addModule'
+	[string "hammerstone-framework/..ts/common/research.lua"]:21: in function 'load'
+	...mmon/Sapiens/GameResources/scripts/common/gameObject.lua:5547: in function 'addGameObjects'
+	...mmon/Sapiens/GameResources/scripts/common/gameObject.lua:5551: in function 'super_mjInit'
+	[string "hammerstone-framework/../common/gameObject.lua"]:17: in function 'mjInit'
+	...mmon/Sapiens/GameResources/scripts/common/modManager.lua:103: in function 'mjrequire'
+	...mon/Sapiens/GameResources/scripts/server/serverWorld.lua:11: in main chunk
+	[C]: in function 'require'
+	...mmon/Sapiens/GameResources/scripts/common/modManager.lua:109: in function <...mmon/Sapiens/GameResources/scripts/common/modManager.lua:24>

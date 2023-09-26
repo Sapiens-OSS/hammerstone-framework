@@ -4,8 +4,6 @@
  - Plants
  - Fuel
  - Medicine
- - Localization wrapping for name/plural.
- - Buildable
  - Research
  - Sapien traits
  - Terrain types
@@ -13,15 +11,18 @@
  
  # In Progress
  - Skill
- - Harvestable
+
 
 # Done
+ - Localization wrapping for name/plural.
  - Resources
  - Objects
  - Storages
  - Evolving Objects
  - Schemas 
  - Craftables
+ - Buildable
  - Materials
-- Tools
+ - Harvestable
+ - Tools
  - Item groups

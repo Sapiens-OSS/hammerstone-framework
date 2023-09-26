@@ -43,3 +43,13 @@ The first release of Hammerstone
  - Added initial support for mobs
  - Fixed issue where craftables were no longer showing in the UI panel, likely re-introducing an issue with craftables using resource groups failing
  - Added support for 'defaultModelShouldOverrideResourceObject' in hs_buildable
+ - Unknown storage_identifier no longer crashes without log message
+
+# 1.3.0
+
+ - Add 'resource:addResourceToGroup'
+ - Add support for DDAPI resources to inject themselves into existing groups (i.e., fertilizer)
+ - Fixed log spam when using `locale:getUnchecked'
+ - Added support for 'disabledUntilAdditionalResearchDiscovered' inside of the `hs_buildable` component (research)
+
+# 1.4.0

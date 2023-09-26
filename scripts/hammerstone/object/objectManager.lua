@@ -303,6 +303,7 @@ function objectManager:generateBuildableDefinition(config)
 	local buildableModule = moduleManager:get("buildable")
 	local constructableModule = moduleManager:get("constructable")
 	local planModule = moduleManager:get("plan")
+	local researchModule = moduleManager:get("research")
 
 	-- Setup
 	local description = config:get("description")
@@ -331,6 +332,11 @@ function objectManager:generateBuildableDefinition(config)
 	newBuildable.finalGameObjectTypeKey = identifier
 	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(buildableComponent, "build_completion_plan", planModule.types, {optional=true})
 
+	local research = utils:getField(buildableComponent, "research", {optional = true})
+	if research ~= nil then
+		newBuildable.disabledUntilAdditionalResearchDiscovered = researchModule.typeIndexMap[research]
+	end
+	
 	utils:addProps(newBuildable, buildableComponent, "props", {
 		allowBuildEvenWhenDark = false,
 		allowYTranslation = true,
@@ -859,6 +865,35 @@ function objectManager:generateResourceGroup(groupDefinition)
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
 end
 
+-- Special handler which allows resources to inject themselves into existing resource groups. Runs
+-- after resource groups are already created
+function objectManager:handleResourceGroups(config)
+	-- Modules
+	local resourceModule = moduleManager:get("resource")
+
+	-- Setup
+	local description = utils:getField(config, "description")
+	local identifier = utils:getField(description, "identifier")
+
+	-- Components
+	local components = config:get("components")
+	local resourceComponent = components:getOptional("hs_resource")
+	if resourceComponent == nil then
+		return
+	end
+
+	local resourceGroups = resourceComponent:getOptional("resource_groups")
+	if resourceGroups == nil then
+		return
+	end
+
+	-- Loop over every group this resource wants to add itself to
+	for i, resourceGroup in ipairs(resourceGroups) do
+		log:schema("ddapi", string.format("  Adding resource '%s' to resourceGroup '%s'", identifier, resourceGroup))
+		resourceModule:addResourceToGroup(identifier, resourceGroup)
+	end
+end
+
 ---------------------------------------------------------------------------------
 -- Seat
 ---------------------------------------------------------------------------------
@@ -1367,7 +1402,9 @@ local objectLoader = {
 			"craftable",
 			"tool",
 			"actionSequence",
-			"gameObject"
+			"gameObject",
+
+			"research" -- TODO: Test to ensure this isn't causing load order issues. See research.lua
 		},
 		loadFunction = objectManager.generateBuildableDefinition
 	},
@@ -1462,7 +1499,15 @@ local objectLoader = {
 		},
 		loadFunction = objectManager.generateSkillDefinition
 	},
-
+	
+	resourceGroupHandler = {
+		configType = configLoader.configTypes.object,
+		dependencies = {
+			"resourceGroups",
+			"resource"
+		},
+		loadFunction = objectManager.handleResourceGroups
+	},
 
 	---------------------------------------------------------------------------------
 	-- Shared Configs
@@ -1493,6 +1538,7 @@ local objectLoader = {
 		},
 		loadFunction = objectManager.generateResourceGroup
 	},
+
 
 	seats = {
 		configType = configLoader.configTypes.shared,
