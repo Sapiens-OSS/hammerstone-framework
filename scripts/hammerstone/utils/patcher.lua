@@ -281,7 +281,7 @@ local function insertBefore(before, string)
         return false
     end
 
-    string = getStringParameter(repl, "string")
+    string = getStringParameter(string, "string")
 
     if not string then
         logging:error("'string' is nil")
