@@ -58,13 +58,7 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
     end
 
     local toolTipText = getToolTipText(planInfo.planTypeIndex, false)              
-    local cancelToolTipText = nil
-
-    if planInfo.planTypeIndex == plan.types.fill.index then
-        cancelToolTipText = locale:get("ui_action_stop") .. " " .. getToolTipText(planInfo.planTypeIndex, true)
-    else
-        cancelToolTipText = locale:get("ui_action_stop") .. " " .. getToolTipText(planInfo.planTypeIndex, true)
-    end
+    local cancelToolTipText = locale:get("ui_action_stop") .. " " .. getToolTipText(planInfo.planTypeIndex, true)
 
     if planInfo.hasNonQueuedAvailable then
         buttonFunction = 
@@ -328,6 +322,8 @@ function actionUI:wheelOptionsButtonClicked(planInfo)
 end
 
 function actionUI:getFillConstructionTypeIndex(planInfo)
+    local fillConstructionTypeIndex = nil
+
     if planInfo.planTypeIndex == plan.types.fill.index then
         if planInfo.hasQueuedPlans then
             if actionUI.baseVert and actionUI.baseVert.planObjectInfo then
@@ -347,6 +343,8 @@ function actionUI:getFillConstructionTypeIndex(planInfo)
             fillConstructionTypeIndex = constructableUIHelper:getTerrainFillConstructableTypeIndex()
         end
     end
+
+    return fillConstructionTypeIndex
 end
 
 function actionUI:getAvailibityRequestPlan(planInfo, objectOrVertIDs)
