@@ -56,4 +56,6 @@ The first release of Hammerstone
 
  - Added patching mods support
  - Patched mainThread/ui/actionUI to support more than 6 buttons in the wheel
+ - Created the uiController to be able to retrieve all views
+ - Patched all UI modules to register with the uiController
  - Fixed logging so it allows for more than one message arguments
