@@ -62,3 +62,8 @@ The first release of Hammerstone
  - Created the uiController to be able to retrieve all views
  - Patched all UI modules to register with the uiController
  - Fixed logging so it allows for more than one message arguments
+
+ # 1.4.1
+
+ - Fixed an issue where the "fill" icon would be the same as the "dig" icon on the wheel
+ - Fixed an issue where both inner wheels would show
