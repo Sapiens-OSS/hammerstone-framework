@@ -166,7 +166,7 @@ local function applyPatch(path)
 
     -- Save a final copy into hammerstone's "patched" folder
     -- This is to help modders see the changes to the files
-    if patchedModule then
+    if patchedModule and hammerstonePath then
         local patchedDir = hammerstonePath .. "/patched/" .. getDirPathFromPath(path)
         local patchedFilename = hammerstonePath .. "/patched/" .. path .. ".lua"
         fileUtils.createDirectoriesIfNeededForDirPath(patchedDir)
@@ -196,6 +196,14 @@ function mod:onload(modManager)
         end)
     end
 
+    for _, modInfo in pairs(modManager.modInfosByTypeByDirName.world) do
+        if modInfo.name == "Hammerstone Framework" then
+            hammerstonePath = modInfo.directory
+            mj:log("HAMMERSTONE PATH = ", hammerstonePath)
+            break
+        end
+    end
+
     -- modManager provides a list of enabled mods per type (app or world)
     -- we go through that list to find all of the lua files of the mods in their "patches" folder
     local patchFilesPerPath = {}
@@ -204,10 +212,6 @@ function mod:onload(modManager)
             local patchesPath = mod.path .. "/patches"
             if fileUtils.isDirectoryAtPath(patchesPath) then
                 recursivelyFindScripts(patchesPath, nil, "scripts", mod.path, patchFilesPerPath)
-            end
-
-            if mod.name == "hammerstone-framework" then
-                hammerstonePath = mod.path
             end
         end
 	end
