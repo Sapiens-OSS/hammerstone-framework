@@ -49,6 +49,14 @@ local configLoader = {
 			jsonStrings = {},
 			luaStrings = {},
 			cachedConfigs = {}
+		}, 
+		plannableAction = {
+			key = "plannableAction",
+			configPath = "/hammerstone/plannableActions", 
+			luaGetter = "getplannableActionsConfigs",
+			jsonStrings = {},
+			luaStrings = {},
+			cachedConfigs = {}
 		}
 	},
 

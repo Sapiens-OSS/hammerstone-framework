@@ -24,6 +24,7 @@ local utils = mjrequire "hammerstone/object/objectUtils"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
 local hammerAPI = mjrequire "hammerAPI"
+local logicManager = mjrequire "hammerstone/logic/logicManager"
 
 hammerAPI:test()
 
@@ -286,6 +287,10 @@ end
 
 local function getSummaryLocKey(identifier)
 	return "object_" .. identifier .. "_summary"
+end
+
+local function getInProgressKey(prefix, identifier)
+	return prefix .. "_" .. "inProgress"
 end
 
 local function getBuildModelName(objectComponent, craftableComponent)
@@ -1317,6 +1322,246 @@ function objectManager:generateSkillDefinition(config)
 end
 
 ---------------------------------------------------------------------------------
+-- Plannable Actions
+---------------------------------------------------------------------------------
+
+function objectManager:generatePlanDefinition(config)
+	
+	-- Modules
+	local planModule = moduleManager:get("plan")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = config:get("description")
+	local components = config:get("components")
+
+	local identifier = description:getField("identifier")
+	log:schema("ddapi", "  " .. identifier)
+
+	-- Components
+	local planComponent = components:getOptional("hs_plan")
+
+	if not planComponent then
+		return
+	end
+
+	local newPlan = {
+		key = identifier,
+		name = utils:getLocalizedString(description, "name", getNameKey("plan", identifier)),
+		inProgress = utils:getLocalizedString(description, "inProgress", getInProgressKey("plan", identifier)),
+		icon = description:getField("icon"),
+		checkCanCompleteForRadialUI = planComponent:getField("showsOnWheel", { optional = true, default = true, type = "boolean"}), 
+		allowsDespiteStatusEffectSleepRequirements = planComponent:getOptional("skipSleepRequirement", "boolean"),  
+		shouldRunWherePossible = planComponent:getField("walkSpeed", { optional = true, with = function(value) return value == "run" end }), 
+		shouldJogWherePossible = planComponent:getField("walkSpeed", { optional = true, with = function(value) return value == "job" end }), 
+		skipFinalReachableCollisionPathCheck = planComponent:getField("collisionPathCheck", { optional = true, with = function(value) return value == "skip" end }), 
+		skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:getField("collisionPathCheck", { optional = true, with = function(value) value == "skipVertical" end})
+	}
+
+	local simulPlanTypesTable = planComponent:getTable("simultaneousPlans", { optional = true })
+
+	if simulPlanTypesTable then
+		newPlan.allowOtherPlanTypesToBeAssignedSimultaneously = { }
+		for _, planKey in pairs(simulPlanTypesTable) do 
+			local planIndex = utils:getTypeIndex(planModule.types, planKey)
+			newPlan.allowOtherPlanTypesToBeAssignedSimultaneously[planIndex] = true
+		end
+	end
+		
+	if utils:hasKey(planComponent, "props") then
+		utils:addProps(newPlan, planComponent, "props", {
+			requiresLight = true
+		})
+	end
+
+	typeMapsModule:insert("plan", planModule.types, newPlan)
+	return planModule.types[identifier].index
+end
+
+local function addAction(config, identifier, actionModule, typeMapsModule)
+	if not config then
+		return nil
+	end
+
+	local skillModule = moduleManager:get("skill")
+	local toolModule = moduleManager:get("tool")
+
+	if not identifier then
+		identifier = config:getField("key", { type = "string" })
+	end
+
+	local newAction = {
+		key = identifier, 
+		name = utils:getLocalizedString(config, "name", getNameKey("action", identifier)), 
+		inProgress = utils:getLocalizedString(config, "inProgress", getInProgressKey("action", identifier)), 
+		restNeedModifier = config:getField("restNeedModifier", { type = "number" } ), 
+	}
+
+	if utils:hasKey(config, "props") then
+		utils:addProps(newAction, config, "props", {
+			--No defaults
+		})
+	end
+
+	typeMapsModule:insert("action", actionModule.types, newAction)
+	return actionModule.types[identifier].index
+end
+
+local function addActionModifier(config, actionModule, typeMapsModule)
+	local identifier = config:getField("key", { type = "string" } )
+
+	local newActionModifier = {
+		key = identifier, 
+		name = utils:getLocalizedString(config, "name", getNameKey("action", identifier)), 
+		inProgress = utils:getLocalizedString(config, "inProgress", getInProgressKey("action", identifier)), 
+	}
+
+	if utils:hasKey(config, "props") then
+		utils:addProps(newActionModifier, config, "props", {
+			--No defaults
+		})
+	end
+
+	typeMapsModule:insert("actionModifier", actionModule.modifierTypes, newActionModifier)
+	return actionModule.modifierTypes[identifier].index
+end
+
+local function addActionSequence(config, identifier, actionSequenceModule, actionModule, typeMapsModule)
+	if not config then
+		return nil
+	end
+
+	local newActionSequence = {
+		key = identifier, 
+		actions = {}, 
+		assignedTriggerIndex = config:getField("assignedTriggerIndex", { type = "number" }), 
+	}
+
+	local assignModifierTypeIndex = config:getOptional("modifier")
+
+	if assignModifierTypeIndex then
+		if type(assignModifierTypeIndex) == "string" then
+			newActionSequence.assignModifierTypeIndex = utils:getTypeIndex(actionModule.modifierTypes, assignModifierTypeIndex)
+		elseif type(assignModifierTypeIndex) == "table" then
+			newActionSequence.assignModifierTypeIndex = addActionModifier(assignModifierTypeIndex, actionModule, typeMapsModule)
+		end
+	end
+
+	local actions = config:getTable("actions")
+	for _, action in ipairs(actions) do
+		local actionIndex = nil
+
+		if type(action) == "string" then
+			actionIndex = utils:getTypeIndex(actionModule.types, action)
+		elseif type(action) == "table" then
+			actionIndex = addAction(action, actionModule, typeMapsModule)
+		end
+
+		table.insert(newActionSequence.actions, actionIndex)
+	end
+
+	if utils:hasKey(config, "props") then
+		utils:addProps(newActionSequence, config, "props", {
+			--No defaults
+		})
+	end
+
+	typeMapsModule:insert("actionSequence", actionSequenceModule.types, newActionSequence)
+	return actionSequenceModule.types[identifier].index
+end
+
+local function addOrder(config, identifier, icon, orderModule, typeMapsModule)
+	if not config then
+		return nil
+	end
+
+	if not identifier then
+		identifier = config:getField("key", { type = "string" } )
+	end
+
+	if not icon then
+		icon = config:getField("icon", { type = "string" })
+	end
+
+	local newOrder = {
+		key = identifier, 
+		name = utils:getLocalizedString(config, "name", getNameKey("order", identifier)), 
+		inProgressName = utils:getLocalizedString(config, "inProgressName", getInProgressKey("order", identifier)), 
+		icon = icon, 
+	}
+
+	if utils:hasKey(config, "props") then
+		utils:addProps(newOrder, config, "props", {
+			--No defaults
+		})
+	end
+
+	typeMapsModule:insert("order", orderModule.types, newOrder)
+	return orderModule.types[identifier].index
+end
+
+function objectManager:generatePlannableAction(config)
+
+	-- Modules
+	local planModule = moduleManager:get("plan")
+	local actionModule = moduleManager:get("action")
+	local actionSequenceModule = moduleManager:get("actionSequence")
+	local orderModule = moduleManager:get("order")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = config:get("description")
+	local identifier = description:get("key", { type = "string" })
+	local icon = description:get("icon", { type = "string" }),
+	
+	-- handle logic layer
+	local logic = config:get("hs_logic")
+	local logicModuleName = logic:getField("module")
+
+	log:schema("ddapi", "  " .. identifier)
+
+	-- add new objects to typeMaps
+	local components = config:get("components")
+	addPlan(components:get("hs_plan"), identifier, icon, planModule, typeMapsModule)
+	addAction(components:getOptional("hs_action"), identifier, actionModule, typeMapsModule)
+	addActionSequence(components:getOptional("hs_actionSequence"), identifier, actionSequenceModule, actionModule, typeMapsModule)
+	addOrder(components:getOptional("hs_order"), identifier, icon, orderModule, typeMapsModule)
+
+
+
+	-- activeOrderAI stuff
+	local updateAction = logic:get("hs_actionUpdate")
+	local completionFunctionName = updateAction:getField("onComplete", type = { string })
+
+
+	local updateInfos = {
+		checkFrequency = config:getField("checkFrequency", { type = "number" } ), 
+		defaultSkillIndex = utils:getFieldAsIndex(config, "defaultSkill", skillModule.types, { optional = true }), 
+		toolMultiplierTypeIndex = utils:getFieldAsIndex(config, "tool", toolModule.types, { optional = true }),  
+		completionFunction = 
+		function(allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
+			local logicModule = mjrequire logicModuleName
+
+			if not logicModule then
+				logging:error("Failed to load logic module " logicModuleName)
+			elseif not logicModule[completionFunctionName] then
+				logging:error("Failed to find function ", completionFunctionName, " in ", logicModuleName)
+			else
+				logicModule[completionFunctionName](allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
+			end
+		end,
+	}
+
+	if utils:hasKey(updateAction, "props") then
+		utils:addProps(updateInfos, updateAction, "props", {
+			--No defaults
+		})
+	end
+
+	logicManager:
+end
+
+---------------------------------------------------------------------------------
 -- Configuation and Loading
 ---------------------------------------------------------------------------------
 
@@ -1509,6 +1754,28 @@ local objectLoader = {
 		loadFunction = objectManager.handleResourceGroups
 	},
 
+	plan = {
+		configType = configLoader.configTypes.plannableAction, 
+		moduleDependencies = {
+			"typeMaps"
+		}, 
+		loadFunction = objectManager.generatePlanDefinition
+	},
+
+	plannableActions = {
+		configType = configLoader.configTypes.plannableAction,
+		moduleDependencies = {
+			"plan", 
+			"action", 
+			"actionSequence", 
+			"order",
+			"typeMaps",
+			"tool",
+			"skill"
+		}, 
+		loadFunction = objectManager.generatePlannableAction
+	},
+
 	---------------------------------------------------------------------------------
 	-- Shared Configs
 	---------------------------------------------------------------------------------
@@ -1574,7 +1841,7 @@ local objectLoader = {
 			"model"
 		},
 		loadFunction = objectManager.generateCustomModelDefinition
-	}
+	}, 
 }
 
 local function newModuleAdded(modules)
