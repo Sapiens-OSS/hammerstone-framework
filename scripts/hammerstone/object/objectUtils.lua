@@ -33,341 +33,213 @@ end
 -- ConfigTable
 ---------------------------------------------------------------------------------
 
-ConfigTable={}
+ConfigTable={
+	-- Table functions --
+	get = function(self, key) return objectUtils:getField(self, key) end,
+	isEmpty = function(self) return objectUtils:isEmpty(self) end,
+	hasKey = function(self, key) return objectUtils:hasKey(self, key) end, 
+	estimateSize = function(self) return objectUtils:estimateTableSize(self) end,
 
-ConfigTable.__add = function(a,b)
-	return objectUtils:merge(a, b)
+	----- Validations -----
+	ofLength = function(self, length) return objectUtils:ofLength(self, length) end,
+
+	----- Casting -----
+	asVec3 = function(self) return objectUtils:asVec3(self) end,
+
+	----- Operators -----
+	__add = function(self, tblToMerge) return objectUtils:merge(self, tblToMerge) end,
+
+	----- Table operations -----
+	mergeTo = function(self, tblToMerge) return objectUtils:merge(self, tblToMerge) end,
+	copy = function(self) return objectUtils:deepcopy(self) end, 
+
+	----- Predicates -----
+	all = function(self, predicate) return objectUtils:all(self, predicate) end,
+	where = function(self, predicate) return objectUtils:where(self, predicate) end,
+	map = function(self, predicate) return objectUtils:map(self, predicate) end, 
+	forEach = function(self, predicate) return objectUtils:forEach(self, predicate) end, 
+
+
+	-- Value functions --
+	----- Generic functions -----
+	default = function(self, defaultValue) return objectUtils:default(self, defaultValue) end,
+	isType = function(self, typeName) return objectUtils:isType(self, typeName) end,
+
+	----- Validation functions -----
+	required = function(self) return objectUtils:required(self) end
+	ofType = function(self, typeName) return objectUtils:ofType(self, typeName) end,
+	isInTypeTable = function(self, typeTable) return objectUtils:isInTypeTable(self, typeTable) end,
+	isInNotTypeTable = function(self, typeTable) return objectUtils:isNotInTypeTable(self, typeTable) end,
+
+	----- Casting -----
+	asTypeIndex = function(self, indexTable) return objectUtils:asTypeIndex(self, indexTable) end,
+	asLocalizedString = function(self, default) return objectUtils:asLocalizedString(self, default) end,
+
+	----- Predicates -----
+	with = function(self, predicate) return objectUtils:with(self, predicate) end,
+}
+
+--- For better readability, we wrap all functions with an initConfig after declaring the ConfigTable
+for name, funct in pairs(ConfigTable) do
+	ConfigTable[name] = function(...)
+		return objectUtils:initConfig(funct(...))
+	end
 end
 
+--- So that we can do tbl:
+ConfigTable.__index = ConfigTable
+
 function objectUtils:initConfig(tbl)
-	if tbl == nil then return end
+	tbl = objectUtils:coerceToTable(tbl)
 
-	if istable(tbl) == false then
-		function tbl:ofType(typeName)
-			if(type(self) == typeName) then
-				return self
-			end
-		end
-
-		function tbl:default(defaultValue) then
-			if not self.value then
-				return defaultValue
-			end
-
-			return self.value
-		end
+	if type(tbl) == "table" then
+		setmetatable(tbl, ConfigTable);
 	else
-		setmetatable(tbl,ConfigTable);
-
-		function tbl:get(key, options)
-			return objectUtils:initConfig(
-				objectUtils:getField(self, key, options)
-			)
-		end
-
-		function tbl:getOptional(key)
-			return objectUtils:initConfig(
-				objectUtils:getField(self, key, {optional = true })
-			)
-		end
-
-		function tbl:getOptionalTable(key)
-			return objectUtils:initConfig(
-				objectUtils:getTable(self, key, { optional = true })
-			)
-		end
-
-		-- TODO: Consider making initial access revursive.
-		for k,v in pairs(tbl) do
-		end
-		else
+		tbl = { value = tbl }
+		setmetatable(tbl, ConfigTable)
 	end
 
 	return tbl
 end
 
 ----------------------------------------------------------------------------------
--- Getters
+----------------------------- Table Operations -----------------------------------
 ----------------------------------------------------------------------------------
-
---- Returns whether it's possible to get a field directly
-local function canGetField(tbl, key)
-	if tbl == nil then
-		return false
-	end
-
-	if type(tbl) ~= "table" then
-		return false
-	end
-
-	if key == nil then
-		return false
-	end
-
-	if tbl[key] == nil then
-		return false
-	end
-
-	return true
-end
 
 --- Fetches a field from the table, with validation.
 -- @param tbl table - The table where the field should be fetched from
 -- @param key string - The key to fetch from the table
--- @param options table - A table definiting the options
--- Options:
--- default (any)
--- with (function)end
--- type
--- optional
--- inTypeTable
--- notInTypeTable
-function objectUtils:getField(tbl, key, options)
-	-- Protect against nil options
-	options = objectUtils:ceorceToTable(options)
-
-	-- Handle 
-	if canGetField(tbl, key) == false then
-		-- Attempt to return default, if it exists
-		if options.default ~= nil then
-			return options.default
-		end
-
-		-- Optional fields silently coerce to nil
-		if options.optional == true then
-			return nil -- no error
-		end
-
-		-- If field wasn't explicitally marked as optional, we throw an error at this point.
-		log:schema("ddapi", "    ERROR: Missing required field: " .. key .. " in table: ")
-		log:schema("ddapi", tbl)
-		os.exit(1)
-		return nil
-	end
-
-	-- Sanitize
-	if key == nil or tbl == nil then
+function objectUtils:getField(tbl, key)
+	if key == nil then
 		log:schema("ddapi", "    ERROR: Failed to get table-field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
-	end
-
-	local value = tbl[key]
-
-	if objectUtils:validate(key, value, options) == nil then
 		return
 	end
 
-	if options.with ~= nil then
-		if type(options.with) == "function" then
-			value = options.with(value)
-		else
-			log:schema("ddapi", "    ERROR: Value of with option is not function")
-		end
-	end
+	-- Store the last tbl and key used to fetch a field
+	-- This is for log functions
+	ConfigTable.__tbl = tbl
+	ConfigTable.__key = key
 
-	return value
+	return tbl[key]
 end
 
--- TODO: Make this share more stuff with `getField`
-function objectUtils:getTable(tbl, key, options)
-	options = objectUtils:ceorceToTable(options)
-	
-	-- Handle 
-	if canGetField(tbl, key) == false then
-		-- Attempt to return default, if it exists
-		if options.default ~= nil then
-			return options.default
+-- Return true if a table has key.
+function objectUtils:hasKey(tbl, key)
+	return tbl ~= nil and tbl[key] ~= nil
+end
+
+-- Return true if a table is null or empty.
+function objectUtils:isEmpty(tbl)
+	return tbl == nil or next(tbl) == nil
+end
+
+function objectUtils:merge(t1, t2)
+	if t1 then
+		if not t2 then
+			return t1
 		end
 
-		-- Optional fields silently coerce to nil
-		if options.optional == true then
-			return nil -- no error
-		end
-
-		-- If field wasn't explicitally marked as optional, we throw an error at this point.
-		log:schema("ddapi", "    ERROR: Missing required table-field: " .. key .. " in table: ")
-		log:schema("ddapi", tbl)
-		log:schema("ddapi", options)
-		os.exit(1) -- Crash
-		return nil
-	end
-
-	-- Sanitize
-	if key == nil or tbl == nil then
-		log:schema("ddapi", "    ERROR: Failed to get field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
-		return nil
-	end
-
-	local values = tbl[key]
-
-	if type(values) ~= "table" then
-		return log:schema("ddapi", "    ERROR: Value type of key '" .. key .. "' is not table")
-	end
-
-	if options ~= nil then
-
-		-- Run basic validation on all elements in the table
-		for k, v in pairs(values) do
-			if objectUtils:validate(key, v, options) == nil then
-				return
+		for k, v in pairs(t2) do
+			if (type(v) == "table") and (type(t1[k] or false) == "table") then
+				objectUtils:merge(t1[k], t2[k])
+			else
+				t1[k] = v
 			end
 		end
-
-		if options.length ~= nil and options.length ~= #values then
-			return log:schema("ddapi", "    ERROR: Value of key '" .. key .. "' requires " .. options.length .. " elements")
-		end
-
-		for k, v in pairs(options) do
-			if k == "map" then
-				if type(v) == "function" then
-					values = objectUtils:map(values, v)
-				else
-					log:schema("ddapi", "    ERROR: Value of map option is not function.")
-				end
-			end
-
-			if k == "with" then
-				if type(v) == "function" then
-					values = v(values)
-				else
-					log:schema("ddapi", "    ERROR: Value of with option is not function.")
-				end
-			end
-
-			if values == nil then
-				return
-			end
-		end
+		return t1
 	end
-
-	return objectUtils:initConfig(values)
 end
 
---- Returns the type (as in typeMap, not type(o)), or nil if not found. Logs error.
--- @param tbl The table where the key can be found in. e.g., gameObject.types
--- @param key The key such as "inca:rat_skull" which will be cast to type.
-function objectUtils:getType(tbl, key, displayAlias)
-	if displayAlias == nil then
-		displayAlias = objectUtils:coerceToString(key)
-	end
-
-	if tbl[key] ~= nil then
-			return tbl[key]   
-	end
-	return objectUtils:logMissing(displayAlias, key, tbl)
+-- http://lua-users.org/wiki/CopyTable
+function objectUtils:deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[objectUtils:deepcopy(orig_key)] = objectUtils:deepcopy(orig_value)
+        end
+        setmetatable(copy, objectUtils:deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
 end
 
---- Returns the index of a type, or nil if not found.
--- @param tbl The table where the index can be found in. e.g., gameObject.types
--- @param key The key such as "inca:rat_skull" where which will be cast to type.
-function objectUtils:getTypeIndex(tbl, key, displayAlias)
-	if displayAlias == nil then
-		displayAlias = objectUtils:coerceToString(key)
+-----------------------------------------------------------------------------------
+-- Validations
+-----------------------------------------------------------------------------------
+
+--- Asserts the length of a tbl
+function objectUtils:ofLength(tbl, length)
+	if tbl and  #tbl == length then
+		return tbl
 	end
-	
-	if tbl[key] ~= nil then
-		return tbl[key].index
-	end
-	return objectUtils:logMissing(displayAlias, key, tbl)
+
+	log:schema("ddapi", "    ERROR: Value of key '" .. ConfigTable.__key .. "' requires " .. length .. " elements")
 end
 
---- Fetches a field and casts it to the correct type index.
--- @param tbl The table to get the field from.
--- @param key The key to get from the tbl
--- @param indexTable the index table where you are going to cast the value to
--- @example "foo" becomes gameObject.types["foo"].index
-function objectUtils:getFieldAsIndex(tbl, key, indexTable, options)
-	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
-		inTypeTable = indexTable,
-		with = function(value)
-			return objectUtils:getTypeIndex(indexTable, value)
-		end
-	})
 
-	return objectUtils:getField(tbl, key, options)
-end
-
---- Returns the key of a type, or nil if not found.
--- @param tbl table
--- @param key string
--- @param displayAlias string
-function objectUtils:getTypeKey(tbl, key, displayAlias)
-	if tbl[key] ~= nil then
-		return tbl[key].key
-	end
-	return objectUtils:logMissing(displayAlias, key, tbl)
-end
-
--- Returns a string, localized if possible
-function objectUtils:getLocalizedString(tbl, key, default)
-	-- The key, which is either user submited, or the default
-	local localKey = objectUtils:getField(tbl, key, {
-		default = default
-	})
-
-	-- Unchecked fetch, returns localized result, or source string.
-	return locale:getUnchecked(localKey)
-end
+-----------------------------------------------------------------------------------
+-- Casting
+-----------------------------------------------------------------------------------
 
 --- Fetches a vec3 by coercing a json array with three elements.
-function objectUtils:getVec3(tbl, key, options)
-	-- Configure inner options to match a vec3 conversion, while still allowing custom pass-through info
-	options = objectUtils:merge(objectUtils:ceorceToTable(options), {
-		type = "number",
-		length = 3,
-		with = function(tbl)
-			return vec3(tbl[1], tbl[2], tbl[3]) -- Convert number table to vec3
-		end
-	})
+function objectUtils:asVec3(tbl)
+	local tbl = objectUtils:ofLength(tbl, 3)
 
-	return objectUtils:getTable(tbl, key, options)
+	if tbl then
+		return vec3(tbl[1], tbl[2], tbl[3])
+	end
 end
 
---- Returns the value of tbl[key] or defaultValue if nil
-function objectUtils:default(tbl, key, defaultValue)
-	return tbl[key] or defaultValue
-end
-
------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
 -- Predicates
------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
 --- Returns data if running predicate on each item in table returns true
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run
 function objectUtils:all(tbl, predicate)
-	for i,e in ipairs(tbl) do
-		local value = predicate(e)
-		if value == nil or value == false then
-			return false
+	if tbl then
+		for i,e in ipairs(tbl) do
+			local value = predicate(e)
+			if value == nil or value == false then
+				return false
+			end
 		end
+		return true
 	end
-	return tbl
 end
 
 --- Returns items that have returned true for predicate
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run
 function objectUtils:where(tbl, predicate)
-	local data = {}
-	for i,e in ipairs(tbl) do
-		if predicate(e) then
-			table.insert(data, e)
+	if tbl then
+		local data = {}
+		for i,e in ipairs(tbl) do
+			if predicate(e) then
+				table.insert(data, e)
+			end
 		end
+		return data
 	end
-	return data
 end
 
 --- Returns result of running predicate on each item in table
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run
 function objectUtils:map(tbl, predicate)
-	local data = {}
-	for i,e in ipairs(tbl) do
-		local value = predicate(e)
-		if value ~= nil then
-			table.insert(data, value)
+	if tbl then
+		local data = {}
+		for i,e in ipairs(tbl) do
+			local value = predicate(e)
+			if value ~= nil then
+				table.insert(data, value)
+			end
 		end
+		return data
 	end
-	return data
 end
 
 --- Returns result of running predicate on each item in table using both
@@ -375,25 +247,172 @@ end
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run
 function objectUtils:forEach(tbl, predicate)
-	local data = {}
-	for i, e in pairs(tbl) do
-		local value = predicate(i, e)
-		if value ~= nil then
-			table.insert(data, value)
+	if tbl then
+		local data = {}
+		for i, e in pairs(tbl) do
+			local value = predicate(i, e)
+			if value ~= nil then
+				table.insert(data, value)
+			end
 		end
 	end
 end
 
-function objectUtils:ofType(tbl, key, typeName, ignoreBadType)
-	if type(tbl[key]) == typeName then
-		return value
-	elseif not ignoreBadType then
-		objectUtils:logWrongType(key, typeName)
+-----------------------------------------------------------------------------------------------
+--------------------------------- Value Operations --------------------------------------------
+-----------------------------------------------------------------------------------------------
+
+------------------- Generic Operations ----------------------------
+
+--- Returns the value of valueTbl[key] or defaultValue if nil
+function objectUtils:default(valueTbl, defaultValue)
+	return valueTbl["value"] or defaultValue
+end
+
+-- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
+function objectUtils:isType(valueTbl, typeName)
+	if type(valueTbl["value"]) == typeName then
+		return true
+	end
+	if typeName == "number" then
+		return tonumber(value)
+	end
+	if typeName == "boolean" then
+		return value == "true"
+	end
+	return false
+end
+
+-------------------- Validation Operations -------------------------
+
+--- Ensures the value is not nil. If not, throws an error and exits
+function objectUtils:required(valueTbl)
+	if not valueTbl["value"] then
+		log:schema("ddapi", "    ERROR: Missing required field: " .. valueTbl.__key .. " in table: ")
+		log:schema("ddapi", valueTbl.__parentTable)
+		os.exit(1)
+		return nil
 	end
 end
 
-function objectUtils:with(tbl, key, predicate)
-	return predicate(tbl[key])
+--- Validates the type of the value
+function objectUtils:ofType(valueTbl, typeName)
+	if type(valueTbl["value"]) == typeName then
+		return valueTbl["value"]
+	end
+
+	objectUtils:logWrongType(valueTbl.__key, typeName)
+end
+
+function objectUtils:isInTypeTable(valueTbl, typeTable)
+	if valueTbl["value"] then
+		if type(typeTable) == "table" then
+			if not objectUtils:hasKey(typeTable, valueTbl["value"]) then
+				objectUtils:logMissing(valueTbl.__key, valueTbl["value"], typeTable)
+				return false
+			end
+		else
+			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
+		end
+
+		return true
+	end
+end
+
+function objectUtils:isNotInTypeTable(valueTbl, typeTable)
+	if valueTbl["value"] then
+		-- Make sure this field value is a unique type
+		if type(typeTable) == "table" then
+			if not objectUtils:hasKey(typeTable, valueTbl["value"]) then
+				objectUtils:logExisting(valueTbl.__key, valueTbl["value"], typeTable)
+				return false
+			end
+		else
+			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
+		end
+
+		return true
+	end
+end
+
+------------------- Casting Operations -----------------------------
+
+--- Fetches a field and casts it to the correct type index.
+-- @param tbl The table to get the field from.
+-- @param key The key to get from the tbl
+-- @param indexTable the index table where you are going to cast the value to
+-- @example "foo" becomes gameObject.types["foo"].index
+function objectUtils:asTypeIndex(valueTbl, indexTable)
+	local value = valueTbl["value"]
+
+	if value then
+		return indexTable[value]
+	end
+end
+
+-- Returns a string, localized if possible
+function objectUtils:asLocalizedString(valueTbl, default)
+	-- The key, which is either user submited, or the default
+	local localKey = objectUtils:default(valueTbl, default)
+
+	if localKey then
+		-- Unchecked fetch, returns localized result, or source string.
+		return locale:getUnchecked(localKey)
+	end
+end
+
+----------------------- Predicates -----------------------------------
+function objectUtils:with(valueTbl predicate)
+	return predicate(valueTbl["value"])
+end
+
+-------------------------------------------------------------------------------
+--TypeMap tables
+-------------------------------------------------------------------------------
+--- Returns the type (as in typeMap, not type(o)), or nil if not found. Logs error.
+-- @param tbl The table where the key can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" which will be cast to type.
+function objectUtils:getType(tbl, key, displayAlias)
+	if not displayAlias then
+		displayAlias = objectUtils:coerceToString(key)
+	end
+
+	if tbl[key] then
+		return tbl[key]   
+	end
+
+	return objectUtils:logMissing(displayAlias, key, tbl)
+end
+
+--- Returns the index of a type, or nil if not found.
+-- @param tbl The table where the index can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" where which will be cast to type.
+function objectUtils:getTypeIndex(tbl, key, displayAlias)
+	if not displayAlias then
+		displayAlias = objectUtils:coerceToString(key)
+	end
+	
+	if tbl[key] then
+		return tbl[key].index
+	end
+
+	return objectUtils:logMissing(displayAlias, key, tbl)
+end
+
+--- Returns the key of a type, or nil if not found. Acts as an "assert and get"
+-- @param tbl The table where the index can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" where which will be cast to type.
+-- @param displayAlias string
+function objectUtils:getTypeKey(tbl, key, displayAlias)
+	if not displayAlias then
+		displayAlias = objectUtils:coerceToString(key)
+	end
+
+	if tbl[key] then
+		return tbl[key].key
+	end
+
+	return objectUtils:logMissing(displayAlias, key, tbl)
 end
 
 -----------------------------------------------------------------------------------------------
@@ -412,79 +431,15 @@ function objectUtils:estimateTableSize(tbl)
 	return count
 end
 
--- Return true if a table has key.
-function objectUtils:hasKey(tbl, key)
-	return tbl ~= nil and tbl[key] ~= nil
-end
-
--- Return true if a table is null or empty.
-function objectUtils:isEmpty(tbl)
-	return tbl == nil or next(tbl) == nil
-end
-
--- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
-function objectUtils:isType(value, typeName)
-	if type(value) == typeName then
-		return true
-	end
-	if typeName == "number" then
-		return tonumber(value)
-	end
-	if typeName == "boolean" then
-		return value == "true"
-	end
-	return false
-end
-
 --- Injects properties into a table. Intended to future proof the DDAPI
--- @param tbl The table to inject into
+-- @param configTable The table to inject into
 -- @param component The component/tbl where the 'key' can be used to find custom props
 -- @param key The key where props can be found
 -- @param defaultProps The default properties, which can be overriden
-function objectUtils:addProps(tbl, component, key, defaultProps)
+function objectUtils:addProps(configTable, component, key, defaultProps)
 	local userDefinedProps = objectUtils:getField(component, key, {default = {}})
 	local mergedProps = objectUtils:merge(defaultProps, userDefinedProps)
-	objectUtils:merge(tbl, mergedProps)
-end
-
-
---- Applies validations when fetching from a table.
--- @param key string - The key to fetch
--- @param value any - The value
--- @param options table - The options defining the validation
-function objectUtils:validate(key, value, options)
-
-	-- Make sure this field has the proper type
-	if options.type ~= nil then
-		if not objectUtils:isType(value, options.type) then
-			return objectUtils:logWrongType(key, options.type)
-		end
-	end
-
-	-- Make sure this field value has a valid type
-	if options.inTypeTable ~= nil then
-		--mj:log("inTypeTable " .. key, options.inTypeTable)
-		if type(options.inTypeTable) == "table" then
-			if not objectUtils:hasKey(options.inTypeTable, value) then
-				return objectUtils:logMissing(key, value, options.inTypeTable)
-			end
-		else
-			log:schema("ddapi", "    ERROR: Value of inTypeTable is not table")
-		end
-	end
-
-	-- Make sure this field value is a unique type
-	if options.notInTypeTable ~= nil then
-		if type(options.notInTypeTable) == "table" then
-			if objectUtils:hasKey(options.notInTypeTable, value) then
-				return objectUtils:logExisting(key, value, options.notInTypeTable)
-			end
-		else
-			log:schema("ddapi", "    ERROR: Value of notInTypeTable is not table")
-		end
-	end
-
-	return value
+	objectUtils:merge(configTable, mergedProps)
 end
 
 function objectUtils:debug(identifier, config, tbl)
@@ -572,43 +527,12 @@ function objectUtils:coerceToString(value)
 	return value
 end
 
-function objectUtils:ceorceToTable(value)
+function objectUtils:coerceToTable(value)
 	if value == nil then
 		return {}
 	end
 	
 	return value
-end
-
--------------------------------------------------------------------
--- table operations
--------------------------------------------------------------------
-
-function objectUtils:merge(t1, t2)
-    for k, v in pairs(t2) do
-        if (type(v) == "table") and (type(t1[k] or false) == "table") then
-            objectUtils:merge(t1[k], t2[k])
-        else
-            t1[k] = v
-        end
-    end
-    return t1
-end
-
--- http://lua-users.org/wiki/CopyTable
-function objectUtils:deepcopy(orig)
-    local orig_type = type(orig)
-    local copy
-    if orig_type == 'table' then
-        copy = {}
-        for orig_key, orig_value in next, orig, nil do
-            copy[objectUtils:deepcopy(orig_key)] = objectUtils:deepcopy(orig_value)
-        end
-        setmetatable(copy, objectUtils:deepcopy(getmetatable(orig)))
-    else -- number, string, boolean, etc
-        copy = orig
-    end
-    return copy
 end
 
 return objectUtils
