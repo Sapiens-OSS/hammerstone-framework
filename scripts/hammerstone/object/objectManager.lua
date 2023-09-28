@@ -638,7 +638,7 @@ function objectManager:generateStorageObject(config)
 
 		displayGameObjectTypeIndex = displayIndex,
 		
-		resources = storageComponent:get("resources"):default({}):asTypeIndex(resourceModule.types, "Resource"):value()
+		resources = storageComponent:get("resources"):default({}):asTypeIndex(resourceModule.types, "Resource"):value(),
 
 		storageBox = {
 			size =  storageComponent:get("item_size"):asVec3():default(vec3(0.5, 0.5, 0.5)):value(),
@@ -824,6 +824,7 @@ function objectManager:generateResourceGroup(groupDefinition)
 		plural = plural,
 		displayGameObjectTypeIndex = groupDefinition:get("display_object"):required():asTypeIndex(gameObjectModule.types):value(),
 		resourceTypes = groupDefinition:get("resources"):required():asTypeIndex(resourceModule.types, "Resource Types"):value()
+	}
 
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
 end
