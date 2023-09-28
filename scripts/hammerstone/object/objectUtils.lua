@@ -66,7 +66,7 @@ ConfigTable={
 	isType = function(self, typeName) return objectUtils:isType(self, typeName) end,
 
 	----- Validation functions -----
-	required = function(self) return objectUtils:required(self) end
+	required = function(self) return objectUtils:required(self) end,
 	ofType = function(self, typeName) return objectUtils:ofType(self, typeName) end,
 	isInTypeTable = function(self, typeTable) return objectUtils:isInTypeTable(self, typeTable) end,
 	isInNotTypeTable = function(self, typeTable) return objectUtils:isNotInTypeTable(self, typeTable) end,
@@ -77,12 +77,18 @@ ConfigTable={
 
 	----- Predicates -----
 	with = function(self, predicate) return objectUtils:with(self, predicate) end,
+
+	--- Other syntax to return the fieldValue with config:value() instead of config.fieldValue
+	value = function(self) return objectUtils:getValue(self) end
 }
 
---- For better readability, we wrap all functions with an initConfig after declaring the ConfigTable
+--- For better readability, we wrap all functions with an initConfig AFTER declaring the ConfigTable
 for name, funct in pairs(ConfigTable) do
-	ConfigTable[name] = function(...)
-		return objectUtils:initConfig(funct(...))
+	-- those don't need a ":value()" at the end
+	if name ~= "isEmpty" and name ~= "hasKey" and name ~= "estimateSize" then
+		ConfigTable[name] = function(...)
+			return objectUtils:initConfig(funct(...))
+		end
 	end
 end
 
@@ -95,7 +101,7 @@ function objectUtils:initConfig(tbl)
 	if type(tbl) == "table" then
 		setmetatable(tbl, ConfigTable);
 	else
-		tbl = { value = tbl }
+		tbl = { fieldValue = tbl, isFieldValueTable = true }
 		setmetatable(tbl, ConfigTable)
 	end
 
@@ -105,6 +111,16 @@ end
 ----------------------------------------------------------------------------------
 ----------------------------- Table Operations -----------------------------------
 ----------------------------------------------------------------------------------
+
+function objectUtils:getValue(tbl)
+	if tbl then
+		if tbl["isFieldValueTable"] then 
+			return tbl["fieldValue"] 
+		end 
+	
+		return tbl
+	end
+end
 
 --- Fetches a field from the table, with validation.
 -- @param tbl table - The table where the field should be fetched from
@@ -186,10 +202,12 @@ end
 
 --- Fetches a vec3 by coercing a json array with three elements.
 function objectUtils:asVec3(tbl)
-	local tbl = objectUtils:ofLength(tbl, 3)
-
 	if tbl then
-		return vec3(tbl[1], tbl[2], tbl[3])
+		local tbl = objectUtils:ofLength(tbl, 3)
+
+		if tbl then
+			return vec3(tbl[1], tbl[2], tbl[3])
+		end
 	end
 end
 
@@ -250,9 +268,9 @@ function objectUtils:forEach(tbl, predicate)
 	if tbl then
 		local data = {}
 		for i, e in pairs(tbl) do
-			local value = predicate(i, e)
-			if value ~= nil then
-				table.insert(data, value)
+			local k, v = predicate(i, e)
+			if k and v then
+				data[k] = v
 			end
 		end
 	end
@@ -266,12 +284,12 @@ end
 
 --- Returns the value of valueTbl[key] or defaultValue if nil
 function objectUtils:default(valueTbl, defaultValue)
-	return valueTbl["value"] or defaultValue
+	return valueTbl["fieldValue"] or defaultValue
 end
 
 -- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
 function objectUtils:isType(valueTbl, typeName)
-	if type(valueTbl["value"]) == typeName then
+	if type(valueTbl["fieldValue"]) == typeName then
 		return true
 	end
 	if typeName == "number" then
@@ -287,7 +305,7 @@ end
 
 --- Ensures the value is not nil. If not, throws an error and exits
 function objectUtils:required(valueTbl)
-	if not valueTbl["value"] then
+	if not valueTbl["fieldValue"] then
 		log:schema("ddapi", "    ERROR: Missing required field: " .. valueTbl.__key .. " in table: ")
 		log:schema("ddapi", valueTbl.__parentTable)
 		os.exit(1)
@@ -297,41 +315,41 @@ end
 
 --- Validates the type of the value
 function objectUtils:ofType(valueTbl, typeName)
-	if type(valueTbl["value"]) == typeName then
-		return valueTbl["value"]
+	if type(valueTbl["fieldValue"]) == typeName then
+		return valueTbl["fieldValue"]
 	end
 
 	objectUtils:logWrongType(valueTbl.__key, typeName)
 end
 
 function objectUtils:isInTypeTable(valueTbl, typeTable)
-	if valueTbl["value"] then
+	if valueTbl["fieldValue"] then
 		if type(typeTable) == "table" then
-			if not objectUtils:hasKey(typeTable, valueTbl["value"]) then
-				objectUtils:logMissing(valueTbl.__key, valueTbl["value"], typeTable)
-				return false
+			if not objectUtils:hasKey(typeTable, valueTbl["fieldValue"]) then
+				objectUtils:logMissing(valueTbl.__key, valueTbl["fieldValue"], typeTable)
+				return nil
 			end
 		else
 			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
 		end
 
-		return true
+		return valueTbl["fieldValue"]
 	end
 end
 
 function objectUtils:isNotInTypeTable(valueTbl, typeTable)
-	if valueTbl["value"] then
+	if valueTbl["fieldValue"] then
 		-- Make sure this field value is a unique type
 		if type(typeTable) == "table" then
-			if not objectUtils:hasKey(typeTable, valueTbl["value"]) then
-				objectUtils:logExisting(valueTbl.__key, valueTbl["value"], typeTable)
-				return false
+			if not objectUtils:hasKey(typeTable, valueTbl["fieldValue"]) then
+				objectUtils:logExisting(valueTbl.__key, valueTbl["fieldValue"], typeTable)
+				return nil
 			end
 		else
 			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
 		end
 
-		return true
+		return valueTbl["fieldValue"]
 	end
 end
 
@@ -343,7 +361,7 @@ end
 -- @param indexTable the index table where you are going to cast the value to
 -- @example "foo" becomes gameObject.types["foo"].index
 function objectUtils:asTypeIndex(valueTbl, indexTable)
-	local value = valueTbl["value"]
+	local value = valueTbl["fieldValue"]
 
 	if value then
 		return indexTable[value]
@@ -362,8 +380,8 @@ function objectUtils:asLocalizedString(valueTbl, default)
 end
 
 ----------------------- Predicates -----------------------------------
-function objectUtils:with(valueTbl predicate)
-	return predicate(valueTbl["value"])
+function objectUtils:with(valueTbl, predicate)
+	return predicate(valueTbl["fieldValue"])
 end
 
 -------------------------------------------------------------------------------

@@ -121,13 +121,13 @@ function objectManager:generateModelPlaceholder(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
-	local buildableComponent = components:getOptional("hs_buildable")
-	local objectComponent = components:getOptional("hs_object")
+	local components = config:get("components"):required():value()
+	local buildableComponent = components:get("hs_buildable"):value()
+	local objectComponent = components:get("hs_object"):value()
 	
 	--- Don't generate for non-buildables
 	if buildableComponent == nil then
@@ -140,44 +140,40 @@ function objectManager:generateModelPlaceholder(config)
 		return
 	end
 
-	local modelName = utils:getField(objectComponent, "model")
+	local modelName = objectComponent:get("model"):required():value()
 	log:schema("ddapi", string.format("  %s (%s)", identifier, modelName))
 	
-	local modelPlaceholderData = utils:getTable(buildableComponent, "model_placeholder", {
-		map = function(data)
+	local modelPlaceholderData = buildableComponent:get("model_placeholder"):required():map(
+		function(data)
 
-			local isStore = utils:getField(data, "is_store", {default=false})
+			local isStore = data:get("is_store"):default(false):value()
 			
 			if isStore then
 				return {
-					key = utils:getField(data, "key"),
+					key = data:get("key"):required():value(),
 					offsetToStorageBoxWalkableHeight = true
 				}
 			else
-				local default_model = utils:getField(data, "default_model")
-				local resource_type = utils:getFieldAsIndex(data, "resource", resourceModule.types)
-				local resource_name = utils:getField(data, "resource")
+				local default_model = data:get("default_model"):required():value()
+				local resource_type = data:get("resource"):required():asTypeIndex(resourceModule.types):value()
+				local resource_name = data:get("resource"):required():value()
+				local remap_data = data:get("remaps"):default( { [resource_name] = default_model } ):value()
 
-				local remap_data = utils:getField(data, "remaps", {
-					default = {
-						[resource_name] = default_model
-					}
-				})
 					
 				return {
-					key = utils:getField(data, "key"),
+					key = data:get("key"):required():value(),
 					defaultModelName = default_model,
 					resourceTypeIndex = resource_type,
 
 					-- TODO
-					additionalIndexCount = utils:getField(data, "additional_index_count", {optional = true}),
-					defaultModelShouldOverrideResourceObject = utils:getField(data, "use_default_model", {optional = true}),
+					additionalIndexCount = data:get("additional_index_count"):value(),
+					defaultModelShouldOverrideResourceObject = data:get("use_default_model"):value(),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
 				}
 			end
 
 		end
-	})
+	):value()
 
 	utils:debug(identifier, config, modelPlaceholderData)
 	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
@@ -192,13 +188,11 @@ function objectManager:generateCustomModelDefinition(modelRemap)
 	-- Modules
 	local modelModule = moduleManager:get("model")
 
-	local model = utils:getField(modelRemap, "model")
-	local baseModel = utils:getField(modelRemap, "base_model")
+	local model = modelRemap:get("model"):required():value()
+	local baseModel = modelRemap:get("base_model"):required():value()
 	log:schema("ddapi", baseModel .. " --> " .. model)
 
-	local materialRemaps = utils:getTable(modelRemap, "material_remaps", {
-		default = {}
-	})
+	local materialRemaps = modelRemap:get("material_remaps"):default({}):value()
 	
 	-- Ensure exists
 	if modelModule.remapModels[baseModel] == nil then
@@ -218,33 +212,32 @@ local function getResources(e)
 	local actionModule = moduleManager:get("action")
 
 	-- Get the resource (as group, or resource)
-	local resourceType = utils:getFieldAsIndex(e, "resource", resourceModule.types, {optional=true})
-	local groupType =  utils:getFieldAsIndex(e, "resource_group", resourceModule.groups, {optional=true})
+	local resourceType = e:get("resource"):asTypeIndex(resourceModule.types):value()
+	local groupType =  e:get("resource_group"):asTypeIndex(resourceModule.groups):value()
 
 	-- Get the count
-	local count = utils:getField(e, "count", {default=1, type="number"})
+	local count = e:get("count"):default(1):asType("number"):value()
 
-	if e.action ~= nil then
+	if e:hasKey("action") then
 		
-		-- TODO: This block is VERY CONFUSING since we're not really able to benifit from the `getField` stuff.
-		if e.action.action_type == nil then
-			e.action.action_type = "inspect"
-		end
+		local action = e:get("action")
 
 		-- Return if action is invalid
-		local actionType = utils:getTypeIndex(actionModule.types, e.action.action_type, "Action")
+		local actionType = utils:getTypeIndex(actionModule.types, action:get("action_type"):default("inspect"):value(), "Action")
 		if (actionType == nil) then return end
 
 		-- Return if duration is invalid
-		local duration = e.action.duration
-		if (not utils:isType(duration, "number")) then
-			return log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
+		local duration = action:get("duration"):required():ofType("number"):value()
+		if (not duration) then
+			log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
+			return
 		end
 
 		-- Return if duration without skill is invalid
-		local durationWithoutSkill = e.action.duration_without_skill or duration
-		if (not utils:isType(durationWithoutSkill, "number")) then
-			return log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
+		local durationWithoutSkill = action:get("duration_without_skill"):default(duration):ofType("number"):value()
+		if (durationWithoutSkill) then
+			log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
+			return
 		end
 
 		return {
@@ -294,12 +287,12 @@ local function getInProgressKey(prefix, identifier)
 end
 
 local function getBuildModelName(objectComponent, craftableComponent)
-	local modelName = objectComponent:getOptional("model")
+	local modelName = objectComponent:get("model"):value()
 	if modelName then
 		return modelName
 	end
 	
-	-- TODO
+	-- TODO @Lich can't you just return objectComponent:get("model"):value() ?
 	return false
 end
 
@@ -311,15 +304,15 @@ function objectManager:generateBuildableDefinition(config)
 	local researchModule = moduleManager:get("research")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
+	local components = config:get("components"):required():value()
 
 	-- Optional Components
-	local objectComponent = components:getOptional("hs_object")
-	local buildableComponent = components:getOptional("hs_buildable")
+	local objectComponent = components:get("hs_object"):value()
+	local buildableComponent = components:get("hs_buildable"):value()
 
 	-- Not everything is a buildable. Expected soft return.
 	if buildableComponent == nil then
@@ -331,13 +324,13 @@ function objectManager:generateBuildableDefinition(config)
 	local newBuildable = objectManager:getCraftableBase(description, buildableComponent)
 
 	-- Buildable Specific Stuff
-	newBuildable.classification = utils:getFieldAsIndex(buildableComponent, "classification", constructableModule.classifications, {default = "build"})
+	newBuildable.classification =buildableComponent:get("classification"):default("build"):asTypeIndex(constructableModule.classifications):value()
 	newBuildable.modelName = getBuildModelName(objectComponent, buildableComponent)
 	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
 	newBuildable.finalGameObjectTypeKey = identifier
-	newBuildable.buildCompletionPlanIndex = utils:getFieldAsIndex(buildableComponent, "build_completion_plan", planModule.types, {optional=true})
+	newBuildable.buildCompletionPlanIndex =buildableComponent:get("build_completion_plan"):asTypeIndex(planModule.types):value()
 
-	local research = utils:getField(buildableComponent, "research", {optional = true})
+	local research = buildableComponent:get("research"):value()
 	if research ~= nil then
 		newBuildable.disabledUntilAdditionalResearchDiscovered = researchModule.typeIndexMap[research]
 	end
@@ -365,14 +358,14 @@ function objectManager:generateCraftableDefinition(config)
 	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
+	local components = config:get("components"):required():value()
 
 	-- Optional Components
-	local craftableComponent = components:getOptional("hs_craftable")
+	local craftableComponent = components:get("hs_craftable"):value()
 
 	-- Not everything is a craftable. Expected soft return.
 	if craftableComponent == nil then
@@ -380,7 +373,7 @@ function objectManager:generateCraftableDefinition(config)
 	end
 
 	-- TODO
-	local outputComponent = craftableComponent:getOptional("hs_output")
+	local outputComponent = craftableComponent:get("hs_output"):value()
 
 	log:schema("ddapi", "  " .. identifier)
 
@@ -390,15 +383,13 @@ function objectManager:generateCraftableDefinition(config)
 	local hasNoOutput = outputComponent == nil
 	if outputComponent then
 		outputObjectInfo = {
-			objectTypesArray = utils:getTable(outputComponent, "simple_output", {
-				optional = true, -- Can also define with 'outputArraysByResourceObjectType'
-				map = function(e)
+			objectTypesArray = outputComponent:get("simple_output"):map( 
+				function(e)
 					return utils:getTypeIndex(gameObjectModule.types, e)
 				end
-			}),
-			outputArraysByResourceObjectType = outputComponent:get("output_by_object", {
-				optional = true, -- Can also define with 'objectTypesArray'
-				with = function(tbl)
+			):value(),
+			outputArraysByResourceObjectType = outputComponent:get("output_by_object"):with(
+				function(tbl)
 					local result = {}
 					for key, value in pairs(tbl) do -- Loop through all output objects
 			
@@ -414,11 +405,11 @@ function objectManager:generateCraftableDefinition(config)
 					end
 					return result
 				end
-			}),
+			):value(),
 		}
 	end
 
-	local craftArea = utils:getFieldAsIndex(craftableComponent, "craft_area", craftAreaGroupModule.types, {optional = true})
+	local craftArea = craftableComponent:get("craft_area"):asTypeIndex(craftAreaGroupModule.types)
 	local requiredCraftAreaGroups = nil
 	if craftArea then
 		requiredCraftAreaGroups = {
@@ -427,11 +418,11 @@ function objectManager:generateCraftableDefinition(config)
 	end
 
 	-- Craftable Specific Stuff
-	newCraftable.classification = utils:getFieldAsIndex(craftableComponent, "classification", constructableModule.classifications, {default = "craft"})
+	newCraftable.classification = craftableComponent:get("classification"):default("craft"):asTypeIndex(constructableModule.classifications):value()
 	newCraftable.hasNoOutput = hasNoOutput
 	newCraftable.outputObjectInfo = outputObjectInfo
 	newCraftable.requiredCraftAreaGroups = requiredCraftAreaGroups
-	newCraftable.inProgressBuildModel = utils:getField(craftableComponent, "build_model", {default = "craftSimple"})
+	newCraftable.inProgressBuildModel = craftableComponent:get("build_model"):default("craftSimple"):value()
 
 	utils:addProps(newCraftable, craftableComponent, "props", {
 		-- No defaults, that's OK
@@ -483,15 +474,15 @@ function objectManager:generateResourceDefinition(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
-	local name = utils:getLocalizedString(description, "name", getNameLocKey(identifier))
-	local plural = utils:getLocalizedString(description, "plural", getNameLocKey(identifier))
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
+	local name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value()
+	local plural = description:get("plural"):asLocalizedString(getNameLocKey(identifier)):value()
 
 	-- Components
-	local components = config:get("components")
-	local resourceComponent = components:getOptional("hs_resource")
-	local foodComponent = components:getOptional("hs_food")
+	local components = config:get("components"):required():value()
+	local resourceComponent = components:get("hs_resource"):value()
+	local foodComponent = components:get("hs_food"):value()
 
 	-- Nil Resources aren't created
 	if resourceComponent == nil  then
@@ -500,7 +491,7 @@ function objectManager:generateResourceDefinition(config)
 
 	log:schema("ddapi", "  " .. identifier)
 	
-	local displayObject = resourceComponent:get("display_object", {default = identifier})
+	local displayObject = resourceComponent:get("display_object"):default(identifier):value()
 
 	local newResource = {
 		key = identifier,
@@ -514,10 +505,10 @@ function objectManager:generateResourceDefinition(config)
 
 	-- Handle Food
 	if foodComponent ~= nil then
-		newResource.foodValue = foodComponent:get("value", {default = 0.5})
-		newResource.foodPortionCount = foodComponent:get("portions", {default = 1})
-		newResource.foodPoisoningChance = foodComponent:get("food_poison_chance", {default = 0})
-		newResource.defaultToEatingDisabled = foodComponent:get("default_disabled", {default = false})
+		newResource.foodValue = foodComponent:get("value"):default(0.5):value()
+		newResource.foodPortionCount = foodComponent:get("portions"):default(1):value()
+		newResource.foodPoisoningChance = foodComponent:get("food_poison_chance"):default(0):value()
+		newResource.defaultToEatingDisabled = foodComponent:get("default_disabled"):default(false):value()
 	end
 	
 	utils:addProps(newResource, resourceComponent, "props", {
@@ -536,22 +527,22 @@ function objectManager:handleEatByProducts(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
-	local foodComponent = components:getOptional("hs_food")
+	local components = config:get("components"):required():value()
+	local foodComponent = components:get("hs_food"):value()
 
 	if foodComponent == nil then
 		return
 	end
 	
-	local eatByProducts = utils:getTable(foodComponent, "items_when_eaten", {
-		map = function(value)
+	local eatByProducts = foodComponent:get("items_when_eaten"):map(
+		function(value)
 			return utils:getTypeIndex(gameObjectModule.types, value, "Game Object")
 		end
-	})
+	):value()
 
 	log:schema("ddapi", string.format("  Adding  eatByProducts to '%s'", identifier))
 
@@ -569,18 +560,18 @@ function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
-	local storageComponent = components:get("hs_storage")
+	local components = config:get("components"):required():value()
+	local storageComponent = components:get("hs_storage"):value()
 
 	if storageComponent == nil then
 		return
 	end
 
-	local displayObject = storageComponent:get("display_object", {default = identifier})
+	local displayObject = storageComponent:get("display_object"):default(identifier):value()
 	local displayIndex = typeMapsModule.types.gameObject[displayObject]
 
 	-- Inject into the object
@@ -601,17 +592,15 @@ function objectManager:handleStorageLinks(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = utils:getField(config, "components")
-	local resourceComponent = utils:getField(components, "hs_resource", {
-		optional = true
-	})
+	local components = config:get("components")
+	local resourceComponent = components:get("hs_resource"):value()
 
 	if resourceComponent ~= nil then
-		local storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
+		local storageIdentifier = resourceComponent:get("storage_identifier"):value()
 
 		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
 		table.insert(utils:getType(storageModule.types, storageIdentifier, "storage").resources, utils:getTypeIndex(resourceModule.types, identifier))
@@ -632,86 +621,79 @@ function objectManager:generateStorageObject(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Load structured information
-	local description = config:get("description")
+	local description = config:get("description"):required():value()
 
 	-- Components
-	local components = config:get("components")
-	local carryComponent = components:get("hs_carry")
-	local storageComponent = components:get("hs_storage")
+	local components = config:get("components"):required():value()
+	local carryComponent = components:get("hs_carry"):required():value()
+	local storageComponent = components:get("hs_storage"):required():value()
 
 	-- Print
-	local identifier = utils:getField(description, "identifier")
+	local identifier = description:get("identifier"):required():value()
 	log:schema("ddapi", "  " .. identifier)
 
-	local carryCounts = utils:getTable(carryComponent, "hs_carry_count", {
-		default = {} -- Allow this field to be undefined, but don't use nil, since we will pull props from here later, with their *own* defaults
-	})
+	-- Allow this field to be undefined, but don't use nil, since we will pull props from here later, with their *own* defaults
+	local carryCounts = carryComponent:get("hs_carry_count"):default({}):value()
 
-
-	local displayObject = storageComponent:get("display_object", {default = identifier})
+	local displayObject = storageComponent:get("display_object"):default(identifier):value()
 	local displayIndex = typeMapsModule.types.gameObject[displayObject]
 	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
 
 	-- The new storage item
 	local newStorage = {
 		key = identifier,
-		name = utils:getLocalizedString(description, "name", getNameKey("storage", identifier)),
+		name = description:get("name"):asLocalizedString(getNameKey("storage", identifier)):value(),
 
 		displayGameObjectTypeIndex = displayIndex,
 		
-		resources = utils:getTable(storageComponent, "resources", {
-			default = {},
-			map = function(value)
+		resources = storageComponent:get("resources"):default({}):map(
+			function(value)
 				return utils:getTypeIndex(resourceModule.types, value, "Resource")
 			end
-		}),
+		):value(),
 
 		storageBox = {
-			size =  utils:getVec3(storageComponent, "item_size", {
-				default = vec3(0.5, 0.5, 0.5)
-			}),
+			size =  storageComponent:get("item_size"):asVec3():default(vec3(0.5, 0.5, 0.5)):value(),
 			
-			rotationFunction = function(uniqueID, seed)
+			rotationFunction = 
+			function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
+
 				local baseRotation = mat3Rotate(
 					mat3Identity,
-					math.pi * storageComponent:get("base_rotation_weight", {default = 0}),
-					utils:getVec3(storageComponent, "base_rotation", {default = vec3(1.0, 0.0, 0.0)})
+					math.pi * storageComponent:get("base_rotation_weight"):default(0):value(),
+					storageComponent:get("base_rotation"):asVec3():default(vec3(1.0, 0.0, 0.0)):value()
 				)
 
 				return mat3Rotate(
 					baseRotation,
-					randomValue * storageComponent:get("random_rotation_weight", {default = 2.0}),
-					utils:getVec3(storageComponent, "random_rotation", {default = vec3(1, 0.0, 0.0)})
+					randomValue * storageComponent:get("random_rotation_weight"):default(2.0):value(),
+					storageComponent:get("random_rotation"):asVec3():default(vec3(1, 0.0, 0.0)):value()
 				)
 			end,
 			
-			placeObjectOffset = mj:mToP(utils:getVec3(storageComponent, "place_offset", {
-				default = vec3(0.0, 0.0, 0.0)
-			})),
+			placeObjectOffset = mj:mToP(storageComponent:get("place_offset"):asVec3():default(vec3(0.0, 0.0, 0.0)):value()),
 
 			placeObjectRotation = mat3Rotate(
 				mat3Identity,
-				math.pi * storageComponent:get("place_rotation_weight", {default = 0.0}),
-				utils:getVec3(storageComponent, "place_rotation", {default = vec3(0.0, 0.0, 1)})
+				math.pi * storageComponent:get("place_rotation_weight"):default(0.0):value(),
+				storageComponent:get("place_rotation"):asVec3():default(vec3(0.0, 0.0, 1)):value()
 			),
 		},
 
-		maxCarryCount = utils:getField(carryCounts, "normal", {default=1}),
-		maxCarryCountLimitedAbility = utils:getField(carryCounts, "limited_ability", {default=1}),
-		maxCarryCountForRunning = utils:getField(carryCounts, "running", {default=1}),
+		maxCarryCount = carryCounts:get("normal"):default(1):value(),
+		maxCarryCountLimitedAbility = carryCounts:get("limited_ability"):default(1):value(),
+		maxCarryCountForRunning = carryCounts:get("running"):default(1):value(),
 
 
-		carryStackType = storageModule.stackTypes[utils:getField(carryComponent, "stack_type", {default="standard"})],
-		carryType = storageModule.carryTypes[utils:getField(carryComponent, "carry_type", {default="standard"})],
+		carryStackType = storageModule.stackTypes[carryComponent:get("stack_type"):default("standard"):value()],
+		carryType = storageModule.carryTypes[carryComponent:get("carry_type"):default("standard"):value()],
 
-		carryOffset = utils:getVec3(carryComponent, "offset", {
-			default = vec3(0.0, 0.0, 0.0)
-		}),
+		carryOffset = carryComponent:get("offset"):asVec3():default(vec3(0.0, 0.0, 0.0)):value(),
 
 		carryRotation = mat3Rotate(mat3Identity,
-			utils:getField(carryComponent, "rotation_constant", { default = 1}),
-			utils:getVec3(carryComponent, "rotation", { default = vec3(0.0, 0.0, 1.0)})
+			carryComponent:get("rotation_constant"):default(1):value(),
+			carryComponent:get("rotation"):asVec3():default(vec3(0.0, 0.0, 1.0)):value()
 		),
 	}
 
@@ -732,22 +714,21 @@ function objectManager:generatePlanHelperObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:get("components")
-	local description = config:get("description")
-	local plansComponent = components:getOptional("hs_plans")
+	local components = config:get("components"):required():value()
+	local description = config:get("description"):required():value()
+	local plansComponent = components:get("hs_plans"):value()
 
 	if plansComponent == nil then
 		return
 	end
 
 
-	local objectIndex = utils:getFieldAsIndex(description, "identifier", gameObjectModule.types)
-	local availablePlans = utils:getField(plansComponent, "available_plans", {
-		optional = true,
-		with = function (value)
+	local objectIndex = description:get("identifier"):required():asTypeIndex(gameObjectModule.types):value()
+	local availablePlans = plansComponent:get("available_plans"):with(
+		function (value)
 			return planHelperModule[value]
 		end
-	})
+	):value()
 
 	-- Nil plans would override desired vanilla plans
 	if availablePlans ~= nil then
@@ -766,12 +747,12 @@ function objectManager:generateMobObject(config)
 	local animationGroupsModule = moduleManager:get("animationGroups")
 
 	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("identifier")
-	local name = utils:getLocalizedString(description, "name", getNameLocKey(identifier))
-	local components = config:get("components")
-	local mobComponent = components:getOptional("hs_mob")
-	local objectComponent = utils:getField(components, "hs_object", {optional = true})
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
+	local name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value()
+	local components = config:get("components"):required():value()
+	local mobComponent = components:get("hs_mob"):value()
+	local objectComponent = components:get("hs_object"):value()
 
 	if mobComponent == nil then
 		return
@@ -781,8 +762,8 @@ function objectManager:generateMobObject(config)
 	local mobObject = {
 		name = name,
 		gameObjectTypeIndex = gameObjectModule.types[identifier].index,
-		deadObjectTypeIndex = utils:getFieldAsIndex(mobComponent, "dead_object", gameObjectModule.types),
-		animationGroupIndex = utils:getFieldAsIndex(mobComponent, "animation_group", animationGroupsModule),
+		deadObjectTypeIndex = mobComponent:get("dead_object"):asTypeIndex(gameObjectModule.types):value(),
+		animationGroupIndex = mobComponent:get("animation_group"):asTypeIndex(animationGroupsModule):value(),
 	}
 
 	utils:addProps(mobObject, mobComponent, "props", {
@@ -808,9 +789,9 @@ function objectManager:generateHarvestableObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:get("components")
-	local harvestableComponent = components:getOptional("hs_harvestable")
-	local identifier = config.description.identifier
+	local components = config:get("components"):required():value()
+	local harvestableComponent = components:get("hs_harvestable"):value()
+	local identifier = config:get(description):required():get("identifier"):required():value()
 
 	if harvestableComponent == nil then
 		return -- This is allowed
@@ -818,15 +799,13 @@ function objectManager:generateHarvestableObject(config)
 	
 	log:schema("ddapi", "  " .. identifier)
 
-	local resourcesToHarvest = utils:getTable(harvestableComponent, "resources_to_harvest", {
-		map = function(value)
+	local resourcesToHarvest = harvestableComponent:get("resources_to_harvest"):map(
+		function(value)
 			return gameObjectModule.typeIndexMap[value]
 		end
-	})
+	):value()
 
-	local finishedHarvestIndex = utils:getField(harvestableComponent, "finish_harvest_index", {
-		default = #resourcesToHarvest
-	})
+	local finishedHarvestIndex = harvestableComponent:get("finish_harvest_index"):default(#resourcesToHarvest):value()
 	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
 end
 
@@ -849,22 +828,22 @@ function objectManager:generateResourceGroup(groupDefinition)
 	local gameObjectModule  = moduleManager:get("gameObject")
 
 	
-	local identifier = utils:getField(groupDefinition, "identifier")
+	local identifier = groupDefinition:get("identifier"):required():value()
 	log:schema("ddapi", "  " .. identifier)
 
-	local name = utils:getLocalizedString(groupDefinition, "name", getNameKey("group", identifier))
-	local plural = utils:getLocalizedString(groupDefinition, "plural", getPluralKey("group", identifier))
+	local name = groupDefinition:get("name"):asLocalizedString(getNameKey("group", identifier)):value()
+	local plural = groupDefinition:get("plural"):asLocalizedString(getPluralKey("group", identifier)):value()
 
 	local newResourceGroup = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = utils:getFieldAsIndex(groupDefinition, "display_object", gameObjectModule.types),
-		resourceTypes = utils:getTable(groupDefinition, "resources", {
-			map = function(resource_id)
+		displayGameObjectTypeIndex = groupDefinition:get("display_object"):required():asTypeIndex(gameObjectModule.types):value(),
+		resourceTypes = groupDefinition:get("resources"):required():map(
+			function(resource_id)
 				return utils:getTypeIndex(resourceModule.types, resource_id, "Resource Types")
 			end
-		})
+		):value()
 	}
 
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
@@ -877,17 +856,17 @@ function objectManager:handleResourceGroups(config)
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	-- Components
-	local components = config:get("components")
-	local resourceComponent = components:getOptional("hs_resource")
+	local components = config:get("components"):required():value()
+	local resourceComponent = components:get("hs_resource"):value()
 	if resourceComponent == nil then
 		return
 	end
 
-	local resourceGroups = resourceComponent:getOptional("resource_groups")
+	local resourceGroups = resourceComponent:get("resource_groups"):value()
 	if resourceGroups == nil then
 		return
 	end
@@ -908,20 +887,20 @@ function objectManager:generateSeatDefinition(seatType)
 	local seatModule = moduleManager:get("seat")
 	local typeMapsModule = moduleManager:get("typeMaps")
 	
-	local identifier = utils:getField(seatType, "identifier")
+	local identifier = seatType:get("identifier"):required():value()
 	log:schema("ddapi", "  " .. identifier)
 
 	local newSeat = {
 		key = identifier,
-		comfort = utils:getField(seatType, "comfort", {default = 0.5}),
-		nodes = utils:getTable(seatType, "nodes", {
-			map = function(node)
+		comfort = seatType:get("comfort"):default(0.5):value(),
+		nodes = seatType:get("nodes"):required():map(
+			function(node)
 				return {
-					placeholderKey = utils:getField(node, "key"),
-					nodeTypeIndex = utils:getFieldAsIndex(node, "type", seatModule.nodeTypes)
+					placeholderKey = node:get("key"):required():value(),
+					nodeTypeIndex = node:get("type"):required():asTypeIndex(seatModule.nodeTypes):value()
 				}
 			end
-		})
+		):value()
 	}
 
 	typeMapsModule:insert("seat", seatModule.types, newSeat)
@@ -939,10 +918,10 @@ function objectManager:generateEvolvingObject(config)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:get("components")
-	local evolvingObjectComponent = components:getOptional("hs_evolving_object")
-	local description = config:get("description")
-	local identifier = description:get("identifier")
+	local components = config:get("components"):required():value()
+	local evolvingObjectComponent = components:get("hs_evolving_object"):value()
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 	
 	-- If the component doesn't exist, then simply don't registerf an evolving object.
 	if evolvingObjectComponent == nil then
@@ -953,12 +932,12 @@ function objectManager:generateEvolvingObject(config)
 
 	-- Default
 	local time = 1 * evolvingObjectModule.yearLength
-	local yearTime = evolvingObjectComponent:getOptional("time_years")
+	local yearTime = evolvingObjectComponent:get("time_years"):value()
 	if yearTime then
 		time = yearTime * evolvingObjectModule.yearLength
 	end
 
-	local dayTime = evolvingObjectComponent:getOptional("time_days")
+	local dayTime = evolvingObjectComponent:get("time_days"):value()
 	if dayTime then
 		time = yearTime * evolvingObjectModule.dayLength
 	end
@@ -1003,9 +982,9 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	local gameObjectModule = moduleManager:get("gameObject")
 
 	-- Setup
-	local identifier = description:get("identifier")
+	local identifier = description:get("identifier"):required():value()
 
-	local tool = utils:getFieldAsIndex(craftableComponent, "tool", toolModule.types, {optional = true})
+	local tool = craftableComponent:get("tool"):asTypeIndex(toolModule.types):value()
 	local requiredTools = nil
 	if tool then
 		requiredTools = {
@@ -1018,41 +997,36 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	if craftableComponent.custom_build_sequence ~= nil then
 		utils:logNotImplemented("Custom Build Sequence")
 	else
-		local actionSequence = utils:getField(craftableComponent, "action_sequence", {
-			optional = true,
-			with = function (value)
+		local actionSequence = craftableComponent:get("action_sequence"):with(
+			function (value)
 				return utils:getTypeIndex(actionSequenceModule.types, value, "Action Sequence")
 			end
-		})
+		):value()
 		if actionSequence then
 			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, tool)
 		else
-			buildSequenceData = craftableModule[utils:getField(craftableComponent, "build_sequence")]
+			buildSequenceData = craftableModule[craftableComponent:get("build_sequence"):required():value()]
 		end
 	end
 
 	local craftableBase = {
-		name = utils:getLocalizedString(description, "name", getNameLocKey(identifier)),
-		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(identifier)),
-		summary = utils:getLocalizedString(description, "summary", getSummaryLocKey(identifier)),
+		name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value(),
+		plural = description:get("plural"):asLocalizedString(getPluralLocKey(identifier)):value(),
+		summary = description:get("summary"):asLocalizedString(getSummaryLocKey(identifier)):value(),
 
 		buildSequence = buildSequenceData,
 
 		skills = {
-			required = utils:getFieldAsIndex(craftableComponent, "skill", skillModule.types, {optional = true})
+			required = craftableComponent:get("skill"):asTypeIndex(skillModule.types):value()
 		},
 
 		-- TODO throw a warning here
-		iconGameObjectType = utils:getFieldAsIndex(craftableComponent, "display_object", gameObjectModule.types, {
-			default = identifier
-		}),
+		iconGameObjectType = craftableComponent:get("display_object"):default(identifier):asTypeIndex(gameObjectModule.types):value(),
 
 		requiredTools = requiredTools,
 
-		requiredResources = utils:getTable(craftableComponent, "resources", {
-			map = getResources
-		})
-
+		-- TODO @Lich if getResources fails and returns nil, what should you do?
+		requiredResources = craftableComponent:get("resources"):required():map(getResources):value()
 	}
 
 	return craftableBase
@@ -1075,8 +1049,8 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local mobModule = moduleManager:get("mob")
 
 	-- Setup
-	local description = utils:getField(config, "description")
-	local identifier = utils:getField(description, "identifier")
+	local description = config:get("description"):required():value()
+	local identifier = description:get("identifier"):required():value()
 
 	local nameKey = identifier
 	if isBuildVariant then
@@ -1084,12 +1058,12 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	end
 
 	-- Components
-	local components = utils:getField(config, "components")
-	local objectComponent = utils:getField(components, "hs_object", {optional = true})
-	local toolComponent = utils:getField(components, "hs_tool", {optional = true})
-	local harvestableComponent = utils:getField(components, "hs_harvestable", {optional = true})
-	local resourceComponent = utils:getField(components, "hs_resource", {optional = true})
-	local buildableComponent = utils:getField(components, "hs_buildable", {optional = true})
+	local components = config:get("components"):required():value()
+	local objectComponent = components:get("hs_object"):value()
+	local toolComponent = components:get("hs_tool"):value()
+	local harvestableComponent = components:get("hs_harvestable"):value()
+	local resourceComponent = components:get("hs_resource"):value()
+	local buildableComponent = components:get("hs_buildable"):value()
 
 	if objectComponent == nil then
 		log:schema("ddapi", "  WARNING:  " .. identifier .. " is being created without 'hs_object'. This is only acceptable for resources and so forth.")
@@ -1128,24 +1102,24 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		for key, config in pairs(toolComponent) do
 			local toolTypeIndex = utils:getTypeIndex(toolModule.types, key, "Tool Type")
 			toolUsage[toolTypeIndex] = {
-				[toolModule.propertyTypes.damage.index] = utils:getField(config, "damage", {optional = true}),
-				[toolModule.propertyTypes.durability.index] = utils:getField(config, "durability", {optional = true}),
-				[toolModule.propertyTypes.speed.index] = utils:getField(config, "speed", {optional = true}),
+				[toolModule.propertyTypes.damage.index] = config:get("damage"):value(),
+				[toolModule.propertyTypes.durability.index] = config:get("durability"):value(),
+				[toolModule.propertyTypes.speed.index] = config:get("speed"):value(),
 			}
 		end
 	end
 
 
-	local harvestableTypeIndex = utils:getField(description, "identifier", {
-		with = function (value)
+	local harvestableTypeIndex = description:get("identifier"):required():with(
+		function (value)
 			if harvestableComponent ~= nil then
 				return harvestableModule.typeIndexMap[value]
 			end
 			return nil
 		end
-	})
+	):value()
 
-	local modelName = utils:getField(objectComponent, "model")
+	local modelName = objectComponent:get("model"):required():value()
 	
 	-- Handle Buildable
 	local newBuildableKeys = {}
@@ -1157,15 +1131,14 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Inject data
 		newBuildableKeys = {
-			ignoreBuildRay = utils:getField(buildableComponent, "ignore_build_ray", { default = true}),
-			isPathFindingCollider = utils:getField(buildableComponent, "has_collisions", { default = true}),
-			preventGrassAndSnow = utils:getField(buildableComponent, "clear_ground", { default = true}),
-			disallowAnyCollisionsOnPlacement = utils:getField(buildableComponent, "allow_placement_collisions", {
-				default = true,
-				with = function (value)
+			ignoreBuildRay = buildableComponent:get("ignore_build_ray"):default(true):value(),
+			isPathFindingCollider = buildableComponent:get("has_collisions"):default(true):value(),
+			preventGrassAndSnow = buildableComponent:get("clear_ground"):default(true):value(),
+			disallowAnyCollisionsOnPlacement = buildableComponent:get("allow_placement_collisions"):default(true):with(
+				function (value)
 					return not value
 				end
-			}),
+			):value(),
 			
 			isBuiltObject = not isBuildVariant,
 			isInProgressBuildObject = isBuildVariant
@@ -1173,23 +1146,21 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Build variant doesnt get seats
 		if not isBuildVariant then
-			newBuildableKeys.seatTypeIndex = utils:getFieldAsIndex(buildableComponent, "seat_type", seatModule.types, {optional=true})
+			newBuildableKeys.seatTypeIndex = buildableComponent:get("seat_type"):asTypeIndex(seatModule.types):value()
 		end
 	end
 
 	local newGameObject = {
-		name = utils:getLocalizedString(description, "name", getNameLocKey(nameKey)),
-		plural = utils:getLocalizedString(description, "plural", getPluralLocKey(nameKey)),
+		name = description:get("name"):asLocalizedString(getNameLocKey(nameKey)):value(),
+		plural = description:get("plural"):asLocalizedString(getPluralLocKey(nameKey)):value(),
 		modelName = modelName,
-		scale = utils:getField(objectComponent, "scale", {default = 1}),
-		hasPhysics = utils:getField(objectComponent, "physics", {default = true}),
+		scale = objectComponent:get("scale"):default(1):value(),
+		hasPhysics = objectComponent:get("physics"):default(true):value(),
 		resourceTypeIndex = resourceTypeIndex,
 		-- mobTypeIndex = mobModule.typeIndexMap[identifier], Injected Later
 		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsages = toolUsage,
-		craftAreaGroupTypeIndex = utils:getFieldAsIndex(buildableComponent, "craft_area", craftAreaGroupModule.types, {
-			optional = true
-		}),
+		craftAreaGroupTypeIndex = buildableComponent:get("craft_area"):asTypeIndex(craftAreaGroupModule.types):value(),
 
 		-- TODO: Implement marker positions
 		markerPositions = {
@@ -1207,7 +1178,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local outObject = utils:merge(newGameObject, newBuildableKeys)
 
 	-- Debug
-	local debug = config:get("debug", {default = false})
+	local debug = config:get("debug"):default(false):value()
 	if debug then
 		log:schema("ddapi", "[GameObject] Debugging: " .. identifier)
 		log:schema("ddapi", "Config:")
@@ -1235,25 +1206,18 @@ function objectManager:generateMaterialDefinition(material)
 		end
 
 		return {
-			color = utils:getVec3(tbl, "color"),
-		
-			roughness = utils:getField(tbl, "roughness", {
-				default = 1,
-				type = "number"
-			}),
-
-			metal = utils:getField(tbl, "metal", {
-				default = 0,
-				type = "number"
-			})
+			color = tbl:get("color"):required():asVec3(),		
+			roughness = tbl:get("roughness"):default(1):ofType("number"):value(), 
+			metal = tbl:get("metal"):default(0):ofType("number"):value(),
 		}
 	end
 
-	local identifier = utils:getField(material, "identifier", { notInTypeTable = moduleManager:get("material").types })
+	local identifier = material:get("identifier"):required():isNotInTable(moduleManager:get("material").types):value()
+	-- TODO : @Lich if isNotInTable fails, :value() will return nil. Needs to be handled
 	log:schema("ddapi", "  " .. identifier)
 	
 	local materialData = loadMaterialFromTbl(material)
-	local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
+	local materialDataB = loadMaterialFromTbl(material:get("b_material"):value())
 	materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
 end
 
@@ -1262,6 +1226,9 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateSkillDefinition(config)
+	-- TODO : To be redone. Currently disabled
+
+	--[[
 	-- Modules
 	local skillModule = moduleManager:get("skill")
 
@@ -1319,6 +1286,7 @@ function objectManager:generateSkillDefinition(config)
 			skillModule:addSkill(data.identifier, data)
 		end
 	end
+	]]
 end
 
 ---------------------------------------------------------------------------------
@@ -1332,14 +1300,14 @@ function objectManager:generatePlanDefinition(config)
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Setup
-	local description = config:get("description")
-	local components = config:get("components")
+	local description = config:get("description"):required():value()
+	local components = config:get("components"):required():value()
 
-	local identifier = description:getField("identifier")
+	local identifier = description:get("identifier"):required():value()
 	log:schema("ddapi", "  " .. identifier)
 
 	-- Components
-	local planComponent = components:getOptional("hs_plan")
+	local planComponent = components:get("hs_plan"):value()
 
 	if not planComponent then
 		return
@@ -1347,29 +1315,22 @@ function objectManager:generatePlanDefinition(config)
 
 	local newPlan = {
 		key = identifier,
-		name = utils:getLocalizedString(description, "name", getNameKey("plan", identifier)),
-		inProgress = utils:getLocalizedString(description, "inProgress", getInProgressKey("plan", identifier)),
-		icon = description:getField("icon"),
-		checkCanCompleteForRadialUI = planComponent:getField("showsOnWheel", { optional = true, default = true, type = "boolean"}), 
-		allowsDespiteStatusEffectSleepRequirements = planComponent:getOptional("skipSleepRequirement", "boolean"),  
-		shouldRunWherePossible = planComponent:getField("walkSpeed", { optional = true, with = function(value) return value == "run" end }), 
-		shouldJogWherePossible = planComponent:getField("walkSpeed", { optional = true, with = function(value) return value == "job" end }), 
-		skipFinalReachableCollisionPathCheck = planComponent:getField("collisionPathCheck", { optional = true, with = function(value) return value == "skip" end }), 
-		skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:getField("collisionPathCheck", { optional = true, with = function(value) value == "skipVertical" end})
-		allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:getTable("simultaneousPlans", { optional = true, 
-			map = function(planKey)
-					return utils:getTypeIndex(planModule.types)})
+		name = description:get("name"):asLocalizedString(getNameKey("plan", identifier)):value(),
+		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("plan", identifier)):value(),
+		icon = description:get("icon"):required():ofType("string"):value(),
+
+		checkCanCompleteForRadialUI = planComponent:get("showsOnWheel"):default(true):ofType("boolean"):value(), 
+		allowsDespiteStatusEffectSleepRequirements = planComponent:get("skipSleepRequirement"):value(),  
+		shouldRunWherePossible = planComponent:get("walkSpeed"):with(function(value) return value == "run" end):value(), 
+		shouldJogWherePossible = planComponent:get("walkSpeed"):with(function(value) return value == "job" end):value(), 
+		skipFinalReachableCollisionPathCheck = planComponent:get("collisionPathCheck"):with(function(value) return value == "skip" end):value(), 
+		skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:get("collisionPathCheck"):with(function(value) return value == "skipVertical" end):value(),
+		allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:get("simultaneousPlans"):forEach( 
+			function(planKey)
+				return utils:getTypeIndex(planModule.types, planKey), true
+			end
+		):value()
 	}
-
-	local simulPlanTypesTable = planComponent:getTable("simultaneousPlans", { optional = true })
-
-	if simulPlanTypesTable then
-		newPlan.allowOtherPlanTypesToBeAssignedSimultaneously = { }
-		for _, planKey in pairs(simulPlanTypesTable) do 
-			local planIndex = utils:getTypeIndex(planModule.types, planKey)
-			newPlan.allowOtherPlanTypesToBeAssignedSimultaneously[planIndex] = true
-		end
-	end
 		
 	if utils:hasKey(planComponent, "props") then
 		utils:addProps(newPlan, planComponent, "props", {
@@ -1381,27 +1342,34 @@ function objectManager:generatePlanDefinition(config)
 	return planModule.types[identifier].index
 end
 
-local function addAction(config, identifier, actionModule, typeMapsModule)
-	if not config then
-		return nil
-	end
-
+function objectManager:generateActionDefinition(config)
+	-- Modules
+	local actionModule = moduleManager:get("action")
 	local skillModule = moduleManager:get("skill")
 	local toolModule = moduleManager:get("tool")
+	local typeMapsModule = moduleManager:get("typeMaps")
 
-	if not identifier then
-		identifier = config:getField("key", { type = "string" })
-	end
+	-- Setup
+	local description = config:get("description"):required():value()
+	local components = config:get("components"):required():value()
+
+	local identifier = description:get("identifier"):required():value()
+	log:schema("ddapi", "  " .. identifier)
+
+	-- Components
+	local actionComponent = components:get("hs_action"):value()
+	
+	if not actionComponent then return end
 
 	local newAction = {
 		key = identifier, 
-		name = utils:getLocalizedString(config, "name", getNameKey("action", identifier)), 
-		inProgress = utils:getLocalizedString(config, "inProgress", getInProgressKey("action", identifier)), 
-		restNeedModifier = config:getField("restNeedModifier", { type = "number" } ), 
+		name = description:get("name"):asLocalizedString(getNameKey("action", identifier)):value(), 
+		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)):value(), 
+		restNeedModifier = actionComponent:get("restNeedModifier"):required():ofType("number"), 
 	}
 
-	if utils:hasKey(config, "props") then
-		utils:addProps(newAction, config, "props", {
+	if utils:hasKey(actionComponent, "props") then
+		utils:addProps(newAction, actionComponent, "props", {
 			--No defaults
 		})
 	end
@@ -1410,17 +1378,31 @@ local function addAction(config, identifier, actionModule, typeMapsModule)
 	return actionModule.types[identifier].index
 end
 
-local function addActionModifier(config, actionModule, typeMapsModule)
-	local identifier = config:getField("key", { type = "string" } )
+function objectManager:generateActionModifierDefinition(config)
+	-- Modules
+	local actionModule = moduleManager:get("action")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = config:get("description"):required():value()
+	local components = config:get("components"):required():value()
+
+	local identifier = description:get("identifier"):required():value()
+	log:schema("ddapi", "  " .. identifier)
+
+	-- Components
+	local actionModifierTypeComponent = components:get("hs_actionModifierType"):value()
+
+	if not actionModifierTypeComponent then return end 
 
 	local newActionModifier = {
 		key = identifier, 
-		name = utils:getLocalizedString(config, "name", getNameKey("action", identifier)), 
-		inProgress = utils:getLocalizedString(config, "inProgress", getInProgressKey("action", identifier)), 
+		name = description:get("name"):asLocalizedString(getNameKey("action", identifier)):value(), 
+		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)):value(), 
 	}
 
-	if utils:hasKey(config, "props") then
-		utils:addProps(newActionModifier, config, "props", {
+	if utils:hasKey(actionModifierTypeComponent, "props") then
+		utils:addProps(newActionModifier, actionModifierTypeComponent, "props", {
 			--No defaults
 		})
 	end
@@ -1429,42 +1411,37 @@ local function addActionModifier(config, actionModule, typeMapsModule)
 	return actionModule.modifierTypes[identifier].index
 end
 
-local function addActionSequence(config, identifier, actionSequenceModule, actionModule, typeMapsModule)
-	if not config then
-		return nil
-	end
+function objectManager:generateActionSequenceDefinition(config)
+	-- Modules
+	local actionModule = moduleManager:get("action")
+	local actionSequenceModule = moduleManager:get("actionSequence")
+	local typeMapsModule = moduleManager:get("typeMaps")
+
+	-- Setup
+	local description = config:get("description"):required():value()
+	local components = config:get("components"):required():value()
+
+	local identifier = description:get("identifier"):required():value()
+	log:schema("ddapi", "  " .. identifier)
+
+	-- Components
+	local actionSequenceComponent = components:get("hs_actionSequence"):value()
+
+	if not actionSequenceComponent then return end
 
 	local newActionSequence = {
 		key = identifier, 
-		actions = {}, 
-		assignedTriggerIndex = config:getField("assignedTriggerIndex", { type = "number" }), 
+		actions = actionSequenceComponent:get("actions"):required():ofType("table"):map(
+			function(a)
+				return utils:getTypeIndex(actionModule.types, a, "Action")
+			end
+		):value(), 
+		assignedTriggerIndex = actionSequenceComponent:get("assignedTriggerIndex"):required():ofType("number"):value(), 
+		assignModifierTypeIndex = actionSequenceComponent:get("modifier"):asTypeIndex(actionModule.modifierTypes):value()
 	}
 
-	local assignModifierTypeIndex = config:getOptional("modifier")
-
-	if assignModifierTypeIndex then
-		if type(assignModifierTypeIndex) == "string" then
-			newActionSequence.assignModifierTypeIndex = utils:getTypeIndex(actionModule.modifierTypes, assignModifierTypeIndex)
-		elseif type(assignModifierTypeIndex) == "table" then
-			newActionSequence.assignModifierTypeIndex = addActionModifier(assignModifierTypeIndex, actionModule, typeMapsModule)
-		end
-	end
-
-	local actions = config:getTable("actions")
-	for _, action in ipairs(actions) do
-		local actionIndex = nil
-
-		if type(action) == "string" then
-			actionIndex = utils:getTypeIndex(actionModule.types, action)
-		elseif type(action) == "table" then
-			actionIndex = addAction(action, actionModule, typeMapsModule)
-		end
-
-		table.insert(newActionSequence.actions, actionIndex)
-	end
-
-	if utils:hasKey(config, "props") then
-		utils:addProps(newActionSequence, config, "props", {
+	if utils:hasKey(actionSequenceComponent, "props") then
+		utils:addProps(newActionSequence, actionSequenceComponent, "props", {
 			--No defaults
 		})
 	end
@@ -1473,95 +1450,36 @@ local function addActionSequence(config, identifier, actionSequenceModule, actio
 	return actionSequenceModule.types[identifier].index
 end
 
-local function addOrder(config, identifier, icon, orderModule, typeMapsModule)
-	if not config then
-		return nil
-	end
+function objectManager:generateOrderDefinition(config)
+	-- Modules
+	local orderModule = moduleManager:get("order")
+	local typeMapsModule = moduleManager:get("typeMaps")
 
-	if not identifier then
-		identifier = config:getField("key", { type = "string" } )
-	end
+	-- Setup
+	local description = config:get("description"):required():value()
+	local components = config:get("components"):required():value()
 
-	if not icon then
-		icon = config:getField("icon", { type = "string" })
-	end
+	local identifier = description:get("identifier"):required():value()
+	log:schema("ddapi", "  " .. identifier)
+
+	-- Components
+	local orderComponent = components:get("hs_order"):value()
 
 	local newOrder = {
 		key = identifier, 
-		name = utils:getLocalizedString(config, "name", getNameKey("order", identifier)), 
-		inProgressName = utils:getLocalizedString(config, "inProgressName", getInProgressKey("order", identifier)), 
-		icon = icon, 
+		name = description:get("name"):asLocalizedString(getNameKey("order", identifier)):value(), 
+		inProgressName = description:get("inProgress"):asLocalizedString(getInProgressKey("order", identifier)):value(),  
+		icon = description:get("icon"):required():ofType("string"):value(), 
 	}
 
-	if utils:hasKey(config, "props") then
-		utils:addProps(newOrder, config, "props", {
+	if utils:hasKey(orderComponent, "props") then
+		utils:addProps(newOrder, orderComponent, "props", {
 			--No defaults
 		})
 	end
 
 	typeMapsModule:insert("order", orderModule.types, newOrder)
 	return orderModule.types[identifier].index
-end
-
-function objectManager:generatePlannableAction(config)
-
-	-- Modules
-	local planModule = moduleManager:get("plan")
-	local actionModule = moduleManager:get("action")
-	local actionSequenceModule = moduleManager:get("actionSequence")
-	local orderModule = moduleManager:get("order")
-	local typeMapsModule = moduleManager:get("typeMaps")
-
-	-- Setup
-	local description = config:get("description")
-	local identifier = description:get("key", { type = "string" })
-	local icon = description:get("icon", { type = "string" }),
-	
-	-- handle logic layer
-	local logic = config:get("hs_logic")
-	local logicModuleName = logic:getField("module")
-
-	log:schema("ddapi", "  " .. identifier)
-
-	-- add new objects to typeMaps
-	local components = config:get("components")
-	addPlan(components:get("hs_plan"), identifier, icon, planModule, typeMapsModule)
-	addAction(components:getOptional("hs_action"), identifier, actionModule, typeMapsModule)
-	addActionSequence(components:getOptional("hs_actionSequence"), identifier, actionSequenceModule, actionModule, typeMapsModule)
-	addOrder(components:getOptional("hs_order"), identifier, icon, orderModule, typeMapsModule)
-
-
-
-	-- activeOrderAI stuff
-	local updateAction = logic:get("hs_actionUpdate")
-	local completionFunctionName = updateAction:getField("onComplete", type = { string })
-
-
-	local updateInfos = {
-		checkFrequency = config:getField("checkFrequency", { type = "number" } ), 
-		defaultSkillIndex = utils:getFieldAsIndex(config, "defaultSkill", skillModule.types, { optional = true }), 
-		toolMultiplierTypeIndex = utils:getFieldAsIndex(config, "tool", toolModule.types, { optional = true }),  
-		completionFunction = 
-		function(allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
-			local logicModule = mjrequire logicModuleName
-
-			if not logicModule then
-				logging:error("Failed to load logic module " logicModuleName)
-			elseif not logicModule[completionFunctionName] then
-				logging:error("Failed to find function ", completionFunctionName, " in ", logicModuleName)
-			else
-				logicModule[completionFunctionName](allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
-			end
-		end,
-	}
-
-	if utils:hasKey(updateAction, "props") then
-		utils:addProps(updateInfos, updateAction, "props", {
-			--No defaults
-		})
-	end
-
-	logicManager:
 end
 
 ---------------------------------------------------------------------------------
@@ -1760,23 +1678,52 @@ local objectLoader = {
 	plan = {
 		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
+			"plan",
 			"typeMaps"
 		}, 
 		loadFunction = objectManager.generatePlanDefinition
 	},
 
-	plannableActions = {
-		configType = configLoader.configTypes.plannableAction,
+	order = {
+		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
-			"plan", 
-			"action", 
-			"actionSequence", 
 			"order",
 			"typeMaps",
+		},
+		loadFunction = objectManager.generateOrderDefinition
+	}, 
+
+	action = {
+		configType = configLoader.configTypes.plannableAction, 
+		moduleDependencies = {
+			"action",
+			"typeMaps",
 			"tool",
-			"skill"
+			"skill", 
 		}, 
-		loadFunction = objectManager.generatePlannableAction
+		loadFunction = objectManager.generateActionDefinition
+	}, 
+
+	actionSequence = {
+		configType = configLoader.configTypes.plannableAction,
+		moduleDependencies = {
+			"actionSequence", 
+			"action",
+			"typeMaps"
+		},
+		dependencies = {
+			"action"
+		}, 
+		loadFunction = objectManager.generateActionSequenceDefinition
+	},
+
+	actionModifier = {
+		configType = configLoader.configTypes.plannableAction, 
+		moduleDependencies = {
+			"action", 
+			"typeMaps"
+		}, 
+		loadFunction = objectManager.generateActionModifierDefinition
 	},
 
 	---------------------------------------------------------------------------------
