@@ -57,7 +57,7 @@ ConfigTable={
 	all = function(self, predicate) return objectUtils:all(self, predicate) end,
 	where = function(self, predicate) return objectUtils:where(self, predicate) end,
 	map = function(self, predicate) return objectUtils:map(self, predicate) end, 
-	forEach = function(self, predicate) return objectUtils:forEach(self, predicate) end, 
+	mapKV = function(self, predicate) return objectUtils:mapKV(self, predicate) end, 
 
 
 	-- Value functions --
