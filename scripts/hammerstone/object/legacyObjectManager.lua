@@ -178,8 +178,9 @@ function objectManager:generateModelPlaceholder(config)
 		end
 	})
 
-	utils:debug(identifier, config, modelPlaceholderData)
-	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
+	return modelPlaceholderData
+	--utils:debug(identifier, config, modelPlaceholderData)
+	--modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 end
 
 
@@ -204,8 +205,7 @@ function objectManager:generateCustomModelDefinition(modelRemap)
 		modelModule.remapModels[baseModel] = {}
 	end
 	
-	-- Inject so it's available
-	modelModule.remapModels[baseModel][model] = materialRemaps
+	return materialRemaps
 end
 
 ---------------------------------------------------------------------------------
@@ -345,11 +345,7 @@ function objectManager:generateBuildableDefinition(config)
 		canAttachToAnyObjectWithoutTestingForCollisions = false
 	})
 
-	utils:debug(identifier, config, newBuildable)
-	buildableModule:addBuildable(identifier, newBuildable)
-	
-	-- Cached, and handled later in buildUI.lua
-	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
+	return newBuildable
 end
 
 function objectManager:generateCraftableDefinition(config)
@@ -432,40 +428,7 @@ function objectManager:generateCraftableDefinition(config)
 		-- No defaults, that's OK
 	})
 
-	if newCraftable ~= nil then
-
-
-		-- Debug
-		local debug = config:get("debug", {default = false})
-		if debug then
-			log:schema("ddapi", "Debugging: " .. identifier)
-			log:schema("ddapi", "Config:")
-			log:schema("ddapi", config)
-			log:schema("ddapi", "Output:")
-			log:schema("ddapi", newCraftable)
-		end
-
-
-		-- Add recipe
-		craftableModule:addCraftable(identifier, newCraftable)
-		
-		-- Add items in crafting panels
-		if newCraftable.requiredCraftAreaGroups then
-			for _, group in ipairs(newCraftable.requiredCraftAreaGroups) do
-				local key = gameObjectModule.typeIndexMap[craftAreaGroupModule.types[group].key]
-				if objectManager.inspectCraftPanelData[key] == nil then
-					objectManager.inspectCraftPanelData[key] = {}
-				end
-				table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
-			end
-		else
-			local key = gameObjectModule.typeIndexMap.craftArea
-			if objectManager.inspectCraftPanelData[key] == nil then
-				objectManager.inspectCraftPanelData[key] = {}
-			end
-			table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
-		end
-	end
+	return newCraftable
 end
 
 ---------------------------------------------------------------------------------
@@ -519,7 +482,7 @@ function objectManager:generateResourceDefinition(config)
 		-- Add defaults here, if needed
 	})
 
-	resourceModule:addResource(identifier, newResource)
+	return newResource
 end
 
 ---------------------------------------------------------------------------------
@@ -548,10 +511,7 @@ function objectManager:handleEatByProducts(config)
 		end
 	})
 
-	log:schema("ddapi", string.format("  Adding  eatByProducts to '%s'", identifier))
-
-	-- Inject into the object
-	gameObjectModule.types[identifier].eatByProducts = eatByProducts
+	return eatByProducts
 end
 
 ---------------------------------------------------------------------------------
@@ -576,12 +536,7 @@ function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 	end
 
 	local displayObject = storageComponent:get("display_object", {default = identifier})
-	local displayIndex = typeMapsModule.types.gameObject[displayObject]
-
-	-- Inject into the object
-	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
-	storageModule.types[identifier].displayGameObjectTypeIndex = displayIndex
-	storageModule:mjInit()
+	return displayObject
 end
 
 
@@ -608,11 +563,8 @@ function objectManager:handleStorageLinks(config)
 	if resourceComponent ~= nil then
 		local storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
 
-		log:schema("ddapi", string.format("  Adding resource '%s' to storage '%s'", identifier, storageIdentifier))
-		table.insert(utils:getType(storageModule.types, storageIdentifier, "storage").resources, utils:getTypeIndex(resourceModule.types, identifier))
+		return storageIdentifier
 	end
-
-	storageModule:mjInit()
 end
 
 
@@ -714,7 +666,7 @@ function objectManager:generateStorageObject(config)
 		-- No defaults, that's OK
 	})
 
-	storageModule:addStorage(identifier, newStorage)
+	return newStorage
 end
 
 ---------------------------------------------------------------------------------
@@ -744,10 +696,7 @@ function objectManager:generatePlanHelperObject(config)
 		end
 	})
 
-	-- Nil plans would override desired vanilla plans
-	if availablePlans ~= nil then
-		planHelperModule:setPlansForObject(objectIndex, availablePlans)
-	end
+	return availablePlans
 end
 
 ---------------------------------------------------------------------------------
@@ -784,13 +733,7 @@ function objectManager:generateMobObject(config)
 		-- No defaults, that's OK
 	})
 
-	-- Insert
-	mobModule:addType(identifier, mobObject)
-
-	-- Lastly, inject mob index, if required
-	if objectComponent then
-		gameObjectModule.types[identifier].mobTypeIndex = mobModule.types[identifier].index
-	end
+	return mobObject
 end
 
 ---------------------------------------------------------------------------------
@@ -822,7 +765,8 @@ function objectManager:generateHarvestableObject(config)
 	local finishedHarvestIndex = utils:getField(harvestableComponent, "finish_harvest_index", {
 		default = #resourcesToHarvest
 	})
-	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
+	
+	return resourcesToHarvest, finishedHarvestIndex
 end
 
 ---------------------------------------------------------------------------------
@@ -862,7 +806,7 @@ function objectManager:generateResourceGroup(groupDefinition)
 		})
 	}
 
-	resourceModule:addResourceGroup(identifier, newResourceGroup)
+	return newResourceGroup
 end
 
 -- Special handler which allows resources to inject themselves into existing resource groups. Runs
@@ -883,15 +827,7 @@ function objectManager:handleResourceGroups(config)
 	end
 
 	local resourceGroups = resourceComponent:getOptional("resource_groups")
-	if resourceGroups == nil then
-		return
-	end
-
-	-- Loop over every group this resource wants to add itself to
-	for i, resourceGroup in ipairs(resourceGroups) do
-		log:schema("ddapi", string.format("  Adding resource '%s' to resourceGroup '%s'", identifier, resourceGroup))
-		resourceModule:addResourceToGroup(identifier, resourceGroup)
-	end
+	return resourceGroups
 end
 
 ---------------------------------------------------------------------------------
@@ -919,7 +855,7 @@ function objectManager:generateSeatDefinition(seatType)
 		})
 	}
 
-	typeMapsModule:insert("seat", seatModule.types, newSeat)
+	return newSeat
 end
 
 
@@ -980,7 +916,7 @@ function objectManager:generateEvolvingObject(config)
 		newEvolvingObject.toTypes = generateTransformToTable(evolvingObjectComponent.transform_to)
 	end
 
-	evolvingObjectModule:addEvolvingObject(identifier, newEvolvingObject)
+	return newEvolvingObject
 end
 
 ---------------------------------------------------------------------------------
@@ -1056,7 +992,7 @@ end
 
 -- TODO: selectionGroupTypeIndexes
 function objectManager:generateGameObject(config)
-	objectManager:generateGameObjectInternal(config, false)
+	return objectManager:generateGameObjectInternal(config, false)
 end
 
 function objectManager:generateGameObjectInternal(config, isBuildVariant)
@@ -1200,19 +1136,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Combine keys
 	local outObject = utils:merge(newGameObject, newBuildableKeys)
-
-	-- Debug
-	local debug = config:get("debug", {default = false})
-	if debug then
-		log:schema("ddapi", "[GameObject] Debugging: " .. identifier)
-		log:schema("ddapi", "Config:")
-		log:schema("ddapi", config)
-		log:schema("ddapi", "Output:")
-		log:schema("ddapi", outObject)
-	end
-
-	-- Actually register the game object
-	gameObjectModule:addGameObject(identifier, outObject)
+	return outObject
 end
 
 ---------------------------------------------------------------------------------
@@ -1249,7 +1173,7 @@ function objectManager:generateMaterialDefinition(material)
 	
 	local materialData = loadMaterialFromTbl(material)
 	local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
-	materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
+	return materialData, materialDataB
 end
 
 ---------------------------------------------------------------------------------
@@ -1655,10 +1579,12 @@ end
 
 --- Attempts to load object definitions from the objectLoader
 function objectManager:tryLoadObjectDefinitions()
+--[[
 	for key, value in pairs(objectLoader) do
 		if canLoadObjectType(key, value) then
 			objectManager:loadObjectDefinition(key, value)
 		end
 	end
+	]]
 end
 return objectManager

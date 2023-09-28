@@ -29,69 +29,100 @@ function objectUtils:runOnceGuard(id)
 	return true
 end
 
+objectUtils.errorCount = 0
+
 ---------------------------------------------------------------------------------
 -- ConfigTable
 ---------------------------------------------------------------------------------
 
-ConfigTable={
+local ConfigTable={
+	init = function(self, tbl) return objectUtils:initConfig(tbl) end
+
 	-- Table functions --
-	get = function(self, key) return objectUtils:getField(self, key) end,
-	isEmpty = function(self) return objectUtils:isEmpty(self) end,
-	hasKey = function(self, key) return objectUtils:hasKey(self, key) end, 
-	estimateSize = function(self) return objectUtils:estimateTableSize(self) end,
+	----- Getters -----
+	get = function(self, key) return self:init(objectUtils:getField(self, key)) end,
+	getField = function(self, key) return self:init(self:get(key):required()) end,
+	getTable = function(self, key) return self:get(key):required():ofType("table") end,
+	getTableOrNil = function(self, key) return self:get(key):ofTypeOrNil("table") end,
+
+	getString = function(self, key) return self:get(key):required():ofType("string") end,
+	getStringOrNil = function(self, key) return self:get(key):ofTypeOrNil("string") end,
+	getNumber = function(self, key) return self:get(key):required():ofType("number") end, 
+	getNumberOrNil = function(self, key) return self:get(key):ofTypeOrNil("number") end, 
+	getBoolean = function(self, key) return self:get(key):required():ofType("boolean") end,
+	getBooleanOrNil = function(self, key) return self:get(key):ofTypeOrNil("boolean") end,
+
+	getStringValue = function(self, key) return self:get(key):required():ofType("string") end,
+	getStringValueOrNil = function(self, key) return self:get(key):ofTypeOrNil("string") end,
+	getNumberValue = function(self, key) return self:get(key):required():ofType("number") end, 
+	getNumberValueOrNil = function(self, key) return self:get(key):ofTypeOrNil("number") end, 
+	getBooleanValue = function(self, key) return self:get(key):required():ofType("boolean") end,
+	getBooleanValueOrNil = function(self, key) return self:get(key):ofTypeOrNil("boolean") end,
+
+	----- Utils -----
+	isEmpty = function(self) return objectUtils:isEmpty(self) end, -- returned as true value, no init
+	hasKey = function(self, key) return objectUtils:hasKey(self, key) end, -- returned as true value, no init
+	estimateSize = function(self) return objectUtils:estimateTableSize(self) end, -- returned as true value, no init
 
 	----- Validations -----
-	ofLength = function(self, length) return objectUtils:ofLength(self, length) end,
+	ofLength = function(self, length) return self:init(objectUtils:ofLength(self, length)) end,
 
 	----- Casting -----
-	asVec3 = function(self) return objectUtils:asVec3(self) end,
+	asVec3 = function(self) return self:init(objectUtils:asVec3(self)) end,
 
 	----- Operators -----
-	__add = function(self, tblToMerge) return objectUtils:merge(self, tblToMerge) end,
+	__add = function(self, tblToMerge) return self:init(objectUtils:merge(self, tblToMerge)) end,
 
 	----- Table operations -----
-	mergeTo = function(self, tblToMerge) return objectUtils:merge(self, tblToMerge) end,
-	copy = function(self) return objectUtils:deepcopy(self) end, 
+	mergeTo = function(self, tblToMerge) return self:init(objectUtils:merge(self, tblToMerge)) end,
+	copy = function(self) return self:init(objectUtils:deepcopy(self)) end, 
 
 	----- Predicates -----
-	all = function(self, predicate) return objectUtils:all(self, predicate) end,
-	where = function(self, predicate) return objectUtils:where(self, predicate) end,
-	map = function(self, predicate) return objectUtils:map(self, predicate) end, 
-	mapKV = function(self, predicate) return objectUtils:mapKV(self, predicate) end, 
+	all = function(self, predicate) return self:init(objectUtils:all(self, predicate)) end,
+	where = function(self, predicate) return self:init(objectUtils:where(self, predicate)) end,
+	map = function(self, predicate) return self:init(objectUtils:map(self, predicate)) end, 
+	mapKV = function(self, predicate) return self:init(objectUtils:mapKV(self, predicate)) end, 
 
 	-- Value functions --
 	----- Generic functions -----
-	default = function(self, defaultValue) return objectUtils:default(self, defaultValue) end,
-	isType = function(self, typeName) return objectUtils:isType(self, typeName) end,
+	default = function(self, defaultValue) return self:init(objectUtils:default(self, defaultValue)) end,
+	isType = function(self, typeName) return self:init(objectUtils:isType(self, typeName)) end,
 
 	----- Validation functions -----
-	required = function(self) return objectUtils:required(self) end,
-	ofType = function(self, typeName) return objectUtils:ofType(self, typeName) end,
-	isInTypeTable = function(self, typeTable) return objectUtils:isInTypeTable(self, typeTable) end,
-	isInNotTypeTable = function(self, typeTable) return objectUtils:isNotInTypeTable(self, typeTable) end,
+	required = function(self) return self:init(objectUtils:required(self)) end,
+	ofType = function(self, typeName) return self:init(objectUtils:ofType(self, typeName)) end,
+	ofTypeOrNil = function(self, typeName) return self:init(objectUtils:ofTypeOrNil(self, typeName)) end, 
+	isInTypeTable = function(self, typeTable) self:init(return objectUtils:isInTypeTable(self, typeTable)) end,
+	isInNotTypeTable = function(self, typeTable) return self:init(objectUtils:isNotInTypeTable(self, typeTable)) end,
 
 	----- Casting -----
-	asTypeIndex = function(self, indexTable) return objectUtils:asTypeIndex(self, indexTable) end,
-	asLocalizedString = function(self, default) return objectUtils:asLocalizedString(self, default) end,
+	__asTypeIndexInternal = function(self, indexTable, displayAlias) return objectUtils:asTypeIndex(self, indexTable, displayAlias) end, -- to force a "required" before calling objectUtils
+	asTypeIndexValue = function(self, indexTable, displayAlias) return self:required().__asTypeIndexInternal(self, indexTable, displayAlias) end, -- returned as true value, no init
+	asLocalizedStringValue = function(self, default) return objectUtils:asLocalizedString(self, default) end, -- returned as true value, no init
+
+	asStringValue = function(self, coerceNil) return objectUtils:asString(self, false, coerceNil) end, -- returned as true value, no init
+	asString = function(self, coerceNil) return self:init(self:asStringValue(self, coerceNil)) end, 
+	asStringValueOrNil = function(self, coerceNil) return objectUtils:asString(self, true, coerceNil) end, -- returned as true value, no init
+	asStringOrNil = function(self, coerceNil) return self:init(self:asStringValueOrNil(self, coerceNil)) end,
+
+	asNumberValue = function(self, coerceNil, base) return objectUtils:asNumber(self, false, coerceNil, base) end, -- returned as true value, no init
+	asNumber = function(self, coerceNil, base) return self:init(self:asNumberValue(self, coerceNil, base)) end, 
+	asNumberValueOrNil = function(self, coerceNil, base) return objectUtils:asNumber(self, true, coerceNil, base) end, -- returned as true value, no init
+	asNumberOrNil = function(self, coerceNil, base) self:init(return self:asNumberValueOrNil(self, coerceNil, base)) end, 
+
+	asBooleanValue = function(self, coerceNil) return objectUtils:asBoolean(self, false, coerceNil) end, -- returned as true value, no init
+	asBoolean = function(self, coerceNil) return self:init(self:asBooleanValue(self, coerceNil)) end,
+	asBooleanValueOrNil = function(self, coerceNil) return objectUtils:asBoolean(self, true, coerceNil) end, -- returned as true value, no init
+	asBooleanOrNil = function(self, coerceNil) return self:init(self:asBooleanValueOrNil(self, coerceNil)) end,
 
 	----- Predicates -----
-	with = function(self, predicate) return objectUtils:with(self, predicate) end,
+	with = function(self, predicate) return self:init(objectUtils:with(self, predicate)) end,
 
-	--- Other syntax to return the fieldValue with config:value() instead of config.fieldValue
+	--- Returns the true value
 	value = function(self) return objectUtils:getValue(self) end
 }
 
---- For better readability, we wrap all functions with an initConfig AFTER declaring the ConfigTable
-for name, funct in pairs(ConfigTable) do
-	-- those don't need a ":value()" at the end
-	if name ~= "isEmpty" and name ~= "hasKey" and name ~= "estimateSize" then
-		ConfigTable[name] = function(...)
-			return objectUtils:initConfig(funct(...))
-		end
-	end
-end
-
---- So that we can do tbl:
+--- So that we can do tbl:functioName
 ConfigTable.__index = ConfigTable
 
 function objectUtils:initConfig(tbl)
@@ -110,13 +141,11 @@ end
 ----------------------------------------------------------------------------------
 
 function objectUtils:getValue(tbl)
-	if tbl then
-		if tbl["isFieldValueTable"] then 
-			return tbl["fieldValue"] 
-		end 
+	if type(tbl) == "table" and tbl["isFieldValueTable"] then
+		return tbl["fieldValue"] 
+	end 
 	
-		return tbl
-	end
+	return tbl
 end
 
 --- Fetches a field from the table, with validation.
@@ -125,11 +154,12 @@ end
 function objectUtils:getField(tbl, key)
 	if key == nil then
 		log:schema("ddapi", "    ERROR: Failed to get table-field: key='" .. objectUtils:coerceToString(key) .. "' table='" .. objectUtils:coerceToString(tbl) .. "'")
+		self.errorCount = self.errorCount + 1
 		return
 	end
 
 	-- Store the last tbl and key used to fetch a field
-	-- This is for log functions
+	-- This is for log functions only
 	ConfigTable.__tbl = tbl
 	ConfigTable.__key = key
 
@@ -189,6 +219,7 @@ function objectUtils:ofLength(tbl, length)
 		return tbl
 	end
 
+	self.errorCount = self.errorCount + 1
 	log:schema("ddapi", "    ERROR: Value of key '" .. ConfigTable.__key .. "' requires " .. length .. " elements")
 end
 
@@ -289,23 +320,26 @@ function objectUtils:default(value, defaultValue)
 	end
 end
 
--- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
+-- Returns true if type of value matches the typeName
 function objectUtils:isType(value, typeName)
 	-- to support real tables
 	if value and value.isFieldValueTable then
 		return objectUtils:isType(value["fieldValue"], typeName)
 	end
 
-	if type(value) == typeName then
-		return true
+	return type(value) == typeName
+end
+
+-- Returns true if type of value matches the typeName or if value is nill
+function objectUtils:isTypeOrNil(value, typeName)
+	if not value then return true 
+
+	-- to support real tables
+	if value and value.isFieldValueTable then
+		return objectUtils:isType(value["fieldValue"], typeName)
 	end
-	if typeName == "number" then
-		return tonumber(value)
-	end
-	if typeName == "boolean" then
-		return value == "true"
-	end
-	return false
+
+	return type(value) == typeName
 end
 
 -------------------- Validation Operations -------------------------
@@ -319,19 +353,47 @@ function objectUtils:required(value)
 	if not value then
 		log:schema("ddapi", "    ERROR: Missing required field: " .. valueTbl.__key .. " in table: ")
 		log:schema("ddapi", valueTbl.__parentTable)
-		os.exit(1)
-		return nil
+		self.errorCount = self.errorCount + 1
+		--os.exit(1)
+		--return nil
 	end
 end
 
 --- Validates the type of the value
 function objectUtils:ofType(value, typeName)
 	if value and value.isFieldValueTable then
-		return objectUtils:required(value["fieldValue"])
+		return objectUtils:ofType(value["fieldValue"])
 	end
 
-	if type(valueTbl["fieldValue"]) == typeName then
-		return valueTbl["fieldValue"]
+	if type(value) == typeName then
+		return value
+	end
+
+	objectUtils:logWrongType(valueTbl.__key, typeName)
+end
+
+function objectUtils:notOfType(value, typeName)
+	if value and value.isFieldValueTable then
+		return objectUtils:notOfType(value["fieldValue"])
+	end
+
+	if type(value) ~= typeName then
+		return value
+	end
+
+	objectUtils:logWrongType(valueTbl.__key, typeName)
+end
+
+--- Validates the type of the value but allows nil
+function objectUtils:ofTypeOrNil(value, typeName)
+	if not value then return nil end
+
+	if value and value.isFieldValueTable then
+		return objectUtils:ofType(value["fieldValue"])
+	end
+
+	if type(value) == typeName then
+		return value
 	end
 
 	objectUtils:logWrongType(valueTbl.__key, typeName)
@@ -345,6 +407,7 @@ function objectUtils:isInTypeTable(valueTbl, typeTable)
 				return nil
 			end
 		else
+			self.errorCount = self.errorCount + 1
 			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
 		end
 
@@ -361,6 +424,7 @@ function objectUtils:isNotInTypeTable(valueTbl, typeTable)
 				return nil
 			end
 		else
+			self.errorCount = self.errorCount + 1
 			log:schema("ddapi", "    ERROR: Value of typeTable is not table")
 		end
 
@@ -381,12 +445,8 @@ function objectUtils:asTypeIndex(tbl, indexTable, displayAlias)
 	end
 
 	if tbl then
-		if tbl.isFieldValueTable then
-			local value = valueTbl["fieldValue"]
-
-			if value then
-				return indexTable[value].index
-			end
+		if tbl["isFieldValueTable"] then
+			return objectUtils:asTypeIndex(tbl["fieldValue"], indexTable, displayAlias)
 		else
 			local data = {}
 			for _, v in ipairs(tbl) do
@@ -411,6 +471,72 @@ function objectUtils:asLocalizedString(valueTbl, default)
 		-- Unchecked fetch, returns localized result, or source string.
 		return locale:getUnchecked(localKey)
 	end
+end
+
+-- Converts the value to a string if it can or else returns nil and logs error
+function objectUtils:asString(value, allowNil, coerceNil)
+	local typeName = type(value)
+
+	if typeName == "nil" and allowNil then
+		if coerceNil then return "nil" else return nil end
+	elseif typeName == "table" then
+		if value["isFieldValueTable"] then
+			return objectUtils:asString(value["fieldValue"], allowNil, coerceNil)
+		end
+	elseif typeName == "string" then
+		return value
+
+	elseif typeName == "number" then
+		return toString(value)
+
+	elseif typeName == "boolean" then
+		if value == true then return "true" else return "false" end
+
+	end
+
+	log:schema("ddapi", "    ERROR: Cannot convert value of type " .. typeName .." to string for key=" .. value.__key) 
+end
+
+-- Converts the value to a number if it can or else returns nil and logs error
+function objectUtils:asNumber(value, base, allowNil, coerceNil)
+	local typeName = type(value)
+
+	if typeName == "nil" and allowNil then
+		if coerceNil then return 0 else return nil end
+	elseif typeName == "table" then
+		if value["isFieldValueTable"] then
+			return objectUtils:asNumber(value["fieldValue"], base, allowNil)
+		end
+	elseif typeName == "string" then
+		return tonumber(value, base)
+	elseif typeName == "number" then
+		return value
+	elseif typeName == "boolean" then
+		if value == true then return 1 else return 0 end
+	end
+
+	log:schema("ddapi", "    ERROR: Cannot convert value of type " .. typeName .." to number for key=" .. value.__key) 
+end
+
+-- Converts the value to a boolean if it can or else returns nil and logs error
+function objectUtils:asBoolean(value, allowNil, coerceNil)
+	local typeName = type(value)
+
+	if typeName == "nil" and allowNil then
+		if coerceNil then return false else return nil end
+	elseif typeName == "table" then
+		if value["isFieldValueTable"] then
+			return objectUtils:asBoolean(value["fieldValue"], allowNil)
+		end
+	elseif typeName == "string" then
+		return value == "true"
+	elseif typeName == "number" then
+		return value ~= 0
+	elseif typeName == "boolean" then
+		return value
+	end
+
+	log:schema("ddapi", "    ERROR: Cannot convert value of type " .. typeName .." to boolean for key=" .. value.__key) 
 end
 
 ----------------------- Predicates -----------------------------------
@@ -525,6 +651,7 @@ end
 local logMissingTables = {}
 function objectUtils:logMissing(displayAlias, key, tbl)
 	if logMissingTables[tbl] == nil then
+		self.errorCount = self.errorCount + 1
 		table.insert(logMissingTables, tbl)
 
 		if key == nil then
@@ -547,14 +674,17 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 end
 
 function objectUtils:logExisting(displayAlias, key, tbl)
+	self.errorCount = self.errorCount + 1
 	log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
 end
 
 function objectUtils:logWrongType(key, typeName)
+	self.errorCount = self.errorCount + 1
 	log:schema("ddapi", "    ERROR: key='" .. key .. "' should be of type '" .. typeName .. "', not '" .. type(key) .. "'")
 end
 
 function objectUtils:logNotImplemented(featureName)
+	self.errorCount = self.errorCount + 1
 	log:schema("ddapi", "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
 end
 

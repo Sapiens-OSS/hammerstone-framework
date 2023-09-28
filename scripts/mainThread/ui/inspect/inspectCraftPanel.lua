@@ -6,7 +6,7 @@ local mod = {
 }
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
 
 function mod:onload(inspectCraftPanel)
 

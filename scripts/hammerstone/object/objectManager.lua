@@ -25,8 +25,33 @@ local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/object/configLoader"
 local hammerAPI = mjrequire "hammerAPI"
 local logicManager = mjrequire "hammerstone/logic/logicManager"
+local legacy = mjrequire "hammerstone/object/legacyObjectManager"
 
 hammerAPI:test()
+
+local function getTblCount(tbl)
+	local count = 0 
+
+	for k in pairs(tbl) do
+		count = count + 1
+	end
+
+	return count
+end
+
+local function compare(a, b)
+	if type(a) ~= type(b) then return false end 
+	if type(a) == "function" then return true end -- can't compare functions 
+	if type(a) ~= "table" then return a == b end
+	if getTblCount(a) ~= getTblCount(b) then return false end
+
+	for k, v in pairs(a) do
+		if v ~= b[k] then return false end
+	end
+
+	return true
+end
+
 
 ---------------------------------------------------------------------------------
 -- Globals
@@ -155,7 +180,7 @@ function objectManager:generateModelPlaceholder(config)
 				}
 			else
 				local default_model = data:get("default_model"):required():value()
-				local resource_type = data:get("resource"):required():asTypeIndex(resourceModule.types):value()
+				local resource_type = data:get("resource"):required():asTypeIndexValue(resourceModule.types)
 				local resource_name = data:get("resource"):required():value()
 				local remap_data = data:get("remaps"):default( { [resource_name] = default_model } ):value()
 
@@ -212,8 +237,8 @@ local function getResources(e)
 	local actionModule = moduleManager:get("action")
 
 	-- Get the resource (as group, or resource)
-	local resourceType = e:get("resource"):asTypeIndex(resourceModule.types):value()
-	local groupType =  e:get("resource_group"):asTypeIndex(resourceModule.groups):value()
+	local resourceType = e:get("resource"):asTypeIndexValue(resourceModule.types)
+	local groupType =  e:get("resource_group"):asTypeIndexValue(resourceModule.groups)
 
 	-- Get the count
 	local count = e:get("count"):default(1):asType("number"):value()
@@ -223,18 +248,18 @@ local function getResources(e)
 		local action = e:get("action")
 
 		-- Return if action is invalid
-		local actionType = utils:getTypeIndex(actionModule.types, action:get("action_type"):default("inspect"):value(), "Action")
+		local actionType = action:get("action_type"):default("inspect"):asTypeIndexValue(actionModule.types, "Action")
 		if (actionType == nil) then return end
 
 		-- Return if duration is invalid
-		local duration = action:get("duration"):required():ofType("number"):value()
+		local duration = action:get("duration"):required():asNumberValue()
 		if (not duration) then
 			log:schema("ddapi", "    Duration for " .. e.action.action_type .. " is not a number")
 			return
 		end
 
 		-- Return if duration without skill is invalid
-		local durationWithoutSkill = action:get("duration_without_skill"):default(duration):ofType("number"):value()
+		local durationWithoutSkill = action:get("duration_without_skill"):default(duration):asNumberValue()
 		if (durationWithoutSkill) then
 			log:schema("ddapi", "    Duration without skill for " .. e.action.action_type .. " is not a number")
 			return
@@ -324,11 +349,11 @@ function objectManager:generateBuildableDefinition(config)
 	local newBuildable = objectManager:getCraftableBase(description, buildableComponent)
 
 	-- Buildable Specific Stuff
-	newBuildable.classification =buildableComponent:get("classification"):default("build"):asTypeIndex(constructableModule.classifications):value()
+	newBuildable.classification =buildableComponent:get("classification"):default("build"):asTypeIndexValue(constructableModule.classifications)
 	newBuildable.modelName = getBuildModelName(objectComponent, buildableComponent)
 	newBuildable.inProgressGameObjectTypeKey = getBuildIdentifier(identifier)
 	newBuildable.finalGameObjectTypeKey = identifier
-	newBuildable.buildCompletionPlanIndex =buildableComponent:get("build_completion_plan"):asTypeIndex(planModule.types):value()
+	newBuildable.buildCompletionPlanIndex =buildableComponent:get("build_completion_plan"):asTypeIndexValue(planModule.types)
 
 	local research = buildableComponent:get("research"):value()
 	if research ~= nil then
@@ -383,7 +408,7 @@ function objectManager:generateCraftableDefinition(config)
 	local hasNoOutput = outputComponent == nil
 	if outputComponent then
 		outputObjectInfo = {
-			objectTypesArray = outputComponent:get("simple_output"):asTypeIndex(gameObjectModule.types):value(),
+			objectTypesArray = outputComponent:get("simple_output"):asTypeIndexValue(gameObjectModule.types),
 			outputArraysByResourceObjectType = outputComponent:get("output_by_object"):with(
 				function(tbl)
 					local result = {}
@@ -405,7 +430,7 @@ function objectManager:generateCraftableDefinition(config)
 		}
 	end
 
-	local craftArea = craftableComponent:get("craft_area"):asTypeIndex(craftAreaGroupModule.types)
+	local craftArea = craftableComponent:get("craft_area"):asTypeIndexValue(craftAreaGroupModule.types)
 	local requiredCraftAreaGroups = nil
 	if craftArea then
 		requiredCraftAreaGroups = {
@@ -414,7 +439,7 @@ function objectManager:generateCraftableDefinition(config)
 	end
 
 	-- Craftable Specific Stuff
-	newCraftable.classification = craftableComponent:get("classification"):default("craft"):asTypeIndex(constructableModule.classifications):value()
+	newCraftable.classification = craftableComponent:get("classification"):default("craft"):asTypeIndexValue(constructableModule.classifications)
 	newCraftable.hasNoOutput = hasNoOutput
 	newCraftable.outputObjectInfo = outputObjectInfo
 	newCraftable.requiredCraftAreaGroups = requiredCraftAreaGroups
@@ -472,8 +497,8 @@ function objectManager:generateResourceDefinition(config)
 	-- Setup
 	local description = config:get("description"):required():value()
 	local identifier = description:get("identifier"):required():value()
-	local name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value()
-	local plural = description:get("plural"):asLocalizedString(getNameLocKey(identifier)):value()
+	local name = description:get("name"):asLocalizedStringValue(getNameLocKey(identifier))
+	local plural = description:get("plural"):asLocalizedStringValue(getNameLocKey(identifier))
 
 	-- Components
 	local components = config:get("components"):required():value()
@@ -534,7 +559,7 @@ function objectManager:handleEatByProducts(config)
 		return
 	end
 	
-	local eatByProducts = foodComponent:get("items_when_eaten"):asTypeIndex(gameObjectModule.types, "Game Object"):value()
+	local eatByProducts = foodComponent:get("items_when_eaten"):asTypeIndexValue(gameObjectModule.types, "Game Object")
 
 	log:schema("ddapi", string.format("  Adding  eatByProducts to '%s'", identifier))
 
@@ -634,11 +659,11 @@ function objectManager:generateStorageObject(config)
 	-- The new storage item
 	local newStorage = {
 		key = identifier,
-		name = description:get("name"):asLocalizedString(getNameKey("storage", identifier)):value(),
+		name = description:get("name"):asLocalizedStringValue(getNameKey("storage", identifier)),
 
 		displayGameObjectTypeIndex = displayIndex,
 		
-		resources = storageComponent:get("resources"):default({}):asTypeIndex(resourceModule.types, "Resource"):value(),
+		resources = storageComponent:get("resources"):default({}):asTypeIndexValue(resourceModule.types, "Resource"),
 
 		storageBox = {
 			size =  storageComponent:get("item_size"):asVec3():default(vec3(0.5, 0.5, 0.5)):value(),
@@ -711,7 +736,7 @@ function objectManager:generatePlanHelperObject(config)
 	end
 
 
-	local objectIndex = description:get("identifier"):required():asTypeIndex(gameObjectModule.types):value()
+	local objectIndex = description:get("identifier"):required():asTypeIndexValue(gameObjectModule.types)
 	local availablePlans = plansComponent:get("available_plans"):with(
 		function (value)
 			return planHelperModule[value]
@@ -737,7 +762,7 @@ function objectManager:generateMobObject(config)
 	-- Setup
 	local description = config:get("description"):required():value()
 	local identifier = description:get("identifier"):required():value()
-	local name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value()
+	local name = description:get("name"):asLocalizedStringValue(getNameLocKey(identifier))
 	local components = config:get("components"):required():value()
 	local mobComponent = components:get("hs_mob"):value()
 	local objectComponent = components:get("hs_object"):value()
@@ -750,8 +775,8 @@ function objectManager:generateMobObject(config)
 	local mobObject = {
 		name = name,
 		gameObjectTypeIndex = gameObjectModule.types[identifier].index,
-		deadObjectTypeIndex = mobComponent:get("dead_object"):asTypeIndex(gameObjectModule.types):value(),
-		animationGroupIndex = mobComponent:get("animation_group"):asTypeIndex(animationGroupsModule):value(),
+		deadObjectTypeIndex = mobComponent:get("dead_object"):asTypeIndexValue(gameObjectModule.types),
+		animationGroupIndex = mobComponent:get("animation_group"):asTypeIndexValue(animationGroupsModule),
 	}
 
 	utils:addProps(mobObject, mobComponent, "props", {
@@ -815,15 +840,15 @@ function objectManager:generateResourceGroup(groupDefinition)
 	local identifier = groupDefinition:get("identifier"):required():value()
 	log:schema("ddapi", "  " .. identifier)
 
-	local name = groupDefinition:get("name"):asLocalizedString(getNameKey("group", identifier)):value()
-	local plural = groupDefinition:get("plural"):asLocalizedString(getPluralKey("group", identifier)):value()
+	local name = groupDefinition:get("name"):asLocalizedStringValue(getNameKey("group", identifier))
+	local plural = groupDefinition:get("plural"):asLocalizedStringValue(getPluralKey("group", identifier))
 
 	local newResourceGroup = {
 		key = identifier,
 		name = name,
 		plural = plural,
-		displayGameObjectTypeIndex = groupDefinition:get("display_object"):required():asTypeIndex(gameObjectModule.types):value(),
-		resourceTypes = groupDefinition:get("resources"):required():asTypeIndex(resourceModule.types, "Resource Types"):value()
+		displayGameObjectTypeIndex = groupDefinition:get("display_object"):required():asTypeIndexValue(gameObjectModule.types),
+		resourceTypes = groupDefinition:get("resources"):required():asTypeIndexValue(resourceModule.types, "Resource Types")
 	}
 
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
@@ -877,7 +902,7 @@ function objectManager:generateSeatDefinition(seatType)
 			function(node)
 				return {
 					placeholderKey = node:get("key"):required():value(),
-					nodeTypeIndex = node:get("type"):required():asTypeIndex(seatModule.nodeTypes):value()
+					nodeTypeIndex = node:get("type"):required():asTypeIndexValue(seatModule.nodeTypes)
 				}
 			end
 		):value()
@@ -964,7 +989,7 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	-- Setup
 	local identifier = description:get("identifier"):required():value()
 
-	local tool = craftableComponent:get("tool"):asTypeIndex(toolModule.types):value()
+	local tool = craftableComponent:get("tool"):asTypeIndexValue(toolModule.types)
 	local requiredTools = nil
 	if tool then
 		requiredTools = {
@@ -990,18 +1015,18 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	end
 
 	local craftableBase = {
-		name = description:get("name"):asLocalizedString(getNameLocKey(identifier)):value(),
-		plural = description:get("plural"):asLocalizedString(getPluralLocKey(identifier)):value(),
-		summary = description:get("summary"):asLocalizedString(getSummaryLocKey(identifier)):value(),
+		name = description:get("name"):asLocalizedStringValue(getNameLocKey(identifier)),
+		plural = description:get("plural"):asLocalizedStringValue(getPluralLocKey(identifier)),
+		summary = description:get("summary"):asLocalizedStringValue(getSummaryLocKey(identifier)),
 
 		buildSequence = buildSequenceData,
 
 		skills = {
-			required = craftableComponent:get("skill"):asTypeIndex(skillModule.types):value()
+			required = craftableComponent:get("skill"):asTypeIndexValue(skillModule.types)
 		},
 
 		-- TODO throw a warning here
-		iconGameObjectType = craftableComponent:get("display_object"):default(identifier):asTypeIndex(gameObjectModule.types):value(),
+		iconGameObjectType = craftableComponent:get("display_object"):default(identifier):asTypeIndexValue(gameObjectModule.types),
 
 		requiredTools = requiredTools,
 
@@ -1126,13 +1151,13 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 		-- Build variant doesnt get seats
 		if not isBuildVariant then
-			newBuildableKeys.seatTypeIndex = buildableComponent:get("seat_type"):asTypeIndex(seatModule.types):value()
+			newBuildableKeys.seatTypeIndex = buildableComponent:get("seat_type"):asTypeIndexValue(seatModule.types)
 		end
 	end
 
 	local newGameObject = {
-		name = description:get("name"):asLocalizedString(getNameLocKey(nameKey)):value(),
-		plural = description:get("plural"):asLocalizedString(getPluralLocKey(nameKey)):value(),
+		name = description:get("name"):asLocalizedStringValue(getNameLocKey(nameKey)),
+		plural = description:get("plural"):asLocalizedStringValue(getPluralLocKey(nameKey)),
 		modelName = modelName,
 		scale = objectComponent:get("scale"):default(1):value(),
 		hasPhysics = objectComponent:get("physics"):default(true):value(),
@@ -1140,7 +1165,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 		-- mobTypeIndex = mobModule.typeIndexMap[identifier], Injected Later
 		harvestableTypeIndex = harvestableTypeIndex,
 		toolUsages = toolUsage,
-		craftAreaGroupTypeIndex = buildableComponent:get("craft_area"):asTypeIndex(craftAreaGroupModule.types):value(),
+		craftAreaGroupTypeIndex = buildableComponent:get("craft_area"):asTypeIndexValue(craftAreaGroupModule.types),
 
 		-- TODO: Implement marker positions
 		markerPositions = {
@@ -1295,8 +1320,8 @@ function objectManager:generatePlanDefinition(config)
 
 	local newPlan = {
 		key = identifier,
-		name = description:get("name"):asLocalizedString(getNameKey("plan", identifier)):value(),
-		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("plan", identifier)):value(),
+		name = description:get("name"):asLocalizedStringValue(getNameKey("plan", identifier)),
+		inProgress = description:get("inProgress"):asLocalizedStringValue(getInProgressKey("plan", identifier)),
 		icon = description:get("icon"):required():ofType("string"):value(),
 
 		checkCanCompleteForRadialUI = planComponent:get("showsOnWheel"):default(true):ofType("boolean"):value(), 
@@ -1343,8 +1368,8 @@ function objectManager:generateActionDefinition(config)
 
 	local newAction = {
 		key = identifier, 
-		name = description:get("name"):asLocalizedString(getNameKey("action", identifier)):value(), 
-		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)):value(), 
+		name = description:get("name"):asLocalizedStringValue(getNameKey("action", identifier)), 
+		inProgress = description:get("inProgress"):asLocalizedStringValue(getInProgressKey("action", identifier)), 
 		restNeedModifier = actionComponent:get("restNeedModifier"):required():ofType("number"), 
 	}
 
@@ -1377,8 +1402,8 @@ function objectManager:generateActionModifierDefinition(config)
 
 	local newActionModifier = {
 		key = identifier, 
-		name = description:get("name"):asLocalizedString(getNameKey("action", identifier)):value(), 
-		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)):value(), 
+		name = description:get("name"):asLocalizedStringValue(getNameKey("action", identifier)), 
+		inProgress = description:get("inProgress"):asLocalizedStringValue(getInProgressKey("action", identifier)), 
 	}
 
 	if utils:hasKey(actionModifierTypeComponent, "props") then
@@ -1411,9 +1436,9 @@ function objectManager:generateActionSequenceDefinition(config)
 
 	local newActionSequence = {
 		key = identifier, 
-		actions = actionSequenceComponent:get("actions"):required():ofType("table"):asTypeIndex(actionModule.types, "Action"):value(),
+		actions = actionSequenceComponent:get("actions"):required():ofType("table"):asTypeIndexValue(actionModule.types, "Action"),
 		assignedTriggerIndex = actionSequenceComponent:get("assignedTriggerIndex"):required():ofType("number"):value(), 
-		assignModifierTypeIndex = actionSequenceComponent:get("modifier"):asTypeIndex(actionModule.modifierTypes):value()
+		assignModifierTypeIndex = actionSequenceComponent:get("modifier"):asTypeIndexValue(actionModule.modifierTypes)
 	}
 
 	if utils:hasKey(actionSequenceComponent, "props") then
@@ -1443,8 +1468,8 @@ function objectManager:generateOrderDefinition(config)
 
 	local newOrder = {
 		key = identifier, 
-		name = description:get("name"):asLocalizedString(getNameKey("order", identifier)):value(), 
-		inProgressName = description:get("inProgress"):asLocalizedString(getInProgressKey("order", identifier)):value(),  
+		name = description:get("name"):asLocalizedStringValue(getNameKey("order", identifier)), 
+		inProgressName = description:get("inProgress"):asLocalizedStringValue(getInProgressKey("order", identifier)),  
 		icon = description:get("icon"):required():ofType("string"):value(), 
 	}
 

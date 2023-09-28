@@ -13,7 +13,7 @@ local tool = mjrequire "common/tool"
 
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 local buildSequenceData = {
