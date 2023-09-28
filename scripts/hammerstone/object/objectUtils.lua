@@ -262,7 +262,7 @@ end
 --- the key and the value of each table element
 -- @param tbl table - The table to process
 -- @param predicate function - Function to run
-function objectUtils:forEach(tbl, predicate)
+function objectUtils:mapKV(tbl, predicate)
 	if tbl then
 		local data = {}
 		for i, e in pairs(tbl) do
@@ -280,14 +280,24 @@ end
 
 ------------------- Generic Operations ----------------------------
 
---- Returns the value of valueTbl[key] or defaultValue if nil
-function objectUtils:default(valueTbl, defaultValue)
-	return valueTbl["fieldValue"] or defaultValue
+--- Returns the value or defaultValue if nil
+function objectUtils:default(value, defaultValue)
+	-- to support real tables
+	if value and value.isFieldValueTable then
+		return value["fieldValue"] or defaultValue
+	else
+		return value or defaultValue
+	end
 end
 
 -- Returns true if value is of type. Also returns true for value = "true" and typeName = "boolean".
-function objectUtils:isType(valueTbl, typeName)
-	if type(valueTbl["fieldValue"]) == typeName then
+function objectUtils:isType(value, typeName)
+	-- to support real tables
+	if value and value.isFieldValueTable then
+		return objectUtils:isType(value["fieldValue"], typeName)
+	end
+
+	if type(value) == typeName then
 		return true
 	end
 	if typeName == "number" then
@@ -302,8 +312,12 @@ end
 -------------------- Validation Operations -------------------------
 
 --- Ensures the value is not nil. If not, throws an error and exits
-function objectUtils:required(valueTbl)
-	if not valueTbl["fieldValue"] then
+function objectUtils:required(value)
+	if value and value.isFieldValueTable then
+		return objectUtils:required(value["fieldValue"])
+	end
+
+	if not value then
 		log:schema("ddapi", "    ERROR: Missing required field: " .. valueTbl.__key .. " in table: ")
 		log:schema("ddapi", valueTbl.__parentTable)
 		os.exit(1)
@@ -312,7 +326,11 @@ function objectUtils:required(valueTbl)
 end
 
 --- Validates the type of the value
-function objectUtils:ofType(valueTbl, typeName)
+function objectUtils:ofType(value, typeName)
+	if value and value.isFieldValueTable then
+		return objectUtils:required(value["fieldValue"])
+	end
+
 	if type(valueTbl["fieldValue"]) == typeName then
 		return valueTbl["fieldValue"]
 	end
@@ -321,7 +339,7 @@ function objectUtils:ofType(valueTbl, typeName)
 end
 
 function objectUtils:isInTypeTable(valueTbl, typeTable)
-	if valueTbl["fieldValue"] then
+	if value and valueTbl["fieldValue"] then
 		if type(typeTable) == "table" then
 			if not objectUtils:hasKey(typeTable, valueTbl["fieldValue"]) then
 				objectUtils:logMissing(valueTbl.__key, valueTbl["fieldValue"], typeTable)
@@ -336,7 +354,7 @@ function objectUtils:isInTypeTable(valueTbl, typeTable)
 end
 
 function objectUtils:isNotInTypeTable(valueTbl, typeTable)
-	if valueTbl["fieldValue"] then
+	if value and valueTbl["fieldValue"] then
 		-- Make sure this field value is a unique type
 		if type(typeTable) == "table" then
 			if not objectUtils:hasKey(typeTable, valueTbl["fieldValue"]) then
@@ -378,8 +396,12 @@ function objectUtils:asLocalizedString(valueTbl, default)
 end
 
 ----------------------- Predicates -----------------------------------
-function objectUtils:with(valueTbl, predicate)
-	return predicate(valueTbl["fieldValue"])
+function objectUtils:with(value, predicate)
+	if value and value.isFieldValueTable then
+		return predicate(value["fieldValue"])
+	else
+		return predicate(value)
+	end
 end
 
 -------------------------------------------------------------------------------

@@ -1325,9 +1325,9 @@ function objectManager:generatePlanDefinition(config)
 		shouldJogWherePossible = planComponent:get("walkSpeed"):with(function(value) return value == "job" end):value(), 
 		skipFinalReachableCollisionPathCheck = planComponent:get("collisionPathCheck"):with(function(value) return value == "skip" end):value(), 
 		skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:get("collisionPathCheck"):with(function(value) return value == "skipVertical" end):value(),
-		allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:get("simultaneousPlans"):forEach( 
-			function(planKey)
-				return utils:getTypeIndex(planModule.types, planKey), true
+		allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:get("simultaneousPlans"):mapKV( 
+			function(planKey, value)
+				return utils:getTypeIndex(planModule.types, planKey), value
 			end
 		):value()
 	}
