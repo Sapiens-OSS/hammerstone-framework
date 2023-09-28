@@ -59,7 +59,6 @@ ConfigTable={
 	map = function(self, predicate) return objectUtils:map(self, predicate) end, 
 	mapKV = function(self, predicate) return objectUtils:mapKV(self, predicate) end, 
 
-
 	-- Value functions --
 	----- Generic functions -----
 	default = function(self, defaultValue) return objectUtils:default(self, defaultValue) end,
@@ -376,11 +375,30 @@ end
 -- @param key The key to get from the tbl
 -- @param indexTable the index table where you are going to cast the value to
 -- @example "foo" becomes gameObject.types["foo"].index
-function objectUtils:asTypeIndex(valueTbl, indexTable)
-	local value = valueTbl["fieldValue"]
+function objectUtils:asTypeIndex(tbl, indexTable, displayAlias)
+	if not displayAlias then
+		displayAlias = objectUtils:coerceToString(key)
+	end
 
-	if value then
-		return indexTable[value]
+	if tbl then
+		if tbl.isFieldValueTable then
+			local value = valueTbl["fieldValue"]
+
+			if value then
+				return indexTable[value].index
+			end
+		else
+			local data = {}
+			for _, v in ipairs(tbl) do
+				if not indexTable[v] then
+					objectUtils:logMissing(displayAlias, v, indexTable)
+				else
+					table.insert(data, indexTable[v].index)
+				end
+			end
+
+			return data
+		end
 	end
 end
 

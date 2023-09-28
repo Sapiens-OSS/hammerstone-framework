@@ -383,11 +383,7 @@ function objectManager:generateCraftableDefinition(config)
 	local hasNoOutput = outputComponent == nil
 	if outputComponent then
 		outputObjectInfo = {
-			objectTypesArray = outputComponent:get("simple_output"):map( 
-				function(e)
-					return utils:getTypeIndex(gameObjectModule.types, e)
-				end
-			):value(),
+			objectTypesArray = outputComponent:get("simple_output"):asTypeIndex(gameObjectModule.types):value(),
 			outputArraysByResourceObjectType = outputComponent:get("output_by_object"):with(
 				function(tbl)
 					local result = {}
@@ -538,11 +534,7 @@ function objectManager:handleEatByProducts(config)
 		return
 	end
 	
-	local eatByProducts = foodComponent:get("items_when_eaten"):map(
-		function(value)
-			return utils:getTypeIndex(gameObjectModule.types, value, "Game Object")
-		end
-	):value()
+	local eatByProducts = foodComponent:get("items_when_eaten"):asTypeIndex(gameObjectModule.types, "Game Object"):value()
 
 	log:schema("ddapi", string.format("  Adding  eatByProducts to '%s'", identifier))
 
@@ -646,11 +638,7 @@ function objectManager:generateStorageObject(config)
 
 		displayGameObjectTypeIndex = displayIndex,
 		
-		resources = storageComponent:get("resources"):default({}):map(
-			function(value)
-				return utils:getTypeIndex(resourceModule.types, value, "Resource")
-			end
-		):value(),
+		resources = storageComponent:get("resources"):default({}):asTypeIndex(resourceModule.types, "Resource"):value()
 
 		storageBox = {
 			size =  storageComponent:get("item_size"):asVec3():default(vec3(0.5, 0.5, 0.5)):value(),
@@ -799,11 +787,7 @@ function objectManager:generateHarvestableObject(config)
 	
 	log:schema("ddapi", "  " .. identifier)
 
-	local resourcesToHarvest = harvestableComponent:get("resources_to_harvest"):map(
-		function(value)
-			return gameObjectModule.typeIndexMap[value]
-		end
-	):value()
+	local resourcesToHarvest = harvestableComponent:get("resources_to_harvest"):toTypeIndex(gameObjectModule.typeIndexMap):value()
 
 	local finishedHarvestIndex = harvestableComponent:get("finish_harvest_index"):default(#resourcesToHarvest):value()
 	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
@@ -839,12 +823,7 @@ function objectManager:generateResourceGroup(groupDefinition)
 		name = name,
 		plural = plural,
 		displayGameObjectTypeIndex = groupDefinition:get("display_object"):required():asTypeIndex(gameObjectModule.types):value(),
-		resourceTypes = groupDefinition:get("resources"):required():map(
-			function(resource_id)
-				return utils:getTypeIndex(resourceModule.types, resource_id, "Resource Types")
-			end
-		):value()
-	}
+		resourceTypes = groupDefinition:get("resources"):required():asTypeIndex(resourceModule.types, "Resource Types"):value()
 
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
 end
@@ -1431,11 +1410,7 @@ function objectManager:generateActionSequenceDefinition(config)
 
 	local newActionSequence = {
 		key = identifier, 
-		actions = actionSequenceComponent:get("actions"):required():ofType("table"):map(
-			function(a)
-				return utils:getTypeIndex(actionModule.types, a, "Action")
-			end
-		):value(), 
+		actions = actionSequenceComponent:get("actions"):required():ofType("table"):asTypeIndex(actionModule.types, "Action"):value(),
 		assignedTriggerIndex = actionSequenceComponent:get("assignedTriggerIndex"):required():ofType("number"):value(), 
 		assignModifierTypeIndex = actionSequenceComponent:get("modifier"):asTypeIndex(actionModule.modifierTypes):value()
 	}
