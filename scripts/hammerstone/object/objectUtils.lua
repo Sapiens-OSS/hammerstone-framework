@@ -96,8 +96,6 @@ end
 ConfigTable.__index = ConfigTable
 
 function objectUtils:initConfig(tbl)
-	tbl = objectUtils:coerceToTable(tbl)
-
 	if type(tbl) == "table" then
 		setmetatable(tbl, ConfigTable);
 	else
