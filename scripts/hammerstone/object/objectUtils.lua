@@ -96,24 +96,23 @@ local ConfigTable={
 	isInNotTypeTable = function(self, typeTable) return self:init(objectUtils:isNotInTypeTable(self, typeTable)) end,
 
 	----- Casting -----
-	__asTypeIndexInternal = function(self, indexTable, displayAlias) return objectUtils:asTypeIndex(self, indexTable, displayAlias) end, -- to force a "required" before calling objectUtils
-	asTypeIndexValue = function(self, indexTable, displayAlias) return self:required().__asTypeIndexInternal(self, indexTable, displayAlias) end, -- returned as true value, no init
+	asTypeIndexValue = function(self, indexTable, displayAlias) return objectUtils:asTypeIndex(self:required(), indexTable, displayAlias) end, -- returned as true value, no init
 	asLocalizedStringValue = function(self, default) return objectUtils:asLocalizedString(self, default) end, -- returned as true value, no init
 
 	asStringValue = function(self, coerceNil) return objectUtils:asString(self, false, coerceNil) end, -- returned as true value, no init
-	asString = function(self, coerceNil) return self:init(self:asStringValue(self, coerceNil)) end, 
+	asString = function(self, coerceNil) return self:init(self:asStringValue(coerceNil)) end, 
 	asStringValueOrNil = function(self, coerceNil) return objectUtils:asString(self, true, coerceNil) end, -- returned as true value, no init
-	asStringOrNil = function(self, coerceNil) return self:init(self:asStringValueOrNil(self, coerceNil)) end,
+	asStringOrNil = function(self, coerceNil) return self:init(self:asStringValueOrNil(coerceNil)) end,
 
 	asNumberValue = function(self, coerceNil, base) return objectUtils:asNumber(self, false, coerceNil, base) end, -- returned as true value, no init
-	asNumber = function(self, coerceNil, base) return self:init(self:asNumberValue(self, coerceNil, base)) end, 
+	asNumber = function(self, coerceNil, base) return self:init(self:asNumberValue(coerceNil, base)) end, 
 	asNumberValueOrNil = function(self, coerceNil, base) return objectUtils:asNumber(self, true, coerceNil, base) end, -- returned as true value, no init
-	asNumberOrNil = function(self, coerceNil, base) self:init(return self:asNumberValueOrNil(self, coerceNil, base)) end, 
+	asNumberOrNil = function(self, coerceNil, base) self:init(self:asNumberValueOrNil(coerceNil, base)) end, 
 
 	asBooleanValue = function(self, coerceNil) return objectUtils:asBoolean(self, false, coerceNil) end, -- returned as true value, no init
-	asBoolean = function(self, coerceNil) return self:init(self:asBooleanValue(self, coerceNil)) end,
+	asBoolean = function(self, coerceNil) return self:init(self:asBooleanValue(coerceNil)) end,
 	asBooleanValueOrNil = function(self, coerceNil) return objectUtils:asBoolean(self, true, coerceNil) end, -- returned as true value, no init
-	asBooleanOrNil = function(self, coerceNil) return self:init(self:asBooleanValueOrNil(self, coerceNil)) end,
+	asBooleanOrNil = function(self, coerceNil) return self:init(self:asBooleanValueOrNil(coerceNil)) end,
 
 	----- Predicates -----
 	with = function(self, predicate) return self:init(objectUtils:with(self, predicate)) end,
@@ -126,12 +125,12 @@ local ConfigTable={
 ConfigTable.__index = ConfigTable
 
 function objectUtils:initConfig(tbl)
-	if type(tbl) == "table" then
-		setmetatable(tbl, ConfigTable);
-	else
-		tbl = { fieldValue = tbl, isFieldValueTable = true }
-		setmetatable(tbl, ConfigTable)
+	if type(tbl) ~= "table" then
+		local fieldTable = { fieldValue = tbl, isFieldValueTable = true }
+		tbl = fieldTable
 	end
+
+	setmetatable(tbl, ConfigTable);
 
 	return tbl
 end
