@@ -6,7 +6,7 @@ local mod = {
 }
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
+local objectManager = mjrequire "hammerstone/object/objectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 function mod:onload(gameObject)

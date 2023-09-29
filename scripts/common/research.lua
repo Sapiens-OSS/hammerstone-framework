@@ -5,7 +5,7 @@ local research = {}
 
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
+local objectManager = mjrequire "hammerstone/object/objectManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
 --- @implement

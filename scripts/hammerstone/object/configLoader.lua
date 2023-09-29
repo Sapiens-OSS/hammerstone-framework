@@ -50,14 +50,14 @@ local configLoader = {
 			luaStrings = {},
 			cachedConfigs = {}
 		}, 
-		plannableAction = {
+		--[[plannableAction = {
 			key = "plannableAction",
 			configPath = "/hammerstone/plannableActions", 
 			luaGetter = "getplannableActionsConfigs",
 			jsonStrings = {},
 			luaStrings = {},
 			cachedConfigs = {}
-		}
+		}]]
 	},
 
 	-- These contain the "shared" version, which uses getters

@@ -11,7 +11,7 @@ local mod = {
 local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
+local objectManager = mjrequire "hammerstone/object/objectManager"
 local log = mjrequire "hammerstone/logging"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 

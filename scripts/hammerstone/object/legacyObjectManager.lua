@@ -32,8 +32,22 @@ hammerAPI:test()
 ---------------------------------------------------------------------------------
 
 -- Whether to crash (for development), or attempt to recover (for release).
-local crashes = true
+local crashes = false
 
+objectManager.lastFunc = nil
+
+function objectManager:loadObjectDefinitionForConfig(loaderName, config)
+	local loader = objectLoader[loaderName]
+
+	local function errorhandler(error)
+		log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
+		log:schema("ddapi", error)
+		log:schema("ddapi", "--------")
+		log:schema("ddapi", debug.traceback())
+	end
+
+	return xpcall(objectData.loadFunction, errorhandler, self, config)
+end
 
 -- Loads a single object
 -- @param objectData - A table, containing fields from 'objectLoader'
@@ -115,6 +129,8 @@ local function createIndexFunction(remaps, default)
 end
 
 function objectManager:generateModelPlaceholder(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local modelPlaceholderModule = moduleManager:get("modelPlaceholder")
 	local resourceModule = moduleManager:get("resource")
@@ -189,6 +205,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateCustomModelDefinition(modelRemap)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local modelModule = moduleManager:get("model")
 
@@ -299,6 +317,8 @@ local function getBuildModelName(objectComponent, craftableComponent)
 end
 
 function objectManager:generateBuildableDefinition(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
 	local constructableModule = moduleManager:get("constructable")
@@ -349,6 +369,8 @@ function objectManager:generateBuildableDefinition(config)
 end
 
 function objectManager:generateCraftableDefinition(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local constructableModule = moduleManager:get("constructable")
 	local gameObjectModule =  moduleManager:get("gameObject")
@@ -436,6 +458,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateResourceDefinition(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local typeMapsModule = moduleManager:get("typeMaps")
 	local resourceModule = moduleManager:get("resource")
@@ -490,6 +514,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:handleEatByProducts(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local gameObjectModule =  moduleManager:get("gameObject")
 
@@ -519,6 +545,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local typeMapsModule = moduleManager:get("typeMaps")
@@ -536,6 +564,7 @@ function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 	end
 
 	local displayObject = storageComponent:get("display_object", {default = identifier})
+
 	return displayObject
 end
 
@@ -546,6 +575,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:handleStorageLinks(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local resourceModule = moduleManager:get("resource")
@@ -560,11 +591,13 @@ function objectManager:handleStorageLinks(config)
 		optional = true
 	})
 
-	if resourceComponent ~= nil then
-		local storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
+	local storageIdentifier = nil
 
-		return storageIdentifier
+	if resourceComponent ~= nil then
+		storageIdentifier = utils:getField(resourceComponent, "storage_identifier")
 	end
+
+	return storageIdentifier
 end
 
 
@@ -573,6 +606,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateStorageObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local resourceModule = moduleManager:get("resource")
@@ -674,6 +709,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generatePlanHelperObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local planHelperModule = moduleManager:get("planHelper")
 	local gameObjectModule =  moduleManager:get("gameObject")
@@ -704,6 +741,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateMobObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local mobModule = moduleManager:get("mob")
 	local gameObjectModule = moduleManager:get("gameObject")
@@ -741,6 +780,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateHarvestableObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local harvestableModule = moduleManager:get("harvestable")
 	local gameObjectModule =  moduleManager:get("gameObject")
@@ -766,7 +807,7 @@ function objectManager:generateHarvestableObject(config)
 		default = #resourcesToHarvest
 	})
 	
-	return resourcesToHarvest, finishedHarvestIndex
+	return { resourcesToHarvest, finishedHarvestIndex }
 end
 
 ---------------------------------------------------------------------------------
@@ -774,6 +815,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateObjectSets(key)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	local serverGOMModule = moduleManager:get("serverGOM")
 	serverGOMModule:addObjectSet(key)
 end
@@ -783,6 +826,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateResourceGroup(groupDefinition)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local resourceModule = moduleManager:get("resource")
 	local gameObjectModule  = moduleManager:get("gameObject")
@@ -812,6 +857,8 @@ end
 -- Special handler which allows resources to inject themselves into existing resource groups. Runs
 -- after resource groups are already created
 function objectManager:handleResourceGroups(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local resourceModule = moduleManager:get("resource")
 
@@ -835,6 +882,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateSeatDefinition(seatType)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local seatModule = moduleManager:get("seat")
 	local typeMapsModule = moduleManager:get("typeMaps")
@@ -865,6 +914,8 @@ end
 
 --- Generates evolving object definitions. For example an orange rotting into a rotten orange.
 function objectManager:generateEvolvingObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local evolvingObjectModule = moduleManager:get("evolvingObject")
 	local gameObjectModule =  moduleManager:get("gameObject")
@@ -925,7 +976,8 @@ end
 
 --- Returns a lua table, containing the shared keys between craftables and buildables
 function objectManager:getCraftableBase(description, craftableComponent)
-	
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local skillModule = moduleManager:get("skill")
 	local craftableModule = moduleManager:get("craftable")
@@ -992,10 +1044,14 @@ end
 
 -- TODO: selectionGroupTypeIndexes
 function objectManager:generateGameObject(config)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	return objectManager:generateGameObjectInternal(config, false)
 end
 
 function objectManager:generateGameObjectInternal(config, isBuildVariant)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
 	local resourceModule = moduleManager:get("resource")
@@ -1144,6 +1200,8 @@ end
 ---------------------------------------------------------------------------------
 
 function objectManager:generateMaterialDefinition(material)
+	objectManager.lastFunc = debug.getinfo(1, "n").name
+
 	-- Modules
 	local materialModule = moduleManager:get("material")
 
@@ -1173,7 +1231,7 @@ function objectManager:generateMaterialDefinition(material)
 	
 	local materialData = loadMaterialFromTbl(material)
 	local materialDataB = loadMaterialFromTbl(utils:getField(material, "b_material", {optional = true}))
-	return materialData, materialDataB
+	return {materialData, materialDataB}
 end
 
 ---------------------------------------------------------------------------------
@@ -1505,7 +1563,7 @@ local function newModuleAdded(modules)
 	objectManager:tryLoadObjectDefinitions()
 end
 
-moduleManager:bind(newModuleAdded)
+--moduleManager:bind(newModuleAdded)
 
 -- Initialize the full Data Driven API (DDAPI).
 function objectManager:init()

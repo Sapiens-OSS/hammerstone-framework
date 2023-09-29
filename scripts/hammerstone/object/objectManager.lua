@@ -39,26 +39,44 @@ local function getTblCount(tbl)
 	return count
 end
 
-local function compare(a, b)
-	if type(a) ~= type(b) then return false end 
+local function compare(a, b, path)
+	if type(a) ~= type(b) then return false, path .. " not same type" end 
 	if type(a) == "function" then return true end -- can't compare functions 
-	if type(a) ~= "table" then return a == b end
-	if getTblCount(a) ~= getTblCount(b) then return false end
+	if type(a) ~= "table" then return a == b, path .. " not equal" end
+	if getTblCount(a) ~= getTblCount(b) then return false, " table not same number of elements" end
 
 	for k, v in pairs(a) do
-		if v ~= b[k] then return false end
+		local areSame, msg = compare(v, b[k], path .. "/".. k) 
+		if not areSame then return false, msg
 	end
 
 	return true
 end
 
+local function testAndCompare(a, b, functionName)
+	local areSame, msg = compate(a,b, "config")
+	if not areSame then
+		log:schema("ddapi", "    ERROR. Objects are not the same for ", functionName, " for reason=", msg)
+		log:schema("ddapi", "    value a=\r\n", a)
+		log:schema("ddapi", "    value b=\r\n", b)
+	end
+
+	if utils.errorCount ~= legacy.errorCount then
+		log:schema("ddapi", "Error count mismatch: new=", utils.errorCount, " legacy=", legacy.errorCount)
+	else
+		log:schema("ddapi", "Success for ", functionName)
+	end
+
+	utils.errorCount = legacy.errorCount = 0 
+	log:schema("ddapi", "")
+end
 
 ---------------------------------------------------------------------------------
 -- Globals
 ---------------------------------------------------------------------------------
 
 -- Whether to crash (for development), or attempt to recover (for release).
-local crashes = true
+local crashes = false
 
 
 -- Loads a single object
@@ -91,7 +109,9 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 				log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
 			else
 				utils:initConfig(config)
-				xpcall(objectData.loadFunction, errorhandler, self, config)
+				local ok, result =  xpcall(objectData.loadFunction, errorhandler, self, config)
+				local legacyOk, legacyResult = legacy:loadObjectDefinitionForConfig(objectName, config)
+				testAndCompare(result, legacyResult, debug.getinfo(objectData.loadFunction)
 			end
 
 		else
@@ -202,6 +222,8 @@ function objectManager:generateModelPlaceholder(config)
 
 	utils:debug(identifier, config, modelPlaceholderData)
 	modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
+
+	return modelPlaceholderData
 end
 
 
@@ -226,6 +248,8 @@ function objectManager:generateCustomModelDefinition(modelRemap)
 	
 	-- Inject so it's available
 	modelModule.remapModels[baseModel][model] = materialRemaps
+
+	return materialRemaps
 end
 
 ---------------------------------------------------------------------------------
@@ -373,6 +397,8 @@ function objectManager:generateBuildableDefinition(config)
 	
 	-- Cached, and handled later in buildUI.lua
 	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
+
+	return newBuildable
 end
 
 function objectManager:generateCraftableDefinition(config)
@@ -483,6 +509,8 @@ function objectManager:generateCraftableDefinition(config)
 			table.insert(objectManager.inspectCraftPanelData[key], constructableModule.types[identifier].index)
 		end
 	end
+
+	return newCraftable
 end
 
 ---------------------------------------------------------------------------------
@@ -537,6 +565,8 @@ function objectManager:generateResourceDefinition(config)
 	})
 
 	resourceModule:addResource(identifier, newResource)
+
+	return newResource
 end
 
 ---------------------------------------------------------------------------------
@@ -565,6 +595,8 @@ function objectManager:handleEatByProducts(config)
 
 	-- Inject into the object
 	gameObjectModule.types[identifier].eatByProducts = eatByProducts
+
+	return eatByProducts
 end
 
 ---------------------------------------------------------------------------------
@@ -595,6 +627,8 @@ function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
 	log:schema("ddapi", string.format("  Adding display_object '%s' to storage '%s', with index '%s'", displayObject, identifier, displayIndex))
 	storageModule.types[identifier].displayGameObjectTypeIndex = displayIndex
 	storageModule:mjInit()
+
+	return displayObject
 end
 
 
@@ -624,6 +658,8 @@ function objectManager:handleStorageLinks(config)
 	end
 
 	storageModule:mjInit()
+
+	return storageIdentifier
 end
 
 
@@ -715,6 +751,8 @@ function objectManager:generateStorageObject(config)
 	})
 
 	storageModule:addStorage(identifier, newStorage)
+
+	return newStorage
 end
 
 ---------------------------------------------------------------------------------
@@ -747,6 +785,8 @@ function objectManager:generatePlanHelperObject(config)
 	if availablePlans ~= nil then
 		planHelperModule:setPlansForObject(objectIndex, availablePlans)
 	end
+
+	return availablePlans
 end
 
 ---------------------------------------------------------------------------------
@@ -790,6 +830,8 @@ function objectManager:generateMobObject(config)
 	if objectComponent then
 		gameObjectModule.types[identifier].mobTypeIndex = mobModule.types[identifier].index
 	end
+
+	return mobObject
 end
 
 ---------------------------------------------------------------------------------
@@ -816,6 +858,8 @@ function objectManager:generateHarvestableObject(config)
 
 	local finishedHarvestIndex = harvestableComponent:get("finish_harvest_index"):default(#resourcesToHarvest):value()
 	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
+
+	return { resourcesToHarvest, finishedHarvestIndex }
 end
 
 ---------------------------------------------------------------------------------
@@ -852,6 +896,8 @@ function objectManager:generateResourceGroup(groupDefinition)
 	}
 
 	resourceModule:addResourceGroup(identifier, newResourceGroup)
+
+	return newResourceGroup
 end
 
 -- Special handler which allows resources to inject themselves into existing resource groups. Runs
@@ -881,6 +927,8 @@ function objectManager:handleResourceGroups(config)
 		log:schema("ddapi", string.format("  Adding resource '%s' to resourceGroup '%s'", identifier, resourceGroup))
 		resourceModule:addResourceToGroup(identifier, resourceGroup)
 	end
+
+	return resourceGroups
 end
 
 ---------------------------------------------------------------------------------
@@ -909,6 +957,8 @@ function objectManager:generateSeatDefinition(seatType)
 	}
 
 	typeMapsModule:insert("seat", seatModule.types, newSeat)
+
+	return newSeat
 end
 
 
@@ -970,6 +1020,8 @@ function objectManager:generateEvolvingObject(config)
 	end
 
 	evolvingObjectModule:addEvolvingObject(identifier, newEvolvingObject)
+
+	return newEvolvingObject
 end
 
 ---------------------------------------------------------------------------------
@@ -1040,7 +1092,7 @@ end
 
 -- TODO: selectionGroupTypeIndexes
 function objectManager:generateGameObject(config)
-	objectManager:generateGameObjectInternal(config, false)
+	return objectManager:generateGameObjectInternal(config, false)
 end
 
 function objectManager:generateGameObjectInternal(config, isBuildVariant)
@@ -1194,6 +1246,8 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 
 	-- Actually register the game object
 	gameObjectModule:addGameObject(identifier, outObject)
+
+	return outObject
 end
 
 ---------------------------------------------------------------------------------
@@ -1224,6 +1278,8 @@ function objectManager:generateMaterialDefinition(material)
 	local materialData = loadMaterialFromTbl(material)
 	local materialDataB = loadMaterialFromTbl(material:get("b_material"):value())
 	materialModule:addMaterial(identifier, materialData.color, materialData.roughness, materialData.metal, materialDataB)
+
+	return {materialData, materialDataB}
 end
 
 ---------------------------------------------------------------------------------
@@ -1676,6 +1732,8 @@ local objectLoader = {
 		loadFunction = objectManager.handleResourceGroups
 	},
 
+	--[[
+
 	plan = {
 		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
@@ -1726,6 +1784,8 @@ local objectLoader = {
 		}, 
 		loadFunction = objectManager.generateActionModifierDefinition
 	},
+
+	]]
 
 	---------------------------------------------------------------------------------
 	-- Shared Configs

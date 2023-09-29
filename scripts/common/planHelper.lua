@@ -6,7 +6,7 @@ local mod = {
 
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/object/legacyObjectManager"
+local objectManager = mjrequire "hammerstone/object/objectManager"
 
 function mod:onload(planHelper)
 	moduleManager:addModule("planHelper", planHelper)
