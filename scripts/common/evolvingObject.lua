@@ -14,8 +14,8 @@ local shadow = mjrequire "hammerstone/utils/shadow"
 local evolvingObject = {}
 
 -- Called when the file loads (equivalent to function call at the bottom of onload)
-function evolvingObject:postload(self)
-	moduleManager:addModule("evolvingObject", self)
+function evolvingObject:postload(parent)
+	moduleManager:addModule("evolvingObject", parent)
 end
 
 

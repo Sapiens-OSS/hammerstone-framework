@@ -47,7 +47,7 @@ local function compare(a, b, path)
 
 	for k, v in pairs(a) do
 		local areSame, msg = compare(v, b[k], path .. "/".. k) 
-		if not areSame then return false, msg
+		if not areSame then return false, msg end
 	end
 
 	return true
@@ -67,7 +67,8 @@ local function testAndCompare(a, b, functionName)
 		log:schema("ddapi", "Success for ", functionName)
 	end
 
-	utils.errorCount = legacy.errorCount = 0 
+	utils.errorCount = 0
+	legacy.errorCount = 0 
 	log:schema("ddapi", "")
 end
 
@@ -111,7 +112,7 @@ function objectManager:loadObjectDefinition(objectName, objectData)
 				utils:initConfig(config)
 				local ok, result =  xpcall(objectData.loadFunction, errorhandler, self, config)
 				local legacyOk, legacyResult = legacy:loadObjectDefinitionForConfig(objectName, config)
-				testAndCompare(result, legacyResult, debug.getinfo(objectData.loadFunction)
+				testAndCompare(result, legacyResult, debug.getinfo(objectData.loadFunction))
 			end
 
 		else

@@ -25,22 +25,21 @@ local plannableAction =  {
 		clientLogic = clientLogic
 	},
 	-- OR 
-	logic = {
+	--[[ logic = {
 		serverLogic = "witchyFishMod/serverLogic", 
 		clientLogic = "witchyFishMod/clientLogic"
-	},
+	},]]
 	components = {
-		"hs_plan" = {
+		["hs_plan"] = {}, 
+		["hs_order"] = {
 		}, 
-		"hs_order" = {
-		}, 
-		"hs_action" = {
+		["hs_action"] = {
 		},
-		"hs_actionSequence" = {
+		["hs_actionSequence"] = {
 		}, 
-		"hs_animation" = { -- maybe?
+		["hs_animation"] = { -- maybe?
 		},
-		"hs_maintenance" = { -- maybe?
+		["hs_maintenance"] = { -- maybe?
 		}
 	}, 
 }

@@ -36,7 +36,7 @@ objectUtils.errorCount = 0
 ---------------------------------------------------------------------------------
 
 local ConfigTable={
-	init = function(self, tbl) return objectUtils:initConfig(tbl) end
+	init = function(self, tbl) return objectUtils:initConfig(tbl) end,
 
 	-- Table functions --
 	----- Getters -----
@@ -92,7 +92,7 @@ local ConfigTable={
 	required = function(self) return self:init(objectUtils:required(self)) end,
 	ofType = function(self, typeName) return self:init(objectUtils:ofType(self, typeName)) end,
 	ofTypeOrNil = function(self, typeName) return self:init(objectUtils:ofTypeOrNil(self, typeName)) end, 
-	isInTypeTable = function(self, typeTable) self:init(return objectUtils:isInTypeTable(self, typeTable)) end,
+	isInTypeTable = function(self, typeTable) return self:init(objectUtils:isInTypeTable(self, typeTable)) end,
 	isInNotTypeTable = function(self, typeTable) return self:init(objectUtils:isNotInTypeTable(self, typeTable)) end,
 
 	----- Casting -----
@@ -331,7 +331,7 @@ end
 
 -- Returns true if type of value matches the typeName or if value is nill
 function objectUtils:isTypeOrNil(value, typeName)
-	if not value then return true 
+	if not value then return true end
 
 	-- to support real tables
 	if value and value.isFieldValueTable then
