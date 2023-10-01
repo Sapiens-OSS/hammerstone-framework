@@ -1,5 +1,5 @@
 function getHammerstoneDirectory()
-    
+    return getModDirectory("Hammerstone Directory")
 end
 
 function getModDirectory(modName)

@@ -3,8 +3,9 @@
 globals = {
 
     ----- HAMMERSTONE -----
-    "Debugger",
     "getHammerstoneDirectory",
+    "getModDirectory",
+    "hmt",
     -----------------------
 
     "loadstring",
