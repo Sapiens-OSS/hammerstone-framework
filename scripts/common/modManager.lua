@@ -1,3 +1,10 @@
+mj:log("LOCAL_LUA_DEBUGGER_VSCODE = ", os.getenv("LOCAL_LUA_DEBUGGER_VSCODE"))
+mj:log("LOCAL_LUA_DEBUGGER_FILEPATH = ", os.getenv("LOCAL_LUA_DEBUGGER_FILEPATH"))
+
+if os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1" then
+    loadfile(os.getenv("LOCAL_LUA_DEBUGGER_FILEPATH"))().start()
+end
+
 --- Hammerstone: modManager.lua
 --- @author Witchy
 
@@ -200,14 +207,14 @@ function mod:onload(modManager)
     -- we go through that list to find all of the lua files of the mods in their "patches" folder
     local patchFilesPerPath = {}
 	for _, modsByType in pairs(modManager.enabledModDirNamesAndVersionsByType) do
-        for index, mod in ipairs(modsByType) do 
-            local patchesPath = mod.path .. "/patches"
+        for index, modValue in ipairs(modsByType) do 
+            local patchesPath = modValue.path .. "/patches"
             if fileUtils.isDirectoryAtPath(patchesPath) then
-                recursivelyFindScripts(patchesPath, nil, "scripts", mod.path, patchFilesPerPath)
+                recursivelyFindScripts(patchesPath, nil, "scripts", modValue.path, patchFilesPerPath)
             end
 
-            if mod.name == "hammerstone-framework" then
-                hammerstonePath = mod.path
+            if modValue.name == "hammerstone-framework" then
+                hammerstonePath = modValue.path
             end
         end
 	end
