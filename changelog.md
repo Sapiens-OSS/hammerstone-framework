@@ -68,4 +68,8 @@ The first release of Hammerstone
  - Fixed an issue where the "fill" icon would be the same as the "dig" icon on the wheel
  - Fixed an issue where both inner wheels would show
 
+ # 1.4.2
+
+ - Fixed major issue where Hammerstone Framework wouldn't load if downloaded from steam
+
  # 1.5.0
