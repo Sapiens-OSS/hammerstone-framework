@@ -1,8 +1,8 @@
-mj:log("LOCAL_LUA_DEBUGGER_VSCODE = ", os.getenv("LOCAL_LUA_DEBUGGER_VSCODE"))
-mj:log("LOCAL_LUA_DEBUGGER_FILEPATH = ", os.getenv("LOCAL_LUA_DEBUGGER_FILEPATH"))
+mjrequire "hammerstone/globals" -- by loading it here, every script from now on should be able to use them
 
-if os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1" then
-    loadfile(os.getenv("LOCAL_LUA_DEBUGGER_FILEPATH"))().start()
+local function startDebug()
+    local lldebugger = mjrequire "hammerstone/debug/lldebugger"
+    lldebugger.init("Hammerstone Framework").start()
 end
 
 --- Hammerstone: modManager.lua
@@ -186,6 +186,9 @@ local function applyPatch(path)
 end
 
 function mod:onload(modManager)
+    
+    startDebug()
+    
     -- package.loaders contains a list of functions that "require" uses to load librairies
     -- lua provides 4 default functions to search for librairies
     -- the first is a list of custom loaders per moduleName so we don't want to superced that

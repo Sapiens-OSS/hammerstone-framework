@@ -4,10 +4,12 @@ globals = {
 
     ----- HAMMERSTONE -----
     "Debugger",
-    "loadstring",
-    "package",
+    "getHammerstoneDirectory",
     -----------------------
 
+    "loadstring",
+    "package",
+    
     "mjNoise", -- mjNoise(seed, persistance)
 
     "LuaEnvironment",
