@@ -5,11 +5,13 @@ globals = {
     ----- HAMMERSTONE -----
     "getHammerstoneDirectory",
     "getModDirectory",
-    "hmt",
     -----------------------
 
+    ----- LUA ------
     "loadstring",
     "package",
+    "debug",
+    ----------------
     
     "mjNoise", -- mjNoise(seed, persistance)
 
