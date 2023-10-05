@@ -5,6 +5,9 @@ globals = {
     ----- HAMMERSTONE -----
     "getHammerstoneDirectory",
     "getModDirectory",
+    "hmt",
+    "hmtErrors",
+    "hmtPairsMode",
     -----------------------
 
     ----- LUA ------

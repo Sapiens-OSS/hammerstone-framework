@@ -122,7 +122,7 @@ local function applyPatch(path)
     local newFileContent = fileContent
 
     for _, patchInfos in ipairs(orderedPatchInfos) do
-        --logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
+        logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
 
         -- if the patch mod requests it, save a "before" copy of the file for debug purposes
         if patchInfos.debugCopyBefore then

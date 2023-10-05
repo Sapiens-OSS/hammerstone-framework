@@ -36,19 +36,6 @@ local crashes = false
 
 objectManager.lastFunc = nil
 
-function objectManager:loadObjectDefinitionForConfig(loaderName, config)
-	local loader = objectLoader[loaderName]
-
-	local function errorhandler(error)
-		log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
-		log:schema("ddapi", error)
-		log:schema("ddapi", "--------")
-		log:schema("ddapi", debug.traceback())
-	end
-
-	return xpcall(objectData.loadFunction, errorhandler, self, config)
-end
-
 -- Loads a single object
 -- @param objectData - A table, containing fields from 'objectLoader'
 function objectManager:loadObjectDefinition(objectName, objectData)
@@ -1645,4 +1632,18 @@ function objectManager:tryLoadObjectDefinitions()
 	end
 	]]
 end
+
+function objectManager:loadObjectDefinitionForConfig(loaderName, config)
+	local loader = objectLoader[loaderName]
+
+	local function errorhandler(error)
+		log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
+		log:schema("ddapi", error)
+		log:schema("ddapi", "--------")
+		log:schema("ddapi", debug.traceback())
+	end
+
+	return xpcall(loader.loadFunction, errorhandler, self, config)
+end
+
 return objectManager

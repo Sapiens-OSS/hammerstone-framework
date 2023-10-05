@@ -7,3 +7,4 @@
 /patched/*
 /.vscode/*
 /hammerstone/
+*.todo

@@ -1,491 +1,605 @@
--- Sapiens
-local locale = mjrequire "common/locale"
-
 -- Math
 local mjm = mjrequire "common/mjm"
 local vec2 = mjm.vec2
 local vec3 = mjm.vec3
 local vec4 = mjm.vec4 
 
--- Utils
-local json = mjrequire "hammerstone/utils/json"
-
 ---------------------------------------------------------------
-local hmt = {}
-
--- internal module
-local int = {}
-
--- internal utils module
-local utils = {}
-
-do
-    function utils:coerceToString(value)
-        if value == nil then
-            return "nil"
-        end
-    
-        if type(value) == table then
-            local valueAsString = json:encode(value)
-            local maxStringLen = math.min(20, valueAsString.len)
-            local new_string = ""
-            for i in maxStringLen do
-                new_string = new_string .. valueAsString[i]
-            end
-    
-            return new_string
-        end
-    end
-
-    function utils:coerceToTable(value)
-        if value == nil then
-            return {}
-        end
-        
-        return value
-    end
-end
-
-local function makeMetaTable(parentTable, fieldKey)
-    local mt = {
-        __isHMT = true
-    }
-
-    local function get(t, key)
-        if not key then
-            error("hmt.get -> key is nil")
-        end
-
-        return int:make(t[key], t, key)
-    end
-
-    --- Value tables compatility --
-    do
-        function mt:default(defaultValue)
-            return self
-        end
-
-        function mt:isType(typeName)
-            return typeName == "table"
-        end
-
-        function mt:required()
-            return self
-        end
-
-        function mt:value()
-            return self
-        end
-    end
-
-    --- Getters ---
-    do        
-        function mt:get(key)
-            return get(self, key):required()
-        end
-
-        function mt:getOrNil(key)
-            return get(self, key)
-        end
-
-        local function getValueOfType(t, key, typeName)
-            return get(t, key):required():ofType(typeName)
-        end
-
-        local function getValueOrNilOfType(t, key, typeName)
-            return get(t, key):ofTypeOrNil(typeName)
-        end
-
-        local function getOfType(t, key, typeName)
-            return int:make(getValueOfType(t, key, typeName), t, key)
-        end
-
-        local function getOfTypeOrNil(t, key, typeName)
-            return int:make(getValueOrNilOfType(t, key, typeName), t, key)
-        end
-
-        local fieldTypes = {  "Table", "String", "Number", "Boolean", "Function"}
-
-        for _, fieldType in ipairs(fieldTypes) do
-            mt["get"..fieldType] = function(t, key) return getOfType(t, key, fieldType:lower()) end
-            mt["get"..fieldType.."OrNil"] = function(t, key) return getOfTypeOrNil(t, key, fieldType:lower()) end
-            mt["get"..fieldType.."Value"] = function(t, key) return getValueOfType(t, key, fieldType:lower()) end
-            mt["get"..fieldType.."ValueOrNil"] = function(t, key) return getValueOrNilOfType(t, key, fieldType:lower()) end
-        end
-    end
-
-    --- Utils ---
-    do
-        function mt:isEmpty()
-            return not next(self)
-        end
-
-        function mt:length()
-            local count = 0
-            for k, v in pairs(self) do
-                count = count + 1
-            end
-            return count
-        end
-
-        function mt:hasKey(key)
-            if not key then
-                error("hmt.get -> key is null")
-            end
-
-            return self[key] ~= nil
-        end
-
-        local function estimateTableSize(t)
-            local count = 0
-            for _, value in pairs(t) do
-                if type(value) == "table" then
-                    count = count + estimateTableSize(value)
-                else
-                    count = count + 1
-                end
-            end
-            return count
-        end
-
-        function mt:estimateSize()
-            return estimateTableSize(self)
-        end
-    end
-
-    --- Validation ---
-    do
-        function mt:ofLength(length)
-            if not length then
-                error("htm.ofLength -> length is nil")
-            end
-
-            if length ~= self:length() then
-                error("htm.ofLength -> Table length= " .. self:length() .. " Required Length:" .. tostring(length))
-            end
-
-            return self
-        end
-    end
-
-    --- Casting ---
-    do
-        function mt:asVec2()
-            if self:length() < 2 then
-                error("hmt.asVec2 -> table has too few elements")
-            end
-
-            if self:hasKey("x") and self:hasKey("y") then
-                return vec2(self.x, self.y)
-            else
-                return vec2(self[1], self[2])
-            end
-        end
-
-        function mt:asVec3()
-            if self.length() < 3 then
-                error("hmt.asVec3 -> table has too few elements")
-            end
-
-            if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") then
-                return vec3(self.x, self.y, self.z)
-            else
-                return vec3(self[1], self[2], self[3])
-            end
-        end
-
-        function mt:asVec4()
-            if self.length() < 4 then
-                error("hmt.asVec4 -> table has too few elements")
-            end
-
-            if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") and self:hasKey("w") then
-                return vec4(self.x, self.y, self.z, self.w)
-            else
-                return vec4(self[1], self[2], self[3], self[4])
-            end
-        end
-    end
-
-    --- Table Operations --
-    do
-        local function mergeTables(t1, t2)
-            if not t2 then return t1 end
-
-            for k, v in pairs(t2) do
-                if type(v) == "table" and type(t1[k]) == "table" then
-                    mergeTables(t1[k], t2[k])
-                else
-                    t1[k] = v
-                end
-            end
-        end
-
-        function mt:mergeWith(t)
-            mergeTables(self, t)
-        end
-
-        -- http://lua-users.org/wiki/CopyTable
-        local function deepCopy(orig)
-            local orig_type = type(orig)
-            local copy
-            if orig_type == 'table' then
-                copy = {}
-                for orig_key, orig_value in next, orig, nil do
-                    copy[deepCopy(orig_key)] = deepCopy(orig_value)
-                end
-                setmetatable(copy, deepCopy(getmetatable(orig)))
-            else -- number, string, boolean, etc
-                copy = orig
-            end
-
-            return copy
-        end
-
-        function mt:deepCopy()
-            return int:make(deepCopy(self), self)
-        end
-    end
-
-    --- LINQ type stuff ---
-    do
-        function mt:all(predicate)
-            for i, e in ipairs(self) do
-                if not predicate(e) then return false end 
-            end
-            return true
-        end
-
-        function mt:allPairs(predicate)
-            for k, v in pairs(self) do 
-                if not predicate(k, v) then return false end
-            end
-            return true
-        end
-
-        function mt:where(predicate)
-            local data = {}
-
-            for i, e in ipairs(self) do
-                if predicate(e) then
-                    table.insert(data, e)
-                end
-            end
-
-            return int:make(data, self, fieldKey)
-        end
-
-        function mt:wherePairs(predicate)
-            local data = {}
-
-            for k, v in pairs(self) do 
-                if predicate(k, v) then
-                    data[k] = v
-                end
-            end
-
-            return int:make(data, self, fieldKey)
-        end
-
-        function mt:select(predicate)
-            local data = {}
-
-            for i, e in ipairs(self) do 
-                local value = predicate(e)
-                if value then table.insert(data, value) end
-            end
-
-            return int:make(data, self, fieldKey)
-        end
-
-        function mt:selectPairs(predicate)
-            local data = {}
-
-            for k, v in pairs(self) do 
-                local newK, newV = predicate(k, v)
-                if newK and newV then data[newK] = newV end
-            end
-
-            return int:make(data, self, fieldKey)
-        end
-    end
-
-    return mt
-end
-
-local function makeValueMetatable(value, parentTable, fieldKey)
-    local mt = { 
-        __isHMT = true
-    }
-
-    --- General stuff
-    do
-        function mt:default(defaultValue)
-            if not value then
-                return hmt(defaultValue)
-            end
-
-            return self
-        end
-
-        function mt:isType(typeName)
-            return type(value) == typeName
-        end
-
-        function mt:value() return value end
-    end
-
-    --- Validation ---
-    do
-        function mt:onRequiredFailed()
-            error("hmt.required -> the value is nil")
-        end
-
-        function mt:required()
-            if not value then return self:onRequiredFailed() end
-            return self
-        end
-
-        function mt:ofType(typeName)
-            if type(value) ~= typeName then 
-                error("hmt.ofType -> value is of type "..type(value).." for key "..fieldKey)
-            end
-            return self
-        end
-
-        function mt:ofTypeOrNil(typeName)
-            if value and type(value) ~= typeName then 
-                error("hmt.ofType -> value is of type "..type(value).." for key "..fieldKey)
-            end
-            return self
-        end
-
-        function mt:isInTypeTable(typeTable)
-            if not typeTable[value] then 
-                error("hmt.isInTypeTable -> value "..value.." is not in type table for key "..fieldKey)
-            end
-            return self 
-        end
-
-        function mt:isNotInTypeTable(typeTable)
-            if typeTable[value] then 
-                error("hmt.isNotInTypeTable -> value "..value.." is in type table for key "..fieldKey)
-            end 
-            return self 
-        end
-    end
-
-    --- Casting ---
-    do
-        function mt:asTypeIndexValue(typeTable, displayAlias)
-            if not displayAlias then
-                displayAlias = utils:coerceToString(fieldKey)
-            end
-
-            if not typeTable[value] then
-                error("hmt.asTypeIndexValue -> key "..fieldKey.." is not in type table")
-            else
-                return typeTable[value].index
-            end
-        end
-
-        function mt:asLocalizedString(default)
-            -- The key, which is either user submited, or the default
-            local localKey = value or default
-
-            if localKey then
-                -- Unchecked fetch, returns localized result, or source string.
-                return locale:getUnchecked(localKey)
-            end
-        end
-
-        local function asString(allowNil, coerceNil)
-            local typeName = type(value)
-
-            if typeName == "nil" and allowNil then
-                if coerceNil then return "nil" else return nil end
-            elseif typeName == "string" then return value
-            elseif typeName == "number" then return tostring(value)
-            elseif typeName == "boolean" then return tostring(value)
-            end
-
-            error("hmt->"..debug.getInfo(3, "n").name.." Cannot convert "..fieldKey.." to string")
-        end
-
-        local function asNumber(base, allowNil, coerceNil)
-            local typeName = type(value)
-
-            if typeName == "nil" and allowNil then
-                if coerceNil then return 0 else return nil end
-            elseif typeName == "string" then return tonumber(value, base)
-            elseif typeName == "number" then return value
-            elseif typeName == "boolean" then
-                if value then return 1 else return 0 end
-            end
-
-            error("hmt->"..debug.getInfo(3, "n").name.." Cannot convert "..fieldKey.."to number")
-        end
-
-        local function asBoolean(allowNil, coerceNil)
-            local typeName = type(value)
-
-            if typeName == "nil" and allowNil then
-                if coerceNil then return false else return nil end
-            elseif typeName == "string" then return value == "true"
-            elseif typeName == "number" then return value ~= 0 
-            elseif typeName == "boolean" then return value
-            end
-
-            error("hmt->"..debug.getInfo(3, "n").name.." Cannot convert "..fieldKey.."to boolean")
-        end
-
-        function mt:asStringValue(coerceNil) return asString(false, coerceNil) end
-        function mt:asString(coerceNil) return int:make(asString(false, coerceNil), parentTable, fieldKey) end
-        function mt:asStringValueOrNil(coerceNil) return asString(true, coerceNil) end
-        function mt:asStringOrNil(coerceNil) return int:make(asString(true, coerceNil), parentTable, fieldKey) end
-
-        function mt:asNumberValue(coerceNil, base) return asNumber(base, false, coerceNil) end
-        function mt:asNumber(coerceNil, base) return int:make(asNumber(base, false, coerceNil), parentTable, fieldKey) end
-        function mt:asNumberValueOrNil(coerceNil, base) return asNumber(base, true, coerceNil) end
-        function mt:asNumberOrNil(coerceNil, base) return int:make(asNumber(base, true, coerceNil), parentTable, fieldKey) end
-
-        function mt:asBooleanValue(coerceNil) return asBoolean(false, coerceNil) end
-        function mt:asBoolean(coerceNil) return int:make(asBoolean(false, coerceNil), parentTable, fieldKey) end
-        function mt:asBooleanValueOrNil(coerceNil) return asBoolean(true, coerceNil) end
-        function mt:asBooleanOrNil(coerceNil) return int:make(asBoolean(true, coerceNil), parentTable, fieldKey) end
-    end
-
-    --- LINQ type stuff ---
-    do
-        function mt:with(predicate)
-            return predicate(value)
-        end
-    end
-
-    return mt
-end
-
-function int:make(tblOrValue, parentTable, fieldKey)
-    local mt = tblOrValue and type(tblOrValue) == "table" and getmetatable(tblOrValue)
-
-    if mt and mt.__isHMT then return tblOrValue end
-    
-    if type(tblOrValue) == "table" then
-        mt = makeMetaTable(tblOrValue, parentTable, fieldKey)
-    else
-        mt = makeValueMetatable(tblOrValue, parentTable, fieldKey)
-        tblOrValue = {}
-    end 
-
-    mt.__index = tblOrValue
-    setmetatable(tblOrValue)
-    return tblOrValue
-end
-
-local mt = {
-    __call = function(tblOrValue) return int:make(tblOrValue) end
+-- error codes
+hmtErrors = mj:enum {
+    "RequiredFailed",
+    "ofLengthFailed",
+    "ofTypeTableFailed",
+    "ofTypeFailed",
+    "isInTypeTableFailed", 
+    "isNotInTypeTableFailed", 
+    "NotInTypeTable",
+    "ConversionFailed",
+    "VectorWrongElementsCount",
+    "NotVector",
 }
 
-setmetatable(hmt, mt)
+hmtPairsMode  = mj:enum {
+    "ValuesOnly",
+    "KeysAndValues"
+}
 
-return hmt
+-- default error handler
+local function hmtErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
+    error(string.format("ERROR: [%s] %s", errorCode, msg))
+end 
+
+-- metatables
+local mt = {}
+local valueMt = {}
+
+-- internal Hammerstone Table module
+local hmTable = {}
+do
+    function hmTable:new(tblOrValue, parentTable, key, errorHandler)
+        if tblOrValue and type(tblOrValue) == "table" then
+            local metatable = getmetatable(tblOrValue)
+
+            if metatable then
+                if metatable.__isHMT then return tblOrValue
+                else error("hmt.new -> table already has a metatable. Remove it first") end
+            end
+        end
+        
+        local meta = type(tblOrValue) == "table" and mt or valueMt
+        local tbl = type(tblOrValue) == "table" and tblOrValue or {}
+        local value = tblOrValue
+        errorHandler = errorHandler or hmtErrorHandler
+
+        return setmetatable(tbl, {
+            __index = meta, 
+            __value = value, 
+            __errorHandler = errorHandler, 
+            __parentTable = parentTable, 
+            __key = key, 
+            __isHMT = true
+        })
+    end
+end
+
+-- Global declaration for Hammerstone Tables
+function hmt(tableOrValue, errorHandler) return hmTable:new(tableOrValue, nil, nil, errorHandler) end
+
+-- metatables setup
+do
+    local function init(hmTable_, tblOrValue, parentTable_, fieldKey_, errorHandler_)
+        local meta = getmetatable(hmTable_)
+        local parentTable = parentTable_ or meta.__parentTable
+        local fieldKey = fieldKey_ or meta.__key
+        local errorHandler = errorHandler_ or meta.__errorHandler
+
+        return hmTable:new(tblOrValue, parentTable, fieldKey, errorHandler)
+    end
+
+
+    ----- metatable for tables --------
+    do
+        local function raiseError(hmTable_, errorCode, msg, ...)
+            local meta = getmetatable(hmTable_)
+            local parentTable = meta.__parentTable
+            local fieldKey = meta.__key
+            local errorHandler = meta.__errorHandler
+    
+            if errorHandler then
+                return errorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
+            end
+        end
+
+        local function getField(tbl, key)
+            if not key then
+                error("hmt.get -> key is nil")
+            end
+
+            return init(tbl, tbl[key], tbl, key)
+        end
+
+        --- General stuff
+        do
+            function mt:value()
+                return self
+            end
+
+            function mt:clear()
+                return setmetatable(self, nil)
+            end
+
+            function mt:required()
+                return self
+            end
+
+            function mt:default()
+                return self
+            end
+
+            function mt:ofType(typeName)
+                if typeName ~= "table" then
+                    raiseError(self, hmtErrors.ofTypeTableFailed, "hmt.ofType -> Table is not a "..typeName, typeName)
+                else
+                    return self
+                end
+            end
+        end
+
+        --- Getters ---
+        do        
+            function mt:get(key)
+                return getField(self, key):required()
+            end
+
+            function mt:getOrNil(key)
+                return getField(self, key)
+            end
+
+            local function getValueOfType(tbl, key, typeName)
+                return getField(tbl, key):required():ofType(typeName):value()
+            end
+
+            local function getValueOrNilOfType(tbl, key, typeName)
+                return getField(tbl, key):ofTypeOrNil(typeName):value()
+            end
+
+            local function getOfType(tbl, key, typeName)
+                return getField(tbl, key):required():ofType(typeName)
+            end
+
+            local function getOfTypeOrNil(tbl, key, typeName)
+                return getField(tbl, key):ofTypeOrNil(typeName)
+            end
+
+            local fieldTypes = {  "Table", "String", "Number", "Boolean", "Function"}
+
+            for _, fieldType in ipairs(fieldTypes) do
+                mt["get"..fieldType] = function(tbl,  key) return getOfType(tbl, key, fieldType:lower()) end
+                mt["get"..fieldType.."OrNil"] = function(tbl,  key) return getOfTypeOrNil(tbl, key, fieldType:lower()) end
+                mt["get"..fieldType.."Value"] = function(tbl,  key) return getValueOfType(tbl, key, fieldType:lower()) end
+                mt["get"..fieldType.."ValueOrNil"] = function(tbl,  key) return getValueOrNilOfType(tbl, key, fieldType:lower()) end
+            end
+        end
+
+        --- Utils ---
+        do
+            function mt:isEmpty()
+                return not next(self)
+            end
+
+            function mt:length()
+                local count = 0
+                for k, v in pairs(self) do
+                    count = count + 1
+                end
+                return count
+            end
+
+            function mt:hasKey(key)
+                if not key then
+                    error("hmt.get -> key is null")
+                end
+
+                return self[key] ~= nil
+            end
+
+            local function estimateTableSize(t)
+                local count = 0
+                for _, value in pairs(t) do
+                    if type(value) == "table" then
+                        count = count + estimateTableSize(value)
+                    else
+                        count = count + 1
+                    end
+                end
+                return count
+            end
+
+            function mt:estimateSize()
+                return estimateTableSize(self)
+            end
+        end
+
+        --- Validation ---
+        do
+            function mt:ofLength(length)
+                if not length then
+                    error("htm.ofLength -> length is nil")
+                end
+
+                if length == self:length() then
+                    return self
+                end
+
+                return raiseError(self, hmtErrors.ofLengthFailed, "hmt.ofLength -> Table is of length= " .. self:length() .. ". Required Length:" .. tostring(length), length)
+            end
+        end
+
+        --- Casting ---
+        do
+            function mt:asVec2()
+                if self:length() < 2 then
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec2 -> Table has too few elements", 2)
+                end
+
+                if self:hasKey("x") and self:hasKey("y") then
+                    return vec2(self.x, self.y)
+                elseif self:hasKey(1) and self:hasKey(2) then
+                    return vec2(self[1], self[2])
+                else
+                    return raiseError(self, hmtErrors.NotVector, "Could not build vector")
+                end
+            end
+
+            function mt:asVec3()
+                if self:length() < 3 then
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 3)
+                end
+
+                if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") then
+                    return vec3(self.x, self.y, self.z)
+                elseif self:hasKey(1) and self:hasKey(2) and self:hasKey(3) then
+                    return vec3(self[1], self[2], self[3])
+                else
+                    return raiseError(self, hmtErrors.NotVector, "Could not build vector")
+                end
+            end
+
+            function mt:asVec4()
+                if self:length() < 4 then
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 4)
+                end
+
+                if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") and self:hasKey("w") then
+                    return vec4(self.x, self.y, self.z, self.w)
+                elseif self:hasKey(1) and self:hasKey(2) and self:hasKey(3) and self:hasKey(4) then
+                    return vec4(self[1], self[2], self[3], self[4])
+                else
+                    return raiseError(self, hmtErrors.NotVector, "Could not build vector")
+                end
+            end
+
+            function mt:asTypeIndex(typeTable, displayAlias)
+                local indexArray = {}
+
+                for k in pairs(self) do
+                    local index = self:getString(k):asTypeIndex(typeTable, displayAlias)
+                    if index then
+                        table.insert(indexArray, index)
+                    end
+                end
+
+                return indexArray
+            end
+        end
+
+        --- Table Operations --
+        do
+            local function mergeTables(t1, t2)
+                if not t2 then return t1 end
+
+                for k, v in pairs(t2) do
+                    if type(v) == "table" and type(t1[k]) == "table" then
+                        mergeTables(t1[k], t2[k])
+                    else
+                        t1[k] = v
+                    end
+                end
+            end
+
+            function mt:mergeWith(t)
+                return mergeTables(self, t)
+            end
+
+            -- http://lua-users.org/wiki/CopyTable
+            local function deepCopy(orig)
+                local orig_type = type(orig)
+                local copy
+                if orig_type == 'table' then
+                    copy = {}
+                    for orig_key, orig_value in next, orig, nil do
+                        copy[deepCopy(orig_key)] = deepCopy(orig_value)
+                    end
+                    setmetatable(copy, deepCopy(getmetatable(orig)))
+                else -- number, string, boolean, etc
+                    copy = orig
+                end
+
+                return copy
+            end
+
+            function mt:deepCopy()
+                return init(self, deepCopy(self))
+            end
+        end
+
+        --- LINQ type stuff ---
+        do
+            function mt:all(predicate, valuesToHMT)
+                for i, e in ipairs(self) do
+                    if not predicate(valuesToHMT and init(self, e) or e) then return false end 
+                end
+                return true
+            end
+
+            --- Returns true if all pairs satisfy the predicate
+            --- @param predicate: predicate function to evaluate
+            --- @param pairsToHMT: Indicates if the pairs should be passed as hmt to the predicate
+            ---                     0 or nil:   no HMT
+            ---                     1:          values only
+            ---                     2:          keys and values
+            function mt:allPairs(predicate, pairsToHMT)
+                pairsToHMT = pairsToHMT or 0 
+
+                for k, v in pairs(self) do 
+                    if not predicate(pairsToHMT > 1 and init(self, k) or k, pairsToHMT > 0 and init(self, v) or v) then return false end
+                end
+                return true
+            end
+
+            function mt:where(predicate, valuesToHMT, resultToHMT)
+                local data = {}
+
+                for i, e in ipairs(self) do
+                    local valueHMT = init(self, e)
+                    if predicate(valuesToHMT and valueHMT or valueHMT:value()) then
+                        table.insert(data, resultToHMT and valueHMT or valueHMT:value())
+                    end
+                end
+
+                return init(self, data)
+            end
+
+            function mt:wherePairs(predicate, pairsToHMT, resultToHMT)
+                local data = {}
+                pairsToHMT = pairsToHMT or 0 
+
+                for k, v in pairs(self) do 
+                    local kHMT = init(self, k)
+                    local vHMT = init(self, v)
+
+                    if predicate(pairsToHMT > 1 and kHMT or kHMT:value(), pairsToHMT > 0 and vHMT or vHMT:value()) then
+                        data[resultToHMT > 1 and kHMT or kHMT:value()] = resultToHMT > 0 and vHMT or vHMT:value()
+                    end
+                end
+
+                return init(self, data)
+            end
+
+            function mt:select(predicate, valuesToHMT)
+                local data = {}
+
+                for i, e in ipairs(self) do 
+                    local valueHMT = init(self, e)
+                    local result = predicate(valuesToHMT and valueHMT or valueHMT:value())
+                    if result then table.insert(data, result) end
+                end
+
+                return init(self, data)
+            end
+
+            function mt:selectPairs(predicate, pairsToHMT)
+                local data = {}
+
+                for k, v in pairs(self) do 
+                    local kHMT = init(self, k)
+                    local vHMT = init(self, v)
+
+                    local newK, newV = predicate(pairsToHMT > 1 and kHMT or kHMT:value(), pairsToHMT > 0 and vHMT or vHMT:value())
+                    if newK and newV then data[newK] = newV end
+                end
+
+                return init(self, data)
+            end
+
+            function mt:with(predicate)
+                return init(self, predicate(self))
+            end
+        end
+    end
+
+    ------- metatable for Value Table ----------
+    do
+        local function getValue(hmTable_)
+            return getmetatable(hmTable_).__value
+        end
+
+        local function getMetaValues(hmTable_)
+            local meta = getmetatable(hmTable_)
+
+            return meta.__value, meta.__parentTable, meta.__key, meta.__errorHandler
+        end
+
+        local function raiseError(hmTable_, errorCode, msg, ...)
+            local value, parentTable, fieldKey, errorHandler = getMetaValues(hmTable_)
+    
+            if errorHandler then
+                fieldKey = fieldKey or value
+
+                if fieldKey then
+                    msg = msg .. " for key "..fieldKey
+                end
+    
+                if parentTable then
+                    msg = msg .. " in table:\r\n"..mj:tostring(parentTable)
+                end
+
+                return errorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
+            end
+        end
+
+
+        --- General stuff
+        do
+            function valueMt:default(defaultValue)
+                local value = self:value()
+
+                if not value then
+                    return init(self, defaultValue)
+                end
+
+                return self
+            end
+
+            function valueMt:isType(typeName)
+                return type(getValue()) == typeName
+            end
+
+            function valueMt:value() return getValue(self) end
+        end
+
+        --- Validation ---
+        do
+            function valueMt:required()
+                local value = self:value()
+
+                if not value then 
+                    return raiseError(self, hmtErrors.RequiredFailed, "hmt.require -> The value is nil") 
+                else
+                    return self
+                end
+            end
+
+            function valueMt:ofType(typeName)
+                local value = self:value()
+
+                if type(value) ~= typeName then 
+                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
+                else
+                    return self
+                end
+            end
+
+            function valueMt:ofTypeOrNil(typeName)
+                local value = self:value()
+
+                if value and type(value) ~= typeName then 
+                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
+                else
+                    return self
+                end                
+            end
+
+            function valueMt:isInTypeTable(typeTable, displayAlias)
+                local value, _, fieldKey = getMetaValues(self)
+                displayAlias = displayAlias or fieldKey
+
+                if not typeTable[value] then 
+                    return raiseError(self, hmtErrors.isInTypeTableFailed, string.format("hmt.isInTypeTable -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                else
+                    return self
+                end         
+            end
+
+            function valueMt:isNotInTypeTable(typeTable, displayAlias)
+                local value, _, fieldKey = getMetaValues(self)
+                displayAlias = displayAlias or fieldKey
+
+                if typeTable[value] then 
+                    return raiseError(self, hmtErrors.isNotInTypeTableFailed, string.format("hmt.isNotInTypeTable -> Value '%s' is already in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                else
+                    return self
+                end
+            end
+        end
+
+        --- Casting ---
+        do
+            function valueMt:asTypeIndex(typeTable, displayAlias)
+                local value, _, fieldKey = getMetaValues(self)
+
+                if value then
+                    displayAlias = displayAlias or fieldKey
+
+                    if not typeTable[value] then
+                        return raiseError(self, hmtErrors.NotInTypeTable, string.format("hmt.asTypeIndex -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                    else
+                        return typeTable[value].index
+                    end
+                end
+            end
+
+            function valueMt:asLocalizedString(default)
+                -- The key, which is either user submited, or the default
+                local localKey = getValue(self) or default
+
+                if localKey then
+                    -- Unchecked fetch, returns localized result, or source string.
+                    local locale = mjrequire "common/locale"
+                    return locale:getUnchecked(localKey)
+                end
+            end
+
+            local function asString(t, allowNil, coerceNil)
+                local value = getValue(t)
+                local typeName = type(value)
+
+                if typeName == "nil" and allowNil then
+                    if coerceNil then return "nil" else return nil end
+                elseif typeName == "string" then return value
+                elseif typeName == "number" then return tostring(value)
+                elseif typeName == "boolean" then return tostring(value)
+                else 
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to string", debug.getinfo(3, "n").name, value), "string", allowNil)
+                end
+            end
+
+            local function asNumber(t, base, allowNil, coerceNil)
+                local value = getValue(t)
+                local typeName = type(value)
+
+                if typeName == "nil" and allowNil then
+                    if coerceNil then return 0 else return nil end
+                elseif typeName == "string" then return tonumber(value, base)
+                elseif typeName == "number" then return value
+                elseif typeName == "boolean" then
+                    if value then return 1 else return 0 end
+                else
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to number", debug.getinfo(3, "n").name, value), "number", allowNil)
+                end
+            end
+
+            local function asBoolean(t, allowNil, coerceNil)
+                local value = getValue(t)
+                local typeName = type(value)
+
+                if typeName == "nil" and allowNil then
+                    if coerceNil then return false else return nil end
+                elseif typeName == "string" then return value == "true"
+                elseif typeName == "number" then return value ~= 0 
+                elseif typeName == "boolean" then return value
+                else
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to boolean", debug.getinfo(3, "n").name, value), "boolean", allowNil)
+                end
+            end
+
+            function valueMt:asStringValue(coerceNil) return asString(self, false, coerceNil) end
+            function valueMt:asString(coerceNil) return init(self, asString(self, false, coerceNil)) end
+            function valueMt:asStringValueOrNil(coerceNil) return asString(self, true, coerceNil) end
+            function valueMt:asStringOrNil(coerceNil) return init(self, asString(self, true, coerceNil)) end
+
+            function valueMt:asNumberValue(coerceNil, base) return asNumber(self, base, false, coerceNil) end
+            function valueMt:asNumber(coerceNil, base) return init(self, asNumber(self, base, false, coerceNil)) end
+            function valueMt:asNumberValueOrNil(coerceNil, base) return asNumber(self, base, true, coerceNil) end
+            function valueMt:asNumberOrNil(coerceNil, base) return init(self, asNumber(self, base, true, coerceNil)) end
+
+            function valueMt:asBooleanValue(coerceNil) return asBoolean(self, false, coerceNil) end
+            function valueMt:asBoolean(coerceNil) return init(self, asBoolean(self, false, coerceNil)) end
+            function valueMt:asBooleanValueOrNil(coerceNil) return asBoolean(self, true, coerceNil) end
+            function valueMt:asBooleanOrNil(coerceNil) return init(self, asBoolean(self, true, coerceNil)) end
+        end
+
+        --- LINQ type stuff ---
+        do
+            function valueMt:with(predicate)
+                local value = self:value()
+                if value then
+                    return init(self, predicate(value))
+                end
+            end
+        end
+
+    end
+end
+
+return {} -- This is so mod manager doesn't freak out about not returning an object 
