@@ -6,6 +6,7 @@ local objectUtils = {}
 
 -- Hammestone
 local log = mjrequire "hammerstone/logging"
+local utils = mjrequire "hammerstone/utils/utils"
 
 local runOnceGuards = {}
 --- Guards against the same code being run multiple times.
@@ -18,24 +19,39 @@ function objectUtils:runOnceGuard(id)
 	return true
 end
 
-function objectUtils:debug(identifier, config, tbl)
-	if config.debug then
-		log:schema("ddapi", "DEBUGGING: " .. identifier)
-		log:schema("ddapi", "Config:")
-		log:schema("ddapi", config)
-		log:schema("ddapi", "Output:")
-		log:schema("ddapi", tbl)
+--- Returns the type, or nil if not found. Logs error.
+-- @param tbl The table where the key can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" which will be cast to type.
+function objectUtils:getType(tbl, key, displayAlias)
+	if displayAlias == nil then
+		displayAlias = tostring(key)
 	end
+
+	if tbl[key] ~= nil then
+			return tbl[key]   
+	end
+	return objectUtils:logMissing(displayAlias, key, tbl)
 end
 
-------------------------------------------------------------------------------------------------
--- Logs
-------------------------------------------------------------------------------------------------
+
+--- Returns the index of a type, or nil if not found.
+-- @param tbl The table where the index can be found in. e.g., gameObject.types
+-- @param key The key such as "inca:rat_skull" where which will be cast to type.
+function objectUtils:getTypeIndex(tbl, key, displayAlias)
+	if displayAlias == nil then
+		displayAlias = tostring(key)
+	end
+	
+	if tbl[key] ~= nil then
+		return tbl[key].index
+	end
+	return objectUtils:logMissing(displayAlias, key, tbl)
+end
 
 local logMissingTables = {}
 function objectUtils:logMissing(displayAlias, key, tbl)
 	if logMissingTables[tbl] == nil then
-		self.errorCount = self.errorCount + 1
+
 		table.insert(logMissingTables, tbl)
 
 		if key == nil then
@@ -57,19 +73,18 @@ function objectUtils:logMissing(displayAlias, key, tbl)
 	end
 end
 
-function objectUtils:logExisting(displayAlias, key, tbl)
-	self.errorCount = self.errorCount + 1
-	log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. key .. "'")
-end
-
-function objectUtils:logWrongType(key, typeName)
-	self.errorCount = self.errorCount + 1
-	log:schema("ddapi", "    ERROR: key='" .. key .. "' should be of type '" .. typeName .. "', not '" .. type(key) .. "'")
-end
-
 function objectUtils:logNotImplemented(featureName)
-	self.errorCount = self.errorCount + 1
 	log:schema("ddapi", "    WARNING: " .. featureName .. " is used but it is yet to be implemented")
+end
+
+function objectUtils:debug(identifier, config, tbl)
+	if config.debug then
+		log:schema("ddapi", "DEBUGGING: " .. identifier)
+		log:schema("ddapi", "Config:")
+		log:schema("ddapi", config)
+		log:schema("ddapi", "Output:")
+		log:schema("ddapi", tbl)
+	end
 end
 
 return objectUtils

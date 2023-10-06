@@ -42,7 +42,10 @@ do
 
             if metatable then
                 if metatable.__isHMT then return tblOrValue
-                else error("hmt.new -> table already has a metatable. Remove it first") end
+                else 
+                    setmetatable(tblOrValue, nil)
+                    --error("hmt.new -> table already has a metatable. Remove it first") 
+                end
             end
         end
         
@@ -100,7 +103,7 @@ do
 
         --- General stuff
         do
-            function mt:value()
+            function mt:getValue()
                 return self
             end
 
@@ -123,6 +126,14 @@ do
                     return self
                 end
             end
+
+            function mt:ofTypeOrNil(typeName)
+                if typeName ~= "table" then
+                    raiseError(self, hmtErrors.ofTypeTableFailed, "hmt.ofType -> Table is not a "..typeName, typeName)
+                else
+                    return self
+                end
+            end
         end
 
         --- Getters ---
@@ -136,11 +147,11 @@ do
             end
 
             local function getValueOfType(tbl, key, typeName)
-                return getField(tbl, key):required():ofType(typeName):value()
+                return getField(tbl, key):required():ofType(typeName):getValue()
             end
 
             local function getValueOrNilOfType(tbl, key, typeName)
-                return getField(tbl, key):ofTypeOrNil(typeName):value()
+                return getField(tbl, key):ofTypeOrNil(typeName):getValue()
             end
 
             local function getOfType(tbl, key, typeName)
@@ -285,6 +296,8 @@ do
                         t1[k] = v
                     end
                 end
+
+                return t1
             end
 
             function mt:mergeWith(t)
@@ -342,8 +355,8 @@ do
 
                 for i, e in ipairs(self) do
                     local valueHMT = init(self, e)
-                    if predicate(valuesToHMT and valueHMT or valueHMT:value()) then
-                        table.insert(data, resultToHMT and valueHMT or valueHMT:value())
+                    if predicate(valuesToHMT and valueHMT or valueHMT:getValue()) then
+                        table.insert(data, resultToHMT and valueHMT or valueHMT:getValue())
                     end
                 end
 
@@ -358,8 +371,8 @@ do
                     local kHMT = init(self, k)
                     local vHMT = init(self, v)
 
-                    if predicate(pairsToHMT > 1 and kHMT or kHMT:value(), pairsToHMT > 0 and vHMT or vHMT:value()) then
-                        data[resultToHMT > 1 and kHMT or kHMT:value()] = resultToHMT > 0 and vHMT or vHMT:value()
+                    if predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue()) then
+                        data[resultToHMT > 1 and kHMT or kHMT:getValue()] = resultToHMT > 0 and vHMT or vHMT:getValue()
                     end
                 end
 
@@ -371,7 +384,7 @@ do
 
                 for i, e in ipairs(self) do 
                     local valueHMT = init(self, e)
-                    local result = predicate(valuesToHMT and valueHMT or valueHMT:value())
+                    local result = predicate(valuesToHMT and valueHMT or valueHMT:getValue())
                     if result then table.insert(data, result) end
                 end
 
@@ -385,7 +398,7 @@ do
                     local kHMT = init(self, k)
                     local vHMT = init(self, v)
 
-                    local newK, newV = predicate(pairsToHMT > 1 and kHMT or kHMT:value(), pairsToHMT > 0 and vHMT or vHMT:value())
+                    local newK, newV = predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue())
                     if newK and newV then data[newK] = newV end
                 end
 
@@ -432,7 +445,7 @@ do
         --- General stuff
         do
             function valueMt:default(defaultValue)
-                local value = self:value()
+                local value = self:getValue()
 
                 if not value then
                     return init(self, defaultValue)
@@ -445,13 +458,13 @@ do
                 return type(getValue()) == typeName
             end
 
-            function valueMt:value() return getValue(self) end
+            function valueMt:getValue() return getValue(self) end
         end
 
         --- Validation ---
         do
             function valueMt:required()
-                local value = self:value()
+                local value = self:getValue()
 
                 if not value then 
                     return raiseError(self, hmtErrors.RequiredFailed, "hmt.require -> The value is nil") 
@@ -461,7 +474,7 @@ do
             end
 
             function valueMt:ofType(typeName)
-                local value = self:value()
+                local value = self:getValue()
 
                 if type(value) ~= typeName then 
                     return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
@@ -471,7 +484,7 @@ do
             end
 
             function valueMt:ofTypeOrNil(typeName)
-                local value = self:value()
+                local value = self:getValue()
 
                 if value and type(value) ~= typeName then 
                     return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
@@ -505,6 +518,45 @@ do
 
         --- Casting ---
         do
+            local function getVectorType(vector)
+                return tonumber(tostring(vector):gmatch("vec(%d)")())
+            end
+
+            function valueMt:asVec2()
+                local value = self:required():ofType("cdata"):getValue()
+
+                local vectorType = getVectorType(value)
+
+                return switch(vectorType) : caseof {
+                    [2] = function() return value end,
+                    default = function() return vec2(value.x, value.y) end
+                }
+            end
+
+            function valueMt:asVec3()
+                local value = self:required():ofType("cdata"):getValue()
+
+                local vectorType = getVectorType(value)
+
+                return switch(vectorType) : caseof {
+                    [2] = function() return vec3(value.x, value.y, 0) end,
+                    [3] = function() return value end,
+                    [4] = function() return vec3(value.x, value.y, value.z) end
+                }
+            end
+
+            function valueMt:asVec4()
+                local value = self:required():ofType("cdata"):getValue()
+
+                local vectorType = getVectorType(value)
+
+                return switch(vectorType) : caseof {
+                    [2] = function() return vec4(value.x, value.y, 0, 0) end,
+                    [3] = function() return vec4(value.x, value.y, value.z, 0) end,
+                    [4] = function() return value end
+                }
+            end
+
             function valueMt:asTypeIndex(typeTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
 
@@ -592,10 +644,8 @@ do
         --- LINQ type stuff ---
         do
             function valueMt:with(predicate)
-                local value = self:value()
-                if value then
-                    return init(self, predicate(value))
-                end
+                local value = self:getValue()
+                return init(self, predicate(value))
             end
         end
 
