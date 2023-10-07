@@ -40,11 +40,11 @@ local configLoader = {
 			luaGetter = "getSkillConfigs",
 			configFiles = {},
 		}, 
-		--[[plannableAction = {
+		plannableAction = {
 			key = "plannableAction",
 			configPath = "/hammerstone/plannableActions", 
 			configFiles = {},
-		}]]
+		}
 	},
 
 	cachedSharedGlobalDefinitions = {}

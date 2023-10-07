@@ -1650,8 +1650,6 @@ local objectLoaders = {
 		loadFunction = objectManager.handleResourceGroups
 	},
 
-	--[[
-
 	plan = {
 		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
@@ -1718,7 +1716,7 @@ local objectLoaders = {
 		}, 
 		loadFunction = objectManager.generateActionModifier
 	},
-]]
+	
 	---------------------------------------------------------------------------------
 	-- Shared Configs
 	---------------------------------------------------------------------------------

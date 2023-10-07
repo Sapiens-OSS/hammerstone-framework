@@ -1,0 +1,3 @@
+function planManager:updateImpossibleStateForStorageAvailibilityChange(storageAreaTribeID, objectID, objectTypeIndex, isNewlyAvailable)
+    updateImpossibleStateForStorageAvailibilityChangeInternal(storageAreaTribeID, objectID, objectTypeIndex, isNewlyAvailable)
+end
