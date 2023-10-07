@@ -8,6 +8,7 @@ globals = {
     "hmt",
     "hmtErrors",
     "hmtPairsMode",
+    "switch",
     -----------------------
 
     ----- LUA ------

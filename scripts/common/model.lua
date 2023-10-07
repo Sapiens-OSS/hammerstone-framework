@@ -2,7 +2,7 @@
 --- @author SirLich
 
 -- Hammerstone: 
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local objectManager = mjrequire "hammerstone/ddapi/objectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 local mod = {

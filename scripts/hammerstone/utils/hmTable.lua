@@ -98,7 +98,7 @@ do
                 error("hmt.get -> key is nil")
             end
 
-            return init(tbl, tbl[key], tbl, key)
+            return init(tbl, rawget(tbl, key), tbl, key)
         end
 
         --- General stuff
@@ -107,8 +107,17 @@ do
                 return self
             end
 
+            local function clearTable(t)
+                for k, v in pairs(t) do 
+                    if type(k) == "table" then clearTable(k) end 
+                    if type(v) == "table" then clearTable(v) end
+                end
+
+                return setmetatable(t, nil)
+            end
+
             function mt:clear()
-                return setmetatable(self, nil)
+                return clearTable(self)
             end
 
             function mt:required()
@@ -133,6 +142,10 @@ do
                 else
                     return self
                 end
+            end
+
+            function mt:isNil()
+                return false
             end
         end
 
@@ -286,6 +299,16 @@ do
 
         --- Table Operations --
         do
+            -- inject all of "table"'s functions into ourselves
+            -- so we can do hmt:insert(item), etc 
+            for k, v in pairs(table) do 
+                mt[k] = v
+            end
+
+            function mt:contains(value)
+                return self:first(function(v) return v==value end)
+            end
+
             local function mergeTables(t1, t2)
                 if not t2 then return t1 end
 
@@ -304,6 +327,7 @@ do
                 return mergeTables(self, t)
             end
 
+            --[[
             -- http://lua-users.org/wiki/CopyTable
             local function deepCopy(orig)
                 local orig_type = type(orig)
@@ -321,13 +345,51 @@ do
                 return copy
             end
 
+             It doesn't seem to work. Need to investigate
             function mt:deepCopy()
                 return init(self, deepCopy(self))
             end
+            ]]
         end
 
         --- LINQ type stuff ---
         do
+            function mt:count(predicate, valuesToHMT)
+                local count = 0 
+                for i, e in ipairs(self) do
+                    if predicate(valuesToHMT and init(self, e) or e) then count = count + 1 end
+                end
+                return count
+            end
+
+            function mt:first(predicate, valuesToHMT)
+                for i, e in ipairs(self) do
+                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e) end
+                end
+                return hmt(self, nil)
+            end
+
+            function mt:firstOrDefault(predicate, defaultValue, valuesToHMT)
+                for i, e in ipairs(self) do
+                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e) end
+                end
+                return hmt(self, defaultValue)
+            end
+
+            function mt:last(predicate, valuesToHMT)
+                for i = #self, 1 do 
+                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]) end
+                end
+                return hmt(self, nil)
+            end
+
+            function mt:lastOrDefault(predicate, defaultValue, valuesToHMT)
+                for i = #self, 1 do 
+                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]) end
+                end
+                return hmt(self, defaultValue)
+            end
+            
             function mt:all(predicate, valuesToHMT)
                 for i, e in ipairs(self) do
                     if not predicate(valuesToHMT and init(self, e) or e) then return false end 
@@ -408,6 +470,14 @@ do
             function mt:with(predicate)
                 return init(self, predicate(self))
             end
+
+            function mt:toLookup()
+                local data = {}
+                for k, v in pairs(self) do 
+                    data[v] = k
+                end
+                return init(self, data)
+            end
         end
     end
 
@@ -447,11 +517,15 @@ do
             function valueMt:default(defaultValue)
                 local value = self:getValue()
 
-                if not value then
+                if value == nil then
                     return init(self, defaultValue)
                 end
 
                 return self
+            end
+
+            function valueMt:isNil()
+                return getValue() == nil
             end
 
             function valueMt:isType(typeName)
@@ -592,7 +666,7 @@ do
                 elseif typeName == "number" then return tostring(value)
                 elseif typeName == "boolean" then return tostring(value)
                 else 
-                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to string", debug.getinfo(3, "n").name, value), "string", allowNil)
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to string", debug.getinfo(2, "n").name, value), "string", allowNil)
                 end
             end
 
@@ -607,7 +681,7 @@ do
                 elseif typeName == "boolean" then
                     if value then return 1 else return 0 end
                 else
-                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to number", debug.getinfo(3, "n").name, value), "number", allowNil)
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to number", debug.getinfo(2, "n").name, value), "number", allowNil)
                 end
             end
 
@@ -621,7 +695,7 @@ do
                 elseif typeName == "number" then return value ~= 0 
                 elseif typeName == "boolean" then return value
                 else
-                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to boolean", debug.getinfo(3, "n").name, value), "boolean", allowNil)
+                    return raiseError(t, hmtErrors.ConversionFailed, string.format("hmt.%s -> Cannot convert value '%s' to boolean", debug.getinfo(2, "n").name, value), "boolean", allowNil)
                 end
             end
 

@@ -20,109 +20,16 @@ local mat3Rotate = mjm.mat3Rotate
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
-local utils = mjrequire "hammerstone/object/objectUtils"
+local utils = mjrequire "hammerstone/ddapi/objectUtils"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local configLoader = mjrequire "hammerstone/object/configLoader"
+local configLoader = mjrequire "hammerstone/ddapi/configLoader"
 local hammerAPI = mjrequire "hammerAPI"
-local logicManager = mjrequire "hammerstone/logic/logicManager"
 mjrequire "hammerstone/utils/hmTable"
 
 hammerAPI:test()
 
----------------------------------------------------------------------------------
--- Globals
----------------------------------------------------------------------------------
-
 -- Whether to crash (for development), or attempt to recover (for release).
 local crashes = true
-
--- Error handler for hmTables
-local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
-
-	switch(errorCode) : caseof {
-		[hmtErrors.ofLengthFailed] = function()
-			local requiredLength = arg[1]
-			log:schema("ddapi", "    ERROR: Value of key '" .. fieldKey .. "' requires " .. requiredLength .. " elements")
-		end,
-
-		[hmtErrors.ofTypeFailed] = function() log:schema("ddapi", "    ERROR: key='" .. fieldKey .. "' should be of type '" .. arg[1] .. "', not '" .. type(fieldKey) .. "'") end,
-
-		[hmtErrors.ofTypeTableFailed] = function() return log:schema("ddapi", "    ERROR: Value type of key '" .. fieldKey .. "' is a table") end,
-
-		[hmtErrors.RequiredFailed] = function()
-			log:schema("ddapi", "    ERROR: Missing required field: " .. fieldKey .. " in table: ")
-			log:schema("ddapi", parentTable)
-			os.exit(1)
-		end,
-
-		[hmtErrors.isNotInTypeTableFailed] = function() 
-			local displayAlias = arg[2]
-			log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. parentTable[fieldKey] .. "'") 
-		end,
-
-		[hmtErrors.isInTypeTableFailed] = function()
-			local tbl = arg[1]
-			local displayAlias = arg[2]
-
-			utils:logMissing(displayAlias, parentTable[fieldKey], tbl)
-		end,
-
-		[hmtErrors.VectorWrongElementsCount] = function() 
-			local vecType = arg[1]
-			log:schema("ddapi", "    ERROR: Not enough elements in table to make vec"..vecType.." for table with key '"..fieldKey.."'")
-			log:schema("ddapi", "Table: ",  parentTable)
-		end,
-
-		[hmtErrors.NotVector] = function()
-			local vecType = arg[1]
-			log:schema("ddapi", "    ERROR: Not able to convert to vec"..vecType.." with infos from table with key '"..fieldKey.."'")
-			log:schema("ddapi", "Table: ", parentTable)
-		end,
-
-		default = function() log:schema("ddapi", "ERROR: ", msg) end
-	}
-end
-
-
--- Loads a single object
--- @param objectData - A table, containing fields from 'objectLoader'
-function objectManager:loadObjectDefinition(objectName, objectData)
-	log:schema("ddapi", string.format("\n\nGenerating %s definitions:", objectName))
-	local configs = configLoader:fetchRuntimeCompatibleConfigs(objectData)
-	log:schema("ddapi", "Available Configs: " .. #configs)
-
-
-	if configs == nil or #configs == 0 then
-		log:schema("ddapi", "  (no objects of this type created)")
-		return
-	end
-
-	local function errorhandler(errorMsg)
-		log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectName)
-		log:schema("ddapi", errorMsg)
-		log:schema("ddapi", "--------")
-		log:schema("ddapi", debug.traceback())
-		
-		if crashes then
-			os.exit()
-		end
-	end
-
-	for i, config in ipairs(configs) do
-		if config then
-			if config.disabled == true then
-				log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectName)
-			else
-				config = hmt(config, ddapiErrorHandler)
-				xpcall(objectData.loadFunction, errorhandler, self, config)
-				config:clear()
-			end
-
-		else
-			log:schema("ddapi", "WARNING: Attempting to generate nil " .. objectName)
-		end
-	end
-end
 
 ----------------------------
 -- utils for locale
@@ -195,17 +102,17 @@ do
 		return inner
 	end
 
-	function objectManager:generateModelPlaceholder(config)
+	function objectManager:generateModelPlaceholder(objDef)
 		-- Modules
 		local modelPlaceholderModule = moduleManager:get("modelPlaceholder")
 		local resourceModule = moduleManager:get("resource")
 
 		-- Setup
-		local description = config:getTable("description")
+		local description = objDef:getTable("description")
 		local identifier = description:getStringValue("identifier")
 
 		-- Components
-		local components = config:getTable("components")
+		local components = objDef:getTable("components")
 		local buildableComponent = components:getTableOrNil("hs_buildable")
 		local objectComponent = components:getTableOrNil("hs_object")
 		
@@ -261,7 +168,7 @@ do
 			end
 		):clear() -- Calling clear() converts it back to a regular non hmt table
 
-		utils:debug(identifier, config, modelPlaceholderData)
+		utils:debug(identifier, objDef, modelPlaceholderData)
 		modelPlaceholderModule:addModel(modelName, modelPlaceholderData)
 
 		return modelPlaceholderData
@@ -273,7 +180,7 @@ end
 -- Custom Model
 ---------------------------------------------------------------------------------
 
-function objectManager:generateCustomModelDefinition(modelRemap)
+function objectManager:generateCustomModel(modelRemap)
 	-- Modules
 	local modelModule = moduleManager:get("model")
 
@@ -307,7 +214,7 @@ local function getResources(e)
 	local groupType =  e:getStringOrNil("resource_group"):asTypeIndex(resourceModule.groups)
 
 	-- Get the count
-	local count = e:getNumberOrNil("count"):default(1):getValue()
+	local count = e:getOrNil("count"):asNumberOrNil():default(1):getValue()
 
 	if e:hasKey("action") then
 		
@@ -348,7 +255,7 @@ local function getBuildModelName(objectComponent, craftableComponent)
 	return false
 end
 
-function objectManager:generateBuildableDefinition(config)
+function objectManager:generateBuildable(objDef)
 	-- Modules
 	local buildableModule = moduleManager:get("buildable")
 	local constructableModule = moduleManager:get("constructable")
@@ -356,11 +263,11 @@ function objectManager:generateBuildableDefinition(config)
 	local researchModule = moduleManager:get("research")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 
 	-- Optional Components
 	local objectComponent = components:getTableOrNil("hs_object"):default({})
@@ -397,14 +304,14 @@ function objectManager:generateBuildableDefinition(config)
 
 	newBuildable = defaultValues:mergeWith(buildableComponent:getTableOrNil("props")):default({}):mergeWith(newBuildable):clear()
 	
-	utils:debug(identifier, config, newBuildable)
+	utils:debug(identifier, objDef, newBuildable)
 	buildableModule:addBuildable(identifier, newBuildable)
 	
 	-- Cached, and handled later in buildUI.lua
 	table.insert(objectManager.constructableIndexes, constructableModule.types[identifier].index)
 end
 
-function objectManager:generateCraftableDefinition(config)
+function objectManager:generateCraftable(objDef)
 	-- Modules
 	local constructableModule = moduleManager:get("constructable")
 	local gameObjectModule =  moduleManager:get("gameObject")
@@ -412,11 +319,11 @@ function objectManager:generateCraftableDefinition(config)
 	local craftableModule = moduleManager:get("craftable")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 
 	-- Optional Components
 	local craftableComponent = components:getTableOrNil("hs_craftable")
@@ -490,11 +397,11 @@ function objectManager:generateCraftableDefinition(config)
 
 
 		-- Debug
-		local debug = config:get("debug", {default = false})
+		local debug = objDef:getBooleanValueOrNil("debug")
 		if debug then
 			log:schema("ddapi", "Debugging: " .. identifier)
 			log:schema("ddapi", "Config:")
-			log:schema("ddapi", config)
+			log:schema("ddapi", objDef)
 			log:schema("ddapi", "Output:")
 			log:schema("ddapi", newCraftable)
 		end
@@ -526,19 +433,19 @@ end
 -- Resource
 ---------------------------------------------------------------------------------
 
-function objectManager:generateResourceDefinition(config)
+function objectManager:generateResource(objDef)
 	-- Modules
 	local typeMapsModule = moduleManager:get("typeMaps")
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 	local name = description:getStringOrNil("name"):asLocalizedString(getNameLocKey(identifier))
 	local plural = description:getStringOrNil("plural"):asLocalizedString(getNameLocKey(identifier))
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local resourceComponent = components:getTableOrNil("hs_resource")
 	local foodComponent = components:getTableOrNil("hs_food")
 
@@ -580,16 +487,16 @@ end
 -- Eat By Products Handler
 ---------------------------------------------------------------------------------
 
-function objectManager:handleEatByProducts(config)
+function objectManager:handleEatByProducts(objDef)
 	-- Modules
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local foodComponent = components:getTableOrNil("hs_food")
 
 	if foodComponent:getValue() == nil then
@@ -610,17 +517,17 @@ end
 -- storageDisplayGameObjectTypeIndex
 ---------------------------------------------------------------------------------
 
-function objectManager:handleStorageDisplayGameObjectTypeIndex(config)
+function objectManager:handleStorageDisplayGameObjectTypeIndex(objDef)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local storageComponent = components:getTableOrNil("hs_storage")
 
 	if storageComponent:getValue() == nil then
@@ -640,17 +547,17 @@ end
 -- Storage Links
 ---------------------------------------------------------------------------------
 
-function objectManager:handleStorageLinks(config)
+function objectManager:handleStorageLinks(objDef)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local resourceComponent = components:getTableOrNil("hs_resource")
 
 	if resourceComponent:getValue() ~= nil then
@@ -663,22 +570,21 @@ function objectManager:handleStorageLinks(config)
 	end
 end
 
-
 ---------------------------------------------------------------------------------
 -- Storage
 ---------------------------------------------------------------------------------
 
-function objectManager:generateStorageObject(config)
+function objectManager:generateStorageObject(objDef)
 	-- Modules
 	local storageModule = moduleManager:get("storage")
 	local resourceModule = moduleManager:get("resource")
 	local typeMapsModule = moduleManager:get("typeMaps")
 
 	-- Load structured information
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local carryComponent = components:getTable("hs_carry")
 	local storageComponent = components:getTable("hs_storage")
 
@@ -695,6 +601,11 @@ function objectManager:generateStorageObject(config)
 
 	-- The new storage item
 
+	local baseRotationWeight = storageComponent:getNumberOrNil("base_rotation_weight"):default(0):getValue()
+	local baseRotationValue = storageComponent:getTableOrNil("base_rotation"):default(vec3(1.0, 0.0, 0.0)):asVec3()
+	local randomRotationWeight = storageComponent:getNumberOrNil("random_rotation_weight"):default(2.0):getValue()
+	local randomRotation = storageComponent:getTableOrNil("random_rotation"):default(vec3(1, 0.0, 0.0)):asVec3()
+
 	local newStorage = {
 		key = identifier,
 		name = description:getStringOrNil("name"):asLocalizedString(getNameKey("storage", identifier)),
@@ -706,20 +617,21 @@ function objectManager:generateStorageObject(config)
 		storageBox = {
 			size =  storageComponent:getTableOrNil("item_size"):default(vec3(0.5, 0.5, 0.5)):asVec3(),
 			
+
 			rotationFunction = 
 			function(uniqueID, seed)
 				local randomValue = rng:valueForUniqueID(uniqueID, seed)
 
 				local baseRotation = mat3Rotate(
 					mat3Identity,
-					math.pi * storageComponent:getNumberOrNil("base_rotation_weight"):default(0):getValue(),
-					storageComponent:getTableOrNil("base_rotation"):default(vec3(1.0, 0.0, 0.0)):asVec3()
+					math.pi * baseRotationWeight,
+					baseRotationValue
 				)
 
 				return mat3Rotate(
 					baseRotation,
-					randomValue * storageComponent:getNumberOrNil("random_rotation_weight"):default(2.0):getValue(),
-					storageComponent:getTableOrNil("random_rotation"):default(vec3(1, 0.0, 0.0)):asVec3()
+					randomValue * randomRotationWeight,
+					randomRotation
 				)
 			end,
 			
@@ -759,14 +671,14 @@ end
 -- Plan Helper
 ---------------------------------------------------------------------------------
 
-function objectManager:generatePlanHelperObject(config)
+function objectManager:generatePlanHelperObject(objDef)
 	-- Modules
 	local planHelperModule = moduleManager:get("planHelper")
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:getTable("components")
-	local description = config:getTable("description")
+	local components = objDef:getTable("components")
+	local description = objDef:getTable("description")
 	local plansComponent = components:getTableOrNil("hs_plans")
 
 	if plansComponent:getValue() == nil then
@@ -791,17 +703,17 @@ end
 -- Mob Object
 ---------------------------------------------------------------------------------
 
-function objectManager:generateMobObject(config)
+function objectManager:generateMobObject(objDef)
 	-- Modules
 	local mobModule = moduleManager:get("mob")
 	local gameObjectModule = moduleManager:get("gameObject")
 	local animationGroupsModule = moduleManager:get("animationGroups")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 	local name = description:getStringOrNil("name"):asLocalizedString(getNameLocKey(identifier))
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local mobComponent = components:getTableOrNil("hs_mob")
 	local objectComponent = components:getTableOrNil("hs_object")
 
@@ -834,15 +746,15 @@ end
 -- Harvestable  Object
 ---------------------------------------------------------------------------------
 
-function objectManager:generateHarvestableObject(config)
+function objectManager:generateHarvestableObject(objDef)
 	-- Modules
 	local harvestableModule = moduleManager:get("harvestable")
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local harvestableComponent = components:getTableOrNil("hs_harvestable")
-	local identifier = config:getTable("description"):getStringValue("identifier")
+	local identifier = objDef:getTable("description"):getStringValue("identifier")
 
 	if harvestableComponent:getValue() == nil then
 		return -- This is allowed
@@ -894,16 +806,16 @@ end
 
 -- Special handler which allows resources to inject themselves into existing resource groups. Runs
 -- after resource groups are already created
-function objectManager:handleResourceGroups(config)
+function objectManager:handleResourceGroups(objDef)
 	-- Modules
 	local resourceModule = moduleManager:get("resource")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local resourceComponent = components:getTableOrNil("hs_resource")
 	if resourceComponent:getValue() == nil then
 		return
@@ -925,7 +837,7 @@ end
 -- Seat
 ---------------------------------------------------------------------------------
 
-function objectManager:generateSeatDefinition(seatType)
+function objectManager:generateSeat(seatType)
 	-- Modules
 	local seatModule = moduleManager:get("seat")
 	local typeMapsModule = moduleManager:get("typeMaps")
@@ -955,15 +867,15 @@ end
 ---------------------------------------------------------------------------------
 
 --- Generates evolving object definitions. For example an orange rotting into a rotten orange.
-function objectManager:generateEvolvingObject(config)
+function objectManager:generateEvolvingObject(objDef)
 	-- Modules
 	local evolvingObjectModule = moduleManager:get("evolvingObject")
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local evolvingObjectComponent = components:getTableOrNil("hs_evolving_object")
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 	
 	-- If the component doesn't exist, then simply don't registerf an evolving object.
@@ -998,8 +910,8 @@ function objectManager:generateEvolvingObject(config)
 	if evolvingObjectComponent.transform_to ~= nil then
 		local function generateTransformToTable(transform_to)
 			local newResource = {}
-			for i, identifier in ipairs(transform_to) do
-				table.insert(newResource, gameObjectModule.types[identifier].index)
+			for i, id in ipairs(transform_to) do
+				table.insert(newResource, gameObjectModule.types[id].index)
 			end
 			return newResource
 		end
@@ -1070,13 +982,12 @@ function objectManager:getCraftableBase(description, craftableComponent)
 	return craftableBase
 end
 
-
 -- TODO: selectionGroupTypeIndexes
-function objectManager:generateGameObject(config)
-	return objectManager:generateGameObjectInternal(config, false)
+function objectManager:generateGameObject(objDef)
+	return objectManager:generateGameObjectInternal(objDef, false)
 end
 
-function objectManager:generateGameObjectInternal(config, isBuildVariant)
+function objectManager:generateGameObjectInternal(objDef, isBuildVariant)
 	-- Modules
 	local gameObjectModule = moduleManager:get("gameObject")
 	local resourceModule = moduleManager:get("resource")
@@ -1084,10 +995,10 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local harvestableModule = moduleManager:get("harvestable")
 	local seatModule = moduleManager:get("seat")
 	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
-	local mobModule = moduleManager:get("mob")
+	--local mobModule = moduleManager:get("mob")
 
 	-- Setup
-	local description = config:getTable("description")
+	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 
 	local nameKey = identifier
@@ -1096,7 +1007,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	end
 
 	-- Components
-	local components = config:getTable("components")
+	local components = objDef:getTable("components")
 	local objectComponent = components:getTableOrNil("hs_object")
 	local toolComponent = components:getTableOrNil("hs_tool")
 	local harvestableComponent = components:getTableOrNil("hs_harvestable")
@@ -1137,13 +1048,13 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	-- Handle tools
 	local toolUsage = {}
 	if toolComponent:getValue() then
-		for key, config in pairs(toolComponent) do
-			config = hmt(config)
+		for key, tool in pairs(toolComponent) do
+			tool = hmt(tool)
 			local toolTypeIndex = utils:getTypeIndex(toolModule.types, key, "Tool Type")
 			toolUsage[toolTypeIndex] = {
-				[toolModule.propertyTypes.damage.index] = config:getOrNil("damage"):getValue(),
-				[toolModule.propertyTypes.durability.index] = config:getOrNil("durability"):getValue(),
-				[toolModule.propertyTypes.speed.index] = config:getOrNil("speed"):getValue(),
+				[toolModule.propertyTypes.damage.index] = tool:getOrNil("damage"):getValue(),
+				[toolModule.propertyTypes.durability.index] = tool:getOrNil("durability"):getValue(),
+				[toolModule.propertyTypes.speed.index] = tool:getOrNil("speed"):getValue(),
 			}
 		end
 	end
@@ -1164,7 +1075,7 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	if buildableComponent:getValue() then
 		-- If build variant... recurse!
 		if not isBuildVariant then
-			objectManager:generateGameObjectInternal(config, true)
+			objectManager:generateGameObjectInternal(objDef, true)
 		end
 
 		-- Inject data
@@ -1212,11 +1123,11 @@ function objectManager:generateGameObjectInternal(config, isBuildVariant)
 	local outObject = hmt(newGameObject):mergeWith(newBuildableKeys):clear()
 
 	-- Debug
-	local debug = config:getOrNil("debug"):default(false):getValue()
+	local debug = objDef:getOrNil("debug"):default(false):getValue()
 	if debug then
 		log:schema("ddapi", "[GameObject] Debugging: " .. identifier)
 		log:schema("ddapi", "Config:")
-		log:schema("ddapi", config)
+		log:schema("ddapi", objDef)
 		log:schema("ddapi", "Output:")
 		log:schema("ddapi", outObject)
 	end
@@ -1229,7 +1140,7 @@ end
 -- Material
 ---------------------------------------------------------------------------------
 
-function objectManager:generateMaterialDefinition(material)
+function objectManager:generateMaterial(material)
 	-- Modules
 	local materialModule = moduleManager:get("material")
 
@@ -1259,7 +1170,7 @@ end
 -- Skill
 ---------------------------------------------------------------------------------
 
-function objectManager:generateSkillDefinition(config)
+function objectManager:generateSkill(objDef)
 	-- TODO : To be redone. Currently disabled
 
 	--[[
@@ -1326,192 +1237,224 @@ end
 ---------------------------------------------------------------------------------
 -- Plannable Actions
 ---------------------------------------------------------------------------------
-
-function objectManager:generatePlanDefinition(config)
-	
-	-- Modules
-	local planModule = moduleManager:get("plan")
-	local typeMapsModule = moduleManager:get("typeMaps")
-
-	-- Setup
-	local description = config:getTable("description")
-	local components = config:getTable("components")
-
-	local identifier = description:getStringValue("identifier")
-	log:schema("ddapi", "  " .. identifier)
-
-	-- Components
-	local planComponent = components:getTableOrNil("hs_plan")
-
-	if not planComponent then
-		return
-	end
-
-	local newPlan = {
-		key = identifier,
-		name = description:getStringOrNil("name"):asLocalizedString(getNameKey("plan", identifier)),
-		inProgress = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("plan", identifier)),
-		icon = description:getStringValue("icon"),
-
-		checkCanCompleteForRadialUI = planComponent:getBooleanOrNil("showsOnWheel"):default(true):getValue(), 
-		allowsDespiteStatusEffectSleepRequirements = planComponent:getBooleanValueOrNil("skipSleepRequirement"),  
-		shouldRunWherePossible = planComponent:getStringOrNil("walkSpeed"):with(function(value) return value == "run" end):getValue(), 
-		shouldJogWherePossible = planComponent:getStringOrNil("walkSpeed"):with(function(value) return value == "job" end):getValue(), 
-		skipFinalReachableCollisionPathCheck = planComponent:getStringOrNil("collisionPathCheck"):with(function(value) return value == "skip" end):getValue(), 
-		skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:getStringOrNil("collisionPathCheck"):with(function(value) return value == "skipVertical" end):getValue(),
-		allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:getTableOrNil("simultaneousPlans"):with(
-			function(value)
-				if value then 
-					return hmt(value):selectPairs( 
-						function(index, planKey)
-							return utils:getTypeIndex(planModule.types, planKey), true
-						end
-					)
-				end
-			end
-		):getValue()
-	}
-
-	if type(newPlan.allowOtherPlanTypesToBeAssignedSimultaneously) == "table" then
-		newPlan.allowOtherPlanTypesToBeAssignedSimultaneously:clear()
-	end
+do
+	function objectManager:generatePlan(objDef)
 		
-	local defaultValues = hmt{
-		requiresLight = true
-	}
+		-- Modules
+		local planModule = moduleManager:get("plan")
+		local typeMapsModule = moduleManager:get("typeMaps")
 
-	newPlan = defaultValues:mergeWith(planComponent:getTableOrNil("props"):default({})):mergeWith(newPlan):clear()
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
 
-	typeMapsModule:insert("plan", planModule.types, newPlan)
-end
+		local identifier = description:getStringValue("identifier")
+		log:schema("ddapi", "  " .. identifier)
 
-function objectManager:generateActionDefinition(config)
-	-- Modules
-	local actionModule = moduleManager:get("action")
-	local skillModule = moduleManager:get("skill")
-	local toolModule = moduleManager:get("tool")
-	local typeMapsModule = moduleManager:get("typeMaps")
+		-- Components
+		local planComponent = components:getTableOrNil("hs_plan")
 
-	-- Setup
-	local description = config:getTable("description")
-	local components = config:getTable("components")
+		if planComponent:isNil() then
+			return
+		end
 
-	local identifier = description:getStringValue("identifier")
-	log:schema("ddapi", "  " .. identifier)
+		local newPlan = {
+			key = identifier,
+			name = description:getStringOrNil("name"):asLocalizedString(getNameKey("plan", identifier)),
+			inProgress = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("plan", identifier)),
+			icon = description:getStringValue("icon"),
 
-	-- Components
-	local actionComponent = components:getTableOrNil("hs_action")
-	
-	if not actionComponent:getValue() then return end
+			checkCanCompleteForRadialUI = planComponent:getBooleanOrNil("showsOnWheel"):default(true):getValue(), 
+			allowsDespiteStatusEffectSleepRequirements = planComponent:getBooleanValueOrNil("skipSleepRequirement"),  
+			shouldRunWherePossible = planComponent:getStringOrNil("walkSpeed"):with(function(value) return value == "run" end):getValue(), 
+			shouldJogWherePossible = planComponent:getStringOrNil("walkSpeed"):with(function(value) return value == "job" end):getValue(), 
+			skipFinalReachableCollisionPathCheck = planComponent:getStringOrNil("collisionPathCheck"):with(function(value) return value == "skip" end):getValue(), 
+			skipFinalReachableCollisionAndVerticalityPathCheck = planComponent:getStringOrNil("collisionPathCheck"):with(function(value) return value == "skipVertical" end):getValue(),
+			allowOtherPlanTypesToBeAssignedSimultaneously = planComponent:getTableOrNil("simultaneousPlans"):with(
+				function(value)
+					if value then 
+						return hmt(value):selectPairs( 
+							function(index, planKey)
+								return utils:getTypeIndex(planModule.types, planKey), true
+							end
+						)
+					end
+				end
+			):getValue()
+		}
 
-	local newAction = {
-		key = identifier, 
-		name = description:getStringOrNil("name"):asLocalizedString(getNameKey("action", identifier)), 
-		inProgress = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("action", identifier)), 
-		restNeedModifier = actionComponent:getNumberValue("restNeedModifier"), 
-	}
+		if type(newPlan.allowOtherPlanTypesToBeAssignedSimultaneously) == "table" then
+			newPlan.allowOtherPlanTypesToBeAssignedSimultaneously:clear()
+		end
+			
+		local defaultValues = hmt{
+			requiresLight = true
+		}
 
-	if actionComponent:hasKey("props") then
-		newAction = actionComponent.getTable("props"):mergeWith(newAction):clear()
+		newPlan = defaultValues:mergeWith(planComponent:getTableOrNil("props"):default({})):mergeWith(newPlan):clear()
+
+		typeMapsModule:insert("plan", planModule.types, newPlan)
 	end
 
-	typeMapsModule:insert("action", actionModule.types, newAction)
-	return actionModule.types[identifier].index
-end
+	function objectManager:generateAction(objDef)
+		-- Modules
+		local actionModule = moduleManager:get("action")
+		local typeMapsModule = moduleManager:get("typeMaps")
 
-function objectManager:generateActionModifierDefinition(config)
-	-- Modules
-	local actionModule = moduleManager:get("action")
-	local typeMapsModule = moduleManager:get("typeMaps")
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
 
-	-- Setup
-	local description = config:getTable("description")
-	local components = config:getTable("components")
+		local identifier = description:getStringValue("identifier")
+		log:schema("ddapi", "  " .. identifier)
 
-	local identifier = description:getStringValue("identifier")
-	log:schema("ddapi", "  " .. identifier)
+		-- Components
+		local actionComponent = components:getTableOrNil("hs_action")
+		
+		if not actionComponent:getValue() then return end
 
-	-- Components
-	local actionModifierTypeComponent = components:getTableOrNil("hs_actionModifierType")
+		local newAction = {
+			key = identifier, 
+			name = description:getStringOrNil("name"):asLocalizedString(getNameKey("action", identifier)), 
+			inProgress = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("action", identifier)), 
+			restNeedModifier = actionComponent:getNumberValue("restNeedModifier"), 
+		}
 
-	if not actionModifierTypeComponent:getValue() then return end 
+		if actionComponent:hasKey("props") then
+			newAction = actionComponent.getTable("props"):mergeWith(newAction):clear()
+		end
 
-	local newActionModifier = {
-		key = identifier, 
-		name = description:get("name"):asLocalizedString(getNameKey("action", identifier)), 
-		inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)), 
-	}
-
-	if actionModifierTypeComponent:hasKey("props") then
-		newActionModifier = actionModifierTypeComponent.getTable("props"):mergeWith(newActionModifier):clear()
+		typeMapsModule:insert("action", actionModule.types, newAction)
 	end
 
-	typeMapsModule:insert("actionModifier", actionModule.modifierTypes, newActionModifier)
-end
+	function objectManager:generateActiveOrder(objDef)
+		-- Modules
+		local actionModule = moduleManager:get("action")
+		local skillModule = moduleManager:get("skill")
+		local toolModule = moduleManager:get("tool")
+		local activeOrderAI = moduleManager:get("activeOrderAI")
 
-function objectManager:generateActionSequenceDefinition(config)
-	-- Modules
-	local actionModule = moduleManager:get("action")
-	local actionSequenceModule = moduleManager:get("actionSequence")
-	local typeMapsModule = moduleManager:get("typeMaps")
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
 
-	-- Setup
-	local description = config:getTable("description")
-	local components = config:getTable("components")
+		-- Components
+		local activeOrderComponent = components:getTableOrNil("hs_activeOrder")
 
-	local identifier = description:getStringValue("identifier")
-	log:schema("ddapi", "  " .. identifier)
+		if activeOrderComponent:isNil() then
+			return 
+		end 
 
-	-- Components
-	local actionSequenceComponent = components:getTableOrNil("hs_actionSequence")
+		local updateInfos = {
+			actionTypeIndex = description:getString("identifier"):asTypeIndex(actionModule.types, "Action"),
+			checkFrequency = activeOrderComponent:getNumberValue("checkFrequency"), 
+			completeFunction = activeOrderComponent:get("completeFunction"):ofType("function"):value(), 
+			defaultSkillIndex = activeOrderComponent:getStringOrNil("defaultSkill"):asTypeIndex(skillModule.types, "Skill"),
+			toolMultiplierTypeIndex = activeOrderComponent:getStringOrNil("toolMultiplier"):asTypeIndex(toolModule.types, "Tool")
+		}
 
-	if not actionSequenceComponent:getValue() then return end
+		if activeOrderComponent:hasKey("props") then
+			updateInfos = activeOrderComponent:getTable("props"):mergeWith(updateInfos):clear()
+		end
 
-	local newActionSequence = {
-		key = identifier, 
-		actions = actionSequenceComponent:getTable("actions"):asTypeIndex(actionModule.types, "Action"),
-		assignedTriggerIndex = actionSequenceComponent:getNumberValue("assignedTriggerIndex"), 
-		assignModifierTypeIndex = actionSequenceComponent:getStringOrNil("modifier"):asTypeIndex(actionModule.modifierTypes)
-	}
-
-	if actionSequenceComponent:hasKey("props") then
-		newActionSequence = actionSequenceComponent.getTable("props"):mergeWith(newActionSequence):clear()
+		activeOrderAI.updateInfos[updateInfos.actionTypeIndex] = updateInfos
 	end
 
-	typeMapsModule:insert("actionSequence", actionSequenceModule.types, newActionSequence)
-end
+	function objectManager:generateActionModifier(objDef)
+		-- Modules
+		local actionModule = moduleManager:get("action")
+		local typeMapsModule = moduleManager:get("typeMaps")
 
-function objectManager:generateOrderDefinition(config)
-	-- Modules
-	local orderModule = moduleManager:get("order")
-	local typeMapsModule = moduleManager:get("typeMaps")
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
 
-	-- Setup
-	local description = config:getTable("description")
-	local components = config:getTable("components")
+		local identifier = description:getStringValue("identifier")
+		log:schema("ddapi", "  " .. identifier)
 
-	local identifier = description:getStringValue("identifier")
-	log:schema("ddapi", "  " .. identifier)
+		-- Components
+		local actionModifierTypeComponent = components:getTableOrNil("hs_actionModifierType")
 
-	-- Components
-	local orderComponent = components:getTableOrNil("hs_order")
+		if not actionModifierTypeComponent:getValue() then return end 
 
-	if not orderComponent:getValue() then return end
+		local newActionModifier = {
+			key = identifier, 
+			name = description:get("name"):asLocalizedString(getNameKey("action", identifier)), 
+			inProgress = description:get("inProgress"):asLocalizedString(getInProgressKey("action", identifier)), 
+		}
 
-	local newOrder = {
-		key = identifier, 
-		name = description:getStringOrNil("name"):asLocalizedString(getNameKey("order", identifier)), 
-		inProgressName = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("order", identifier)),  
-		icon = description:getStringValue("icon"), 
-	}
+		if actionModifierTypeComponent:hasKey("props") then
+			newActionModifier = actionModifierTypeComponent.getTable("props"):mergeWith(newActionModifier):clear()
+		end
 
-	if orderComponent:hasKey("props") then
-		newOrder = orderComponent.getTable("props"):mergeWith(newOrder):clear()
+		typeMapsModule:insert("actionModifier", actionModule.modifierTypes, newActionModifier)
 	end
 
-	typeMapsModule:insert("order", orderModule.types, newOrder)
-end
+	function objectManager:generateActionSequence(objDef)
+		-- Modules
+		local actionModule = moduleManager:get("action")
+		local actionSequenceModule = moduleManager:get("actionSequence")
+		local typeMapsModule = moduleManager:get("typeMaps")
 
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
+
+		local identifier = description:getStringValue("identifier")
+		log:schema("ddapi", "  " .. identifier)
+
+		-- Components
+		local actionSequenceComponent = components:getTableOrNil("hs_actionSequence")
+
+		if not actionSequenceComponent:getValue() then return end
+
+		local newActionSequence = {
+			key = identifier, 
+			actions = actionSequenceComponent:getTable("actions"):asTypeIndex(actionModule.types, "Action"),
+			assignedTriggerIndex = actionSequenceComponent:getNumberValue("assignedTriggerIndex"), 
+			assignModifierTypeIndex = actionSequenceComponent:getStringOrNil("modifier"):asTypeIndex(actionModule.modifierTypes)
+		}
+
+		if actionSequenceComponent:hasKey("props") then
+			newActionSequence = actionSequenceComponent.getTable("props"):mergeWith(newActionSequence):clear()
+		end
+
+		typeMapsModule:insert("actionSequence", actionSequenceModule.types, newActionSequence)
+	end
+
+	function objectManager:generateOrder(objDef)
+		-- Modules
+		local orderModule = moduleManager:get("order")
+		local typeMapsModule = moduleManager:get("typeMaps")
+
+		-- Setup
+		local description = objDef:getTable("description")
+		local components = objDef:getTable("components")
+
+		local identifier = description:getStringValue("identifier")
+		log:schema("ddapi", "  " .. identifier)
+
+		-- Components
+		local orderComponent = components:getTableOrNil("hs_order")
+
+		if not orderComponent:getValue() then return end
+
+		local newOrder = {
+			key = identifier, 
+			name = description:getStringOrNil("name"):asLocalizedString(getNameKey("order", identifier)), 
+			inProgressName = description:getStringOrNil("inProgress"):asLocalizedString(getInProgressKey("order", identifier)),  
+			icon = description:getStringValue("icon"), 
+		}
+
+		if orderComponent:hasKey("props") then
+			newOrder = orderComponent.getTable("props"):mergeWith(newOrder):clear()
+		end
+
+		typeMapsModule:insert("order", orderModule.types, newOrder)
+
+		
+	end
+end
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
 ---------------------------------------------------------------------------------
@@ -1527,8 +1470,8 @@ end
 -- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
 -- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
--- @field configType - Never set here, but the path where configs WILL be loaded, when loaded from lua
-local objectLoader = {
+-- @field configType - The configType for which to load configs/objectDefinitions
+local objectLoaders = {
 
 	storage = {
 		configType = configLoader.configTypes.storage,
@@ -1560,15 +1503,6 @@ local objectLoader = {
 		loadFunction = objectManager.handleEatByProducts
 	},
 
-	-- Special one: This handles injecting 'displayGameObjectTypeIndex' into the storage, once game objects have been created.
-	-- storageDisplayGameObjectTypeIndexHandler = {
-	-- 	configType = configLoader.configTypes.storage,
-	-- 	dependencies = {
-	-- 		"gameObject"
-	-- 	},
-	-- 	loadFunction = objectManager.handleStorageDisplayGameObjectTypeIndex
-	-- },
-
 	evolvingObject = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
@@ -1586,7 +1520,7 @@ local objectLoader = {
 			"resource", 
 			"gameObject"
 		},
-		loadFunction = objectManager.generateResourceDefinition
+		loadFunction = objectManager.generateResource
 	},
 
 	buildable = {
@@ -1605,7 +1539,7 @@ local objectLoader = {
 
 			"research" -- TODO: Test to ensure this isn't causing load order issues. See research.lua
 		},
-		loadFunction = objectManager.generateBuildableDefinition
+		loadFunction = objectManager.generateBuildable
 	},
 
 	craftable = {
@@ -1623,7 +1557,7 @@ local objectLoader = {
 			-- "resourceGroups", -- Adding this dependency breaks the craftable menu. Why was this originally added?
 			"actionSequence"
 		},
-		loadFunction = objectManager.generateCraftableDefinition
+		loadFunction = objectManager.generateCraftable
 	},
 
 	modelPlaceholder = {
@@ -1649,6 +1583,9 @@ local objectLoader = {
 			"tool",
 			"harvestable",
 			"seat"
+		},
+		dependencies = {
+			"seats"
 		},
 		loadFunction = objectManager.generateGameObject
 	},
@@ -1682,10 +1619,15 @@ local objectLoader = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
 		dependencies = {
+			"plan",
 			"gameObject"
 		},
 		moduleDependencies = {
-			"planHelper"
+			"planHelper",
+			"plan",
+			"skill", 
+			"tool", 
+			"research"
 		},
 		loadFunction = objectManager.generatePlanHelperObject
 	},
@@ -1696,7 +1638,7 @@ local objectLoader = {
 		moduleDependencies = {
 			"skill"
 		},
-		loadFunction = objectManager.generateSkillDefinition
+		loadFunction = objectManager.generateSkill
 	},
 	
 	resourceGroupHandler = {
@@ -1708,13 +1650,15 @@ local objectLoader = {
 		loadFunction = objectManager.handleResourceGroups
 	},
 
+	--[[
+
 	plan = {
 		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
 			"plan",
-			"typeMaps"
+			"typeMaps", 
 		}, 
-		loadFunction = objectManager.generatePlanDefinition
+		loadFunction = objectManager.generatePlan
 	},
 
 	order = {
@@ -1723,18 +1667,33 @@ local objectLoader = {
 			"order",
 			"typeMaps",
 		},
-		loadFunction = objectManager.generateOrderDefinition
+		loadFunction = objectManager.generateOrder
 	}, 
+
+	activeOrder = {
+		configType = configLoader.configTypes.plannableAction,
+		moduleDependencies = {
+			"action", 
+			"tool",
+			"skill", 
+			"activeOrderAI"
+		}, 
+		dependencies = {
+			"action"
+		}, 
+		loadFunction = objectManager.generateActiveOrder
+	},
 
 	action = {
 		configType = configLoader.configTypes.plannableAction, 
 		moduleDependencies = {
 			"action",
 			"typeMaps",
-			"tool",
-			"skill", 
 		}, 
-		loadFunction = objectManager.generateActionDefinition
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectManager.generateAction
 	}, 
 
 	actionSequence = {
@@ -1748,7 +1707,7 @@ local objectLoader = {
 			"action", 
 			"actionModifier"
 		}, 
-		loadFunction = objectManager.generateActionSequenceDefinition
+		loadFunction = objectManager.generateActionSequence
 	},
 
 	actionModifier = {
@@ -1757,9 +1716,9 @@ local objectLoader = {
 			"action", 
 			"typeMaps"
 		}, 
-		loadFunction = objectManager.generateActionModifierDefinition
+		loadFunction = objectManager.generateActionModifier
 	},
-
+]]
 	---------------------------------------------------------------------------------
 	-- Shared Configs
 	---------------------------------------------------------------------------------
@@ -1802,7 +1761,7 @@ local objectLoader = {
 		dependencies = {
 			"storage"
 		},
-		loadFunction = objectManager.generateSeatDefinition
+		loadFunction = objectManager.generateSeat
 	},
 
 	material = {
@@ -1812,7 +1771,7 @@ local objectLoader = {
 		moduleDependencies = {
 			"material"
 		},
-		loadFunction = objectManager.generateMaterialDefinition
+		loadFunction = objectManager.generateMaterial
 	},
 
 	-- Custom models are esentially handling 
@@ -1824,11 +1783,11 @@ local objectLoader = {
 		moduleDependencies = {
 			"model"
 		},
-		loadFunction = objectManager.generateCustomModelDefinition
+		loadFunction = objectManager.generateCustomModel
 	}, 
 }
 
-local function newModuleAdded(modules)
+local function newModuleAdded(module)
 	objectManager:tryLoadObjectDefinitions()
 end
 
@@ -1840,42 +1799,39 @@ function objectManager:init()
 
 	log:schema("ddapi", os.date() .. "\n")
 
-	local logID = log:schema("ddapi", "Initializing DDAPI...")
-	log:schema(logID, "\nInitialized DDAPI.")
-	log:append(logID, "test")
-	log:remove(logID)
+	log:schema("ddapi", "Initializing DDAPI...")
 
-	-- Load configs from FS
-	configLoader:loadConfigs()
+	-- Find config files from FS
+	configLoader:findConfigFiles()
 end
 
 
 --- Function which tracks whether a particular object type is ready to be loaded. There
 --- are numerious reasons why this might not be the case.
-local function canLoadObjectType(objectName, objectData)
+local function canLoadObjectType(objectLoader)
 	-- Wait for configs to be loaded from the FS
 	if configLoader.isInitialized == false then
 		return false
 	end
 
 	-- Some routes wait for custom start logic. Don't start these until triggered!
-	if objectData.waitingForStart == true then
+	if objectLoader.waitingForStart == true then
 		return false
 	end
 	
 	-- Don't enable disabled modules
-	if objectData.disabled then
+	if objectLoader.disabled then
 		return false
 	end
 
 	-- Don't double-load objects
-	if objectData.loaded == true then
+	if objectLoader.loaded == true then
 		return false
 	end
 
 	-- Don't load until all moduleDependencies are satisfied.
-	if objectData.moduleDependencies ~= nil then
-		for i, moduleDependency in pairs(objectData.moduleDependencies) do
+	if objectLoader.moduleDependencies ~= nil then
+		for i, moduleDependency in pairs(objectLoader.moduleDependencies) do
 			if moduleManager.modules[moduleDependency] == nil then
 				return false
 			end
@@ -1883,33 +1839,144 @@ local function canLoadObjectType(objectName, objectData)
 	end
 
 	-- Don't load until all dependencies are satisfied (dependent types loaded first!)
-	if objectData.dependencies ~= nil then
-		for i, dependency in pairs(objectData.dependencies) do
-			if objectLoader[dependency].loaded ~= true then
+	if objectLoader.dependencies ~= nil then
+		for i, dependency in pairs(objectLoader.dependencies) do
+			if objectLoaders[dependency].loaded ~= true then
 				return false
 			end
 		end
 	end
 
 	-- If checks pass, then we can load the object
-	objectData.loaded = true
+	objectLoader.loaded = true
 	return true
 end
 
 --- Marks an object type as ready to load. 
--- @param configName the name of the config which is being marked as ready to load
-function objectManager:markObjectAsReadyToLoad(configName)
-	log:schema("ddapi", "Object has been marked for load: " .. configName)
-	objectLoader[configName].waitingForStart = false
+-- @param objectType the name of the config which is being marked as ready to load
+function objectManager:markObjectAsReadyToLoad(objectType)
+	log:schema("ddapi", "Object has been marked for load: " .. objectType)
+	objectLoaders[objectType].waitingForStart = false
 	objectManager:tryLoadObjectDefinitions() -- Re-trigger start logic, in case no more modules will be loaded.
 end
 
---- Attempts to load object definitions from the objectLoader
+--- Attempts to load object definitions from the objectLoaders
 function objectManager:tryLoadObjectDefinitions()
-	for key, value in pairs(objectLoader) do
-		if canLoadObjectType(key, value) then
-			objectManager:loadObjectDefinition(key, value)
+	for objectType, objectLoader in pairs(objectLoaders) do
+		if canLoadObjectType(objectLoader) then
+			objectManager:loadObjectDefinition(objectType, objectLoader)
 		end
 	end
 end
+
+-- Error handler for hmTables
+local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
+
+	local arg = {...}
+
+	switch(errorCode) : caseof {
+		[hmtErrors.ofLengthFailed] = function()
+			local requiredLength = arg[1]
+			log:schema("ddapi", "    ERROR: Value of key '" .. fieldKey .. "' requires " .. requiredLength .. " elements")
+		end,
+
+		[hmtErrors.ofTypeFailed] = function() log:schema("ddapi", "    ERROR: key='" .. fieldKey .. "' should be of type '" .. arg[1] .. "', not '" .. type(fieldKey) .. "'") end,
+
+		[hmtErrors.ofTypeTableFailed] = function() return log:schema("ddapi", "    ERROR: Value type of key '" .. fieldKey .. "' is a table") end,
+
+		[hmtErrors.RequiredFailed] = function()
+			log:schema("ddapi", "    ERROR: Missing required field: " .. fieldKey .. " in table: ")
+			log:schema("ddapi", parentTable)
+			os.exit(1)
+		end,
+
+		[hmtErrors.isNotInTypeTableFailed] = function() 
+			local displayAlias = arg[2]
+			log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. parentTable[fieldKey] .. "'") 
+		end,
+
+		[hmtErrors.isInTypeTableFailed] = function()
+			local tbl = arg[1]
+			local displayAlias = arg[2]
+
+			utils:logMissing(displayAlias, parentTable[fieldKey], tbl)
+		end,
+
+		[hmtErrors.VectorWrongElementsCount] = function() 
+			local vecType = arg[1]
+			log:schema("ddapi", "    ERROR: Not enough elements in table to make vec"..vecType.." for table with key '"..fieldKey.."'")
+			log:schema("ddapi", "Table: ",  parentTable)
+		end,
+
+		[hmtErrors.NotVector] = function()
+			local vecType = arg[1]
+			log:schema("ddapi", "    ERROR: Not able to convert to vec"..vecType.." with infos from table with key '"..fieldKey.."'")
+			log:schema("ddapi", "Table: ", parentTable)
+		end,
+
+		default = function() log:schema("ddapi", "ERROR: ", msg) end
+	}
+end
+
+-- Loads all objects for a given objectType
+-- @param objectType - The type of object to load
+-- @param objectLoader - A table, containing fields from 'objectLoaders'
+function objectManager:loadObjectDefinition(objectType, objectLoader)
+
+	if objectLoader.disabled then
+		log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectType)
+		return
+	end
+
+	log:schema("ddapi", string.format("\n\nGenerating %s definitions:", objectType))
+
+	local objDefinitions = configLoader:fetchRuntimeCompatibleDefinitions(objectLoader)
+	log:schema("ddapi", "Available Definitions: " .. #objDefinitions)
+
+	if objDefinitions == nil or #objDefinitions == 0 then
+		log:schema("ddapi", "  (no objects of this type created)")
+		return
+	end
+
+	local function errorhandler(errorMsg)
+		log:schema("ddapi", "WARNING: Object failed to generate, discarding: " .. objectType)
+		log:schema("ddapi", errorMsg)
+		log:schema("ddapi", "--------")
+		log:schema("ddapi", debug.traceback())
+		
+		if crashes then
+			os.exit()
+		end
+	end
+
+	for i, objDef in ipairs(objDefinitions) do
+		objDef = hmt(objDef, ddapiErrorHandler)
+		xpcall(objectLoader.loadFunction, errorhandler, self, objDef)
+		objDef:clear()
+	end
+
+	-- Frees up memory now that the configs are cached
+	local configTypeDone, allDone = objectManager:isProcessDone(objectLoader.configType)
+	if configTypeDone then
+		objectLoader.configType.cachedConfigs = nil
+	end
+	if allDone then
+		configLoader.cachedSharedGlobalDefinitions = nil
+	end
+end
+
+function objectManager:isProcessDone(configType)
+	local allLoaded = true 
+
+	for _, objectLoader in pairs(objectLoaders) do 
+		if objectLoader.configType == configType and not objectLoader.loaded then
+			return false, false
+		elseif not objectLoader.loaded then 
+			allLoaded = false
+		end
+	end
+
+	return true, allLoaded
+end
+
 return objectManager

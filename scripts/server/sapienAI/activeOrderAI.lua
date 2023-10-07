@@ -2,20 +2,31 @@
 --- @author Witchy
 
 -- Hammerstone
-local logging = mjrequire "hammerstone/logging"
-local logicManager = mjrequire "hammerstone/logic/logicManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
+local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 local activeOrderAI = {}
 
-function activeOrderAI:postload(parent)
+local context = nil
 
+function activeOrderAI:preload(parent)
+	moduleManager:addModule("activeOrderAI", parent)
 end
 
 function activeOrderAI:init(super, serverSapienAI_, serverSapien_, serverGOM_, serverWorld_, findOrderAI_)
 	super(self, serverSapienAI_, serverSapien_, serverGOM_, serverWorld_, findOrderAI_)
 
-	
+	context = {
+		serverSapienAI = serverSapienAI_, 
+		serverSapien = serverSapien_, 
+		serverGOM = serverGOM_, 
+		serverWorld = serverWorld_,
+		findOrderAI = findOrderAI_
+	}
+end
+
+function activeOrderAI:getContext()
+	return context
 end
 
 return shadow:shadow(activeOrderAI)
