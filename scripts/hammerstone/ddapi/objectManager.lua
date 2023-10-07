@@ -863,6 +863,33 @@ function objectManager:generateSeat(seatType)
 	typeMapsModule:insert("seat", seatModule.types, newSeat)
 end
 
+---------------------------------------------------------------------------------
+-- Object Snapping
+---------------------------------------------------------------------------------
+
+function objectManager:generateObjectSnapping(def)
+	-- Modules
+	local sapienObjectSnappingModule = moduleManager:get("sapienObjectSnapping")
+	local gameObjectModule = moduleManager:get("gameObject")
+
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local objectIndex = identifier:asTypeIndex(gameObjectModule.types)
+	local snappingPreset = def:getTable("components"):getTableOrNil("hs_object"):getStringOrNil("snapping_preset")
+
+	if snappingPreset:getValue() ~= nil  then
+		local snappingPresetIndex = snappingPreset:asTypeIndex(gameObjectModule.types)
+
+		local snappingPresetFunction = sapienObjectSnappingModule.snapObjectFunctions[snappingPresetIndex]
+
+		if snappingPresetFunction ~= nil then
+			log:schema("ddapi", string.format("  Object '%s' is using snapping preset '%s' (index='%s')", identifier:getValue(), snappingPreset:getValue(), snappingPresetIndex))
+			sapienObjectSnappingModule.snapObjectFunctions[objectIndex] = snappingPresetFunction
+		else
+			log:schema("ddapi", string.format("  Warning: Object '%s' is using trying to use snapping preset '%s' (index='%s'), which doesn't exist!", identifier:getValue(), snappingPreset:getValue(), snappingPresetIndex))
+		end
+	end
+end
 
 ---------------------------------------------------------------------------------
 -- Evolving Objects
@@ -880,7 +907,7 @@ function objectManager:generateEvolvingObject(objDef)
 	local description = objDef:getTable("description")
 	local identifier = description:getStringValue("identifier")
 	
-	-- If the component doesn't exist, then simply don't registerf an evolving object.
+	-- If the component doesn't exist, then simply don't register an evolving object.
 	if evolvingObjectComponent:getValue() == nil then
 		return -- This is allowed	
 	else
@@ -1505,6 +1532,15 @@ local objectLoaders = {
 		loadFunction = objectManager.handleEatByProducts
 	},
 
+	objectSnapping = {
+		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"sapienObjectSnapping",
+			"gameObject"
+		},
+		loadFunction = objectManager.generateObjectSnapping
+	},
+
 	evolvingObject = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
@@ -1952,13 +1988,9 @@ function objectManager:loadObjectDefinition(objectType, objectLoader)
 	end
 
 	for i, objDef in ipairs(objDefinitions) do
-		mj:log("ORIGINAL")
-		mj:log(objDef)
 		objDef = hmt(objDef, ddapiErrorHandler)
 		objectLoader:loadFunction(objDef)
 		-- xpcall(objectLoader.loadFunction, errorhandler, self, objDef)
-		mj:log("THIS IS CRASHING")
-		mj:log(objDef)
 		objDef:clear()
 	end
 
