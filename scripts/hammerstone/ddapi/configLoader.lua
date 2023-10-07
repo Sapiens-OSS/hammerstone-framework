@@ -40,9 +40,9 @@ local configLoader = {
 			luaGetter = "getSkillConfigs",
 			configFiles = {},
 		}, 
-		plannableAction = {
-			key = "plannableAction",
-			configPath = "/hammerstone/plannableActions", 
+		behavior = {
+			key = "behavior",
+			configPath = "/hammerstone/behavior", 
 			configFiles = {},
 		}
 	},

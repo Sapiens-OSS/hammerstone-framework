@@ -478,6 +478,24 @@ do
                 end
                 return init(self, data)
             end
+
+            function mt:forEach(predicate, valuesToHMT)
+                for i, e in ipairs(self) do 
+                    local valueHMT = init(self, e)
+                    predicate(valuesToHMT and valueHMT or valueHMT:getValue())
+                end
+                return self
+            end
+
+            function mt:forEachPair(predicate, pairsToHMT)
+                for k, v in pairs(self) do 
+                    local kHMT = init(self, k)
+                    local vHMT = init(self, v)
+
+                    predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue())
+                end
+                return self
+            end
         end
     end
 

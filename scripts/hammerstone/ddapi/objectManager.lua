@@ -1242,6 +1242,7 @@ do
 		
 		-- Modules
 		local planModule = moduleManager:get("plan")
+		local planManagerModule = moduleManager:get("planManager")
 		local typeMapsModule = moduleManager:get("typeMaps")
 
 		-- Setup
@@ -1293,7 +1294,82 @@ do
 
 		newPlan = defaultValues:mergeWith(planComponent:getTableOrNil("props"):default({})):mergeWith(newPlan):clear()
 
+		local addPlanFunction = planComponent:get("addPlanFunction"):ofType("function"):getValue()
+
 		typeMapsModule:insert("plan", planModule.types, newPlan)
+		planManager.addPlansFunctions[newPlan.index] = addPlanFunction
+	end
+
+	function objectManager:generatePlanHelperBehavior(objDef)
+		-- Modules
+		local planHelperModule = moduleManager:get("planHelper")
+		local skillModule = moduleManager:get("skill")
+		local toolModule = moduleManager:get("tool")
+		local researchModule = moduleManager:get("research")
+		local planModule = moduleManager:get("plan")
+		local gameObjectModule = moduleManager:get("gameObject")
+
+		-- Setup
+		local components = objDef:getTable("components")
+
+		local planHelperComponent = objDef:getTableOrNil("hs_planAvailability")
+		if planHelperComponent.isNil() then return end 
+
+		local targetObjects = planHelperComponent:getTableOrNil("targets")
+
+		if not targetObjects:isNil() then
+			local availablePlansFunction = planHelperComponent:get("availablePlansFunction"):getValue()
+
+			if type(availablePlansFunction) == "string" then
+				availablePlansFunction = planHelperModule[availablePlansFunction]
+			elseif not type(availablePlansFunction) == "function" then
+				log:schema("ddapi", "availablePlansFunction must be a string or a function")
+				return
+			end
+
+			targetObjects:forEach(
+				function(targetObject)
+					local objectTypeIndex = targetObject:asTypeIndex(gameObjectModule.types)
+					planHelperModule:setPlansForObject(objectTypeIndex, availablePlansFunction)
+				end, true)
+		else
+			-- If it's not a plan for an object, it's for terrain
+
+			-- requiredToolTypeIndex is special. It can be the real index or a function
+			local requiredTool = planHelperComponent:getOrNil("tool")
+
+			local ok, requiredToolTypeIndex = 
+				switch(type(requiredToolTypeIndex:getValue())) : caseof {
+					["string"] = function() return true, requiredTool:asTypeIndex(tool.types) end, 
+					["function"] = function() return true, requiredTool:getValue() end, 
+					["nil"] = function() return true, nil end, 
+					default = function() 
+						return false, "ERROR: The required tool for planHelper must be a string or a function"
+						end
+				}
+			
+			if not ok then 
+				log:schema("ddapi", requiredToolTypeIndex)
+				return
+			end
+				
+			local description = objDef:getTable("description")
+
+			local terrainPlanSettings = {
+				planTypeIndex = description:getString("identifier"):asTypeIndex(planModule.types), 
+				requiredToolTypeIndex = requiredToolTypeIndex,
+				requiredSkillIndex = planHelperComponent:getString("skill"):asTypeIndex(skillModule.types), 
+				checkForDiscovery = planHelperComponent:getBooleanOrNil("needsDiscovery"):default(true):getValue(), 
+				researchTypeIndex = planHelperComponent:getStringOrNil("research"):asTypeIndex(researchModule.types),
+				addMissingResearchInfo = planHelperComponent:getBooleanOrNil("addMissingResearchInfo"):default(true):getValue(), 
+				canAddResearchPlanFunction = planHelperComponent:getOrNil("canResearchFunction"):ofTypeOrNil("function"):getValue(), 
+				getCountFunction = planHelperComponent:get("getCountFunction"):ofType("function"):getValue(), 
+				initFunction = planHelperComponent:getOrNil("initFunction"):asTypeOrNil("function"):getValue(), 
+				affectedPlanIndexes = planHelperComponent:getTable("affectedPlans"):asTypeIndex(planModule.types)
+			}
+
+			planHelperModule:addTerrainPlan(terrainPlanSettings)
+		end
 	end
 
 	function objectManager:generateAction(objDef)
@@ -1615,30 +1691,16 @@ local objectLoaders = {
 		loadFunction = objectManager.generateHarvestableObject
 	},
 
-	planHelper = {
+	planHelper_object = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
 		dependencies = {
-			"plan",
 			"gameObject"
 		},
 		moduleDependencies = {
-			"planHelper",
-			"plan",
-			"skill", 
-			"tool", 
-			"research"
+			"planHelper"
 		},
 		loadFunction = objectManager.generatePlanHelperObject
-	},
-
-	skill = {
-		configType = configLoader.configTypes.skill,
-		disabled = true,
-		moduleDependencies = {
-			"skill"
-		},
-		loadFunction = objectManager.generateSkill
 	},
 	
 	resourceGroupHandler = {
@@ -1650,17 +1712,41 @@ local objectLoaders = {
 		loadFunction = objectManager.handleResourceGroups
 	},
 
+	---------------------------------------------------------------------------------
+	-- Behavior
+	---------------------------------------------------------------------------------
 	plan = {
-		configType = configLoader.configTypes.plannableAction, 
+		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"plan",
 			"typeMaps", 
+			"planManager"
 		}, 
 		loadFunction = objectManager.generatePlan
 	},
 
+	planHelper_behavior = {
+		configType = configLoader.configTypes.behavior, 
+		waitingForStart = true, -- Custom start triggered from planHelper.lua
+		moduleDependencies = {
+			"planHelper", 
+			"plan", 
+			"tool", 
+			"skill", 
+			"research"
+		}, 
+		dependencies = {
+			"plan", 
+			"tool", 
+			"skill", 
+			"research", 
+			"gameObject"
+		}, 
+		loadFunction = objectManager.generatePlanHelperBehavior
+	},
+
 	order = {
-		configType = configLoader.configTypes.plannableAction, 
+		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"order",
 			"typeMaps",
@@ -1669,7 +1755,7 @@ local objectLoaders = {
 	}, 
 
 	activeOrder = {
-		configType = configLoader.configTypes.plannableAction,
+		configType = configLoader.configTypes.behavior,
 		moduleDependencies = {
 			"action", 
 			"tool",
@@ -1683,7 +1769,7 @@ local objectLoaders = {
 	},
 
 	action = {
-		configType = configLoader.configTypes.plannableAction, 
+		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"action",
 			"typeMaps",
@@ -1695,7 +1781,7 @@ local objectLoaders = {
 	}, 
 
 	actionSequence = {
-		configType = configLoader.configTypes.plannableAction,
+		configType = configLoader.configTypes.behavior,
 		moduleDependencies = {
 			"actionSequence", 
 			"action",
@@ -1709,14 +1795,22 @@ local objectLoaders = {
 	},
 
 	actionModifier = {
-		configType = configLoader.configTypes.plannableAction, 
+		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"action", 
 			"typeMaps"
 		}, 
 		loadFunction = objectManager.generateActionModifier
 	},
-	
+
+	skill = {
+		configType = configLoader.configTypes.behavior,
+		disabled = true,
+		moduleDependencies = {
+			"skill"
+		},
+		loadFunction = objectManager.generateSkill
+	},
 	---------------------------------------------------------------------------------
 	-- Shared Configs
 	---------------------------------------------------------------------------------
