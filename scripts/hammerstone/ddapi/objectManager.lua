@@ -781,6 +781,18 @@ function objectManager:generateObjectSets(key)
 end
 
 ---------------------------------------------------------------------------------
+-- Animation Groups
+---------------------------------------------------------------------------------
+
+function objectManager:generateAnimationGroups(key)
+	local animationGroupsModule = moduleManager:get("animationGroups")
+
+	local value = key:getValue()
+	log:schema("ddapi", "  " .. value)
+	animationGroupsModule:addAnimationGroup(value)
+end
+
+---------------------------------------------------------------------------------
 -- Resource Groups
 ---------------------------------------------------------------------------------
 
@@ -1770,6 +1782,16 @@ local objectLoaders = {
 			"serverGOM"
 		},
 		loadFunction = objectManager.generateObjectSets
+	},
+
+	animationGroups = {
+		configType = configLoader.configTypes.shared,
+		shared_unwrap = "hs_animation_groups",
+		shared_getter = "getAnimationGroups",
+		moduleDependencies = {
+			"animationGroups"
+		},
+		loadFunction = objectManager.generateAnimationGroups
 	},
 
 	resourceGroups = {
