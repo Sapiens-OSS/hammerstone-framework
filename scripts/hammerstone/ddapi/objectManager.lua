@@ -477,7 +477,7 @@ function objectManager:generateResource(objDef)
 	end
 
 	if resourceComponent:hasKey("props") then
-		newResource = resourceComponent.getTable("props"):mergeWith(newResource).clear()
+		newResource = resourceComponent:getTable("props"):mergeWith(newResource).clear()
 	end
 
 	resourceModule:addResource(identifier, newResource)
@@ -661,7 +661,7 @@ function objectManager:generateStorageObject(objDef)
 	}
 	
 	if storageComponent:hasKey("props") then
-		newStorage = storageComponent.getTable("props"):mergeWith(newStorage):clear()
+		newStorage = storageComponent:getTable("props"):mergeWith(newStorage):clear()
 	end
 
 	storageModule:addStorage(identifier, newStorage)
@@ -729,8 +729,8 @@ function objectManager:generateMobObject(objDef)
 		animationGroupIndex = mobComponent:getString("animation_group"):asTypeIndex(animationGroupsModule),
 	}
 
-	if mobComponent.hasKey("props") then
-		mobObject = mobComponent.getTable("props"):mergeWith(mobObject):clear()
+	if mobComponent:hasKey("props") then
+		mobObject = mobComponent:getTable("props"):mergeWith(mobObject):clear()
 	end
 
 	-- Insert
@@ -752,9 +752,9 @@ function objectManager:generateHarvestableObject(objDef)
 	local gameObjectModule =  moduleManager:get("gameObject")
 
 	-- Setup
+	local identifier = objDef:getTable("description"):getStringValue("identifier")
 	local components = objDef:getTable("components")
 	local harvestableComponent = components:getTableOrNil("hs_harvestable")
-	local identifier = objDef:getTable("description"):getStringValue("identifier")
 
 	if harvestableComponent:getValue() == nil then
 		return -- This is allowed
@@ -762,7 +762,7 @@ function objectManager:generateHarvestableObject(objDef)
 	
 	log:schema("ddapi", "  " .. identifier)
 
-	local resourcesToHarvest = harvestableComponent:getTable("resources_to_harvest"):asTypeIndex(gameObjectModule.typeIndexMap)
+	local resourcesToHarvest = harvestableComponent:getTable("resources_to_harvest"):asTypeMapType(gameObjectModule.typeIndexMap)
 
 	local finishedHarvestIndex = harvestableComponent:getNumberOrNil("finish_harvest_index"):default(#resourcesToHarvest):getValue()
 	harvestableModule:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
@@ -774,7 +774,10 @@ end
 
 function objectManager:generateObjectSets(key)
 	local serverGOMModule = moduleManager:get("serverGOM")
-	serverGOMModule:addObjectSet(key)
+
+	local value = key:getValue()
+	log:schema("ddapi", "  " .. value)
+	serverGOMModule:addObjectSet(value)
 end
 
 ---------------------------------------------------------------------------------
@@ -786,7 +789,6 @@ function objectManager:generateResourceGroup(groupDefinition)
 	local resourceModule = moduleManager:get("resource")
 	local gameObjectModule  = moduleManager:get("gameObject")
 
-	
 	local identifier = groupDefinition:getStringValue("identifier")
 	log:schema("ddapi", "  " .. identifier)
 
@@ -1116,7 +1118,7 @@ function objectManager:generateGameObjectInternal(objDef, isBuildVariant)
 	}
 
 	if objectComponent:hasKey("props") then
-		newGameObject = objectComponent.getTable("props"):mergeWith(newGameObject):clear()
+		newGameObject = objectComponent:getTable("props"):mergeWith(newGameObject):clear()
 	end
 
 	-- Combine keys
@@ -1321,7 +1323,7 @@ do
 		}
 
 		if actionComponent:hasKey("props") then
-			newAction = actionComponent.getTable("props"):mergeWith(newAction):clear()
+			newAction = actionComponent:getTable("props"):mergeWith(newAction):clear()
 		end
 
 		typeMapsModule:insert("action", actionModule.types, newAction)
@@ -1384,7 +1386,7 @@ do
 		}
 
 		if actionModifierTypeComponent:hasKey("props") then
-			newActionModifier = actionModifierTypeComponent.getTable("props"):mergeWith(newActionModifier):clear()
+			newActionModifier = actionModifierTypeComponent:getTable("props"):mergeWith(newActionModifier):clear()
 		end
 
 		typeMapsModule:insert("actionModifier", actionModule.modifierTypes, newActionModifier)
@@ -1416,7 +1418,7 @@ do
 		}
 
 		if actionSequenceComponent:hasKey("props") then
-			newActionSequence = actionSequenceComponent.getTable("props"):mergeWith(newActionSequence):clear()
+			newActionSequence = actionSequenceComponent:getTable("props"):mergeWith(newActionSequence):clear()
 		end
 
 		typeMapsModule:insert("actionSequence", actionSequenceModule.types, newActionSequence)
@@ -1447,7 +1449,7 @@ do
 		}
 
 		if orderComponent:hasKey("props") then
-			newOrder = orderComponent.getTable("props"):mergeWith(newOrder):clear()
+			newOrder = orderComponent:getTable("props"):mergeWith(newOrder):clear()
 		end
 
 		typeMapsModule:insert("order", orderModule.types, newOrder)
@@ -1951,8 +1953,11 @@ function objectManager:loadObjectDefinition(objectType, objectLoader)
 
 	for i, objDef in ipairs(objDefinitions) do
 		objDef = hmt(objDef, ddapiErrorHandler)
-		xpcall(objectLoader.loadFunction, errorhandler, self, objDef)
-		objDef:clear()
+		objectLoader:loadFunction(objDef)
+		-- xpcall(objectLoader.loadFunction, errorhandler, self, objDef)
+		if objDef ~= nil then
+			objDef:clear()
+		end
 	end
 
 	-- Frees up memory now that the configs are cached

@@ -283,6 +283,7 @@ do
                 end
             end
 
+            --- Returns eq of 'module.typeMap[value]'.index
             function mt:asTypeIndex(typeTable, displayAlias)
                 local indexArray = {}
 
@@ -294,6 +295,20 @@ do
                 end
 
                 return indexArray
+            end
+
+            --- Returns eq of 'module.typeMap[value]'
+            function mt:asTypeMapType(typeTable, displayAlias)
+                local typeArray = {}
+
+                for k in pairs(self) do
+                    local type = self:getString(k):asTypeMapType(typeTable, displayAlias)
+                    if type then
+                        table.insert(typeArray, type)
+                    end
+                end
+
+                return typeArray
             end
         end
 
@@ -631,6 +646,7 @@ do
                 }
             end
 
+            --- Returns eq of 'module.typeMap[value]'.index
             function valueMt:asTypeIndex(typeTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
 
@@ -641,6 +657,21 @@ do
                         return raiseError(self, hmtErrors.NotInTypeTable, string.format("hmt.asTypeIndex -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
                     else
                         return typeTable[value].index
+                    end
+                end
+            end
+
+            --- Returns eq of 'module.typeMap[value]'
+            function valueMt:asTypeMapType(typeTable, displayAlias)
+                local value, _, fieldKey = getMetaValues(self)
+
+                if value then
+                    displayAlias = displayAlias or fieldKey
+
+                    if not typeTable[value] then
+                        return raiseError(self, hmtErrors.NotInTypeTable, string.format("hmt.asTypeIndex -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                    else
+                        return typeTable[value]
                     end
                 end
             end
