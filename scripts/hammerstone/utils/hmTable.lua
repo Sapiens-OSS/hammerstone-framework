@@ -539,6 +539,10 @@ do
                 return self
             end
 
+            function valueMt:clear()
+                setmetatable(self, nil)
+            end
+            
             function valueMt:isNil()
                 return getValue() == nil
             end

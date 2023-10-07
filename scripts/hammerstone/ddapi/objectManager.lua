@@ -1952,12 +1952,14 @@ function objectManager:loadObjectDefinition(objectType, objectLoader)
 	end
 
 	for i, objDef in ipairs(objDefinitions) do
+		mj:log("ORIGINAL")
+		mj:log(objDef)
 		objDef = hmt(objDef, ddapiErrorHandler)
 		objectLoader:loadFunction(objDef)
 		-- xpcall(objectLoader.loadFunction, errorhandler, self, objDef)
-		if objDef ~= nil then
-			objDef:clear()
-		end
+		mj:log("THIS IS CRASHING")
+		mj:log(objDef)
+		objDef:clear()
 	end
 
 	-- Frees up memory now that the configs are cached
