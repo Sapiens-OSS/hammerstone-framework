@@ -1619,15 +1619,15 @@ local objectLoaders = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
 		dependencies = {
-			"plan",
+			-- "plan",
 			"gameObject"
 		},
 		moduleDependencies = {
 			"planHelper",
 			"plan",
-			"skill", 
-			"tool", 
-			"research"
+			-- "skill", 
+			-- "tool", 
+			-- "research"
 		},
 		loadFunction = objectManager.generatePlanHelperObject
 	},
