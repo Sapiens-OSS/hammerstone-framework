@@ -477,7 +477,7 @@ function objectManager:generateResource(objDef)
 	end
 
 	if resourceComponent:hasKey("props") then
-		newResource = resourceComponent.getTable("props"):mergeWith(newResource).clear()
+		newResource = resourceComponent:getTable("props"):mergeWith(newResource).clear()
 	end
 
 	resourceModule:addResource(identifier, newResource)
@@ -661,7 +661,7 @@ function objectManager:generateStorageObject(objDef)
 	}
 	
 	if storageComponent:hasKey("props") then
-		newStorage = storageComponent.getTable("props"):mergeWith(newStorage):clear()
+		newStorage = storageComponent:getTable("props"):mergeWith(newStorage):clear()
 	end
 
 	storageModule:addStorage(identifier, newStorage)
@@ -729,8 +729,8 @@ function objectManager:generateMobObject(objDef)
 		animationGroupIndex = mobComponent:getString("animation_group"):asTypeIndex(animationGroupsModule),
 	}
 
-	if mobComponent.hasKey("props") then
-		mobObject = mobComponent.getTable("props"):mergeWith(mobObject):clear()
+	if mobComponent:hasKey("props") then
+		mobObject = mobComponent:getTable("props"):mergeWith(mobObject):clear()
 	end
 
 	-- Insert
@@ -1116,7 +1116,7 @@ function objectManager:generateGameObjectInternal(objDef, isBuildVariant)
 	}
 
 	if objectComponent:hasKey("props") then
-		newGameObject = objectComponent.getTable("props"):mergeWith(newGameObject):clear()
+		newGameObject = objectComponent:getTable("props"):mergeWith(newGameObject):clear()
 	end
 
 	-- Combine keys
@@ -1397,7 +1397,7 @@ do
 		}
 
 		if actionComponent:hasKey("props") then
-			newAction = actionComponent.getTable("props"):mergeWith(newAction):clear()
+			newAction = actionComponent:getTable("props"):mergeWith(newAction):clear()
 		end
 
 		typeMapsModule:insert("action", actionModule.types, newAction)
@@ -1460,7 +1460,7 @@ do
 		}
 
 		if actionModifierTypeComponent:hasKey("props") then
-			newActionModifier = actionModifierTypeComponent.getTable("props"):mergeWith(newActionModifier):clear()
+			newActionModifier = actionModifierTypeComponent:getTable("props"):mergeWith(newActionModifier):clear()
 		end
 
 		typeMapsModule:insert("actionModifier", actionModule.modifierTypes, newActionModifier)
@@ -1492,7 +1492,7 @@ do
 		}
 
 		if actionSequenceComponent:hasKey("props") then
-			newActionSequence = actionSequenceComponent.getTable("props"):mergeWith(newActionSequence):clear()
+			newActionSequence = actionSequenceComponent:getTable("props"):mergeWith(newActionSequence):clear()
 		end
 
 		typeMapsModule:insert("actionSequence", actionSequenceModule.types, newActionSequence)
@@ -1523,7 +1523,7 @@ do
 		}
 
 		if orderComponent:hasKey("props") then
-			newOrder = orderComponent.getTable("props"):mergeWith(newOrder):clear()
+			newOrder = orderComponent:getTable("props"):mergeWith(newOrder):clear()
 		end
 
 		typeMapsModule:insert("order", orderModule.types, newOrder)
@@ -1895,6 +1895,10 @@ function objectManager:init()
 
 	-- Find config files from FS
 	configLoader:findConfigFiles()
+
+	local test = hmt({ message = "helloWorld!"})
+	local valueT = test:get("message")
+
 end
 
 

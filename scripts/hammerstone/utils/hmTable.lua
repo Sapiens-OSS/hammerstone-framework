@@ -532,6 +532,12 @@ do
 
         --- General stuff
         do
+            function valueMt:__tostring()
+                local value, parentTable, fieldKey = getMetaValues(self) 
+                local str = string.format("HMT value = %s key = %s parentTable = %s ", value, fieldKey, mj:tostring(parentTable))
+                return str
+            end
+
             function valueMt:default(defaultValue)
                 local value = self:getValue()
 
