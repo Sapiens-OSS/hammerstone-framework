@@ -873,6 +873,15 @@ function objectManager:handleServerMob(def)
 	local mobIndex = identifier:asTypeIndex(mobModule.types)
 	local gameObjectIndex = identifier:asTypeIndex(gameObjectModule.types)
 
+	local function infrequentUpdate(objectID, dt, speedMultiplier)
+		serverMobModule:infrequentUpdate(objectID, dt, speedMultiplier)
+	end
+	
+	
+	local function mobSapienProximity(objectID, sapienID, distance2, newIsClose)
+		serverMobModule:mobSapienProximity(objectID, sapienID, distance2, newIsClose)
+	end
+
 	-- serverGOM.objectSets.moas
 	local function initAI() -- No params because these are handled magically via local leaking (yay...)
 		serverGOMModule:addObjectLoadedFunctionForTypes({ gameObjectIndex }, function(object)
@@ -884,8 +893,8 @@ function objectManager:handleServerMob(def)
 
 		local reactDistance = mobModule.types[mobIndex].reactDistance -- TODO: Add better handling here
 		
-		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 2.0, serverMobModule.infrequentUpdate)
-		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, serverMobModule.mobSapienProximity)
+		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 2.0, infrequentUpdate)
+		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, mobSapienProximity)
 	end
 
 	-- TODO LIAM
