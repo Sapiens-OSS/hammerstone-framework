@@ -14,8 +14,8 @@ end
 
 --- @shadow
 function animationGroups:mjInit(super)
-	super(self)
 	moduleManager:addModule("animationGroups", self)
+	super(self)
 end
 
 
