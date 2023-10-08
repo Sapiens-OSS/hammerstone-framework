@@ -855,6 +855,7 @@ function objectManager:handleServerMob(def)
 	local mobModule = moduleManager:get("mob")
 	local serverMobModule = moduleManager:get("serverMob")
 	local serverGOMModule = moduleManager:get("serverGOM")
+	local gameObjectModule = moduleManager:get("gameObject")
 	
 	-- Setup
 	local identifier = def:getTable("description"):getString("identifier")
@@ -867,24 +868,24 @@ function objectManager:handleServerMob(def)
 	end
 
 	local emulateAI = mobComponent:getBooleanOrNil("emulate_server_ai"):default(false):getValue()
-	local objectSetString = mobComponent:getStringOrNil("object_set"):default(identifier)
+	local objectSetString = mobComponent:getStringOrNil("object_set"):default(identifier):getValue()
 	local objectSet = serverGOMModule.objectSets[objectSetString] -- TODO add better error handling here
 	local mobIndex = identifier:asTypeIndex(mobModule.types)
+	local gameObjectIndex = identifier:asTypeIndex(gameObjectModule.types)
 
-	
 	-- serverGOM.objectSets.moas
 	local function initAI() -- No params because these are handled magically via local leaking (yay...)
-		serverGOMModule:addObjectLoadedFunctionForTypes({ mobIndex }, function(object)
+		serverGOMModule:addObjectLoadedFunctionForTypes({ gameObjectIndex }, function(object)
 			serverGOMModule:addObjectToSet(object, serverGOMModule.objectSets.interestingToLookAt)
 			serverGOMModule:addObjectToSet(object, objectSet)
 			
 			serverMobModule:mobLoaded(object)
 		end)
-		
-		local reactDistance = mobModule.types[identifier].reactDistance
+
+		local reactDistance = mobModule.types[mobIndex].reactDistance -- TODO: Add better handling here
 		
 		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 2.0, serverMobModule.infrequentUpdate)
-		serverGOMModule:addProximityCallbackForGameObjectsInSet(serverGOMModule.objectSets.moas, serverGOMModule.objectSets.sapiens, reactDistance, serverMobModule.mobSapienProximity)
+		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, serverMobModule.mobSapienProximity)
 	end
 
 	-- TODO LIAM
@@ -1818,10 +1819,14 @@ local objectLoaders = {
 	serverMobHandler = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from serverMob.lua
+		dependencies = {
+			"mob"
+		},
 		moduleDependencies = {
 			"serverMob",
 			"mob",
-			"serverGOM"
+			"serverGOM",
+			"gameObject"
 		},
 		loadFunction = objectManager.handleServerMob
 	},
