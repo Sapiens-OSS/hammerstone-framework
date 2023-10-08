@@ -1,3 +1,5 @@
-function planManager:updateImpossibleStateForCraftAreaAvailibilityChange(craftAreaTribeID, objectID, craftAreaGroupTypeIndex, isNewlyAvailableOrNilForNewlyUnavailable, craftAreaObjectPos)
-    updateImpossibleStateForCraftAreaAvailibilityChangeInternal(craftAreaTribeID, objectID, craftAreaGroupTypeIndex, isNewlyAvailableOrNilForNewlyUnavailable, craftAreaObjectPos)
+    return planManager:updateImpossibleStateForCraftAreaAvailibilityChange(craftAreaTribeID, objectID, craftAreaGroupTypeIndex, isNewlyAvailableOrNilForNewlyUnavailable, craftAreaObjectPos)
 end
+
+function planManager:updateImpossibleStateForCraftAreaAvailibilityChange(craftAreaTribeID, objectID, craftAreaGroupTypeIndex, isNewlyAvailableOrNilForNewlyUnavailable, craftAreaObjectPos)
+    

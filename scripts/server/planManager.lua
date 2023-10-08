@@ -35,3 +35,5 @@ function planManager:addPlans(super, tribeID, userData)
         end
     end
 end
+
+return shadow:shadow(planManager, 0)

@@ -59,7 +59,11 @@ local function getSummaryLocKey(identifier)
 end
 
 local function getInProgressKey(prefix, identifier)
-	return prefix .. "_" .. "inProgress"
+	return prefix .. "_" .. identifier .. "_inProgress"
+end
+
+local function getDescriptionKey(prefix, identifier)
+	return prefix .. "_" ..identifier .. "_description"
 end
 
 ---------------------------------------------------------------------------------
@@ -202,9 +206,8 @@ function objectManager:generateCustomModel(modelRemap)
 end
 
 ---------------------------------------------------------------------------------
--- Buildable
+-- Craftable
 ---------------------------------------------------------------------------------
-
 local function getResources(e)
 	local resourceModule = moduleManager:get("resource")
 	local actionModule = moduleManager:get("action")
@@ -244,6 +247,66 @@ local function getResources(e)
 		count = count,
 	}
 end
+
+--- Returns a lua table, containing the shared keys between craftables and buildables
+function objectManager:getCraftableBase(description, craftableComponent)
+	
+	-- Modules
+	local skillModule = moduleManager:get("skill")
+	local craftableModule = moduleManager:get("craftable")
+	local toolModule = moduleManager:get("tool")
+	local actionSequenceModule = moduleManager:get("actionSequence")
+	local gameObjectModule = moduleManager:get("gameObject")
+
+	-- Setup
+	local identifier = description:getStringValue("identifier")
+
+	local tool = craftableComponent:getStringOrNil("tool"):asTypeIndex(toolModule.types)
+	local requiredTools = nil
+	if tool then
+		requiredTools = {
+			tool
+		}
+	end
+
+	-- TODO: copy/pasted
+	local buildSequenceData
+	if craftableComponent.custom_build_sequence ~= nil then
+		utils:logNotImplemented("Custom Build Sequence")
+	else
+		local actionSequence = craftableComponent:getStringOrNil("action_sequence"):asTypeIndex(actionSequenceModule.types, "Action Sequence")
+		if actionSequence then
+			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, tool)
+		else
+			buildSequenceData = craftableModule[craftableComponent:getStringValue("build_sequence")]
+		end
+	end
+
+	local craftableBase = {
+		name = description:getStringOrNil("name"):asLocalizedString(getNameLocKey(identifier)),
+		plural = description:getStringOrNil("plural"):asLocalizedString(getPluralLocKey(identifier)),
+		summary = description:getStringOrNil("summary"):asLocalizedString(getSummaryLocKey(identifier)),
+
+		buildSequence = buildSequenceData,
+
+		skills = {
+			required = craftableComponent:getStringOrNil("skill"):asTypeIndex(skillModule.types)
+		},
+
+		-- TODO throw a warning here
+		iconGameObjectType = craftableComponent:getStringOrNil("display_object"):default(identifier):asTypeIndex(gameObjectModule.types),
+
+		requiredTools = requiredTools,
+
+		requiredResources = craftableComponent:getTable("resources"):select(getResources, true):clear()
+	}
+
+	return craftableBase
+end
+
+---------------------------------------------------------------------------------
+-- Buildable
+---------------------------------------------------------------------------------
 
 local function getBuildModelName(objectComponent, craftableComponent)
 	local modelName = objectComponent:getStringValueOrNil("model")
@@ -922,66 +985,6 @@ function objectManager:generateEvolvingObject(objDef)
 	evolvingObjectModule:addEvolvingObject(identifier, newEvolvingObject)
 end
 
----------------------------------------------------------------------------------
--- Craftable
----------------------------------------------------------------------------------
-
---- Returns a lua table, containing the shared keys between craftables and buildables
-function objectManager:getCraftableBase(description, craftableComponent)
-	
-	-- Modules
-	local skillModule = moduleManager:get("skill")
-	local craftableModule = moduleManager:get("craftable")
-	local toolModule = moduleManager:get("tool")
-	local actionSequenceModule = moduleManager:get("actionSequence")
-	local gameObjectModule = moduleManager:get("gameObject")
-
-	-- Setup
-	local identifier = description:getStringValue("identifier")
-
-	local tool = craftableComponent:getStringOrNil("tool"):asTypeIndex(toolModule.types)
-	local requiredTools = nil
-	if tool then
-		requiredTools = {
-			tool
-		}
-	end
-
-	-- TODO: copy/pasted
-	local buildSequenceData
-	if craftableComponent.custom_build_sequence ~= nil then
-		utils:logNotImplemented("Custom Build Sequence")
-	else
-		local actionSequence = craftableComponent:getStringOrNil("action_sequence"):asTypeIndex(actionSequenceModule.types, "Action Sequence")
-		if actionSequence then
-			buildSequenceData = craftableModule:createStandardBuildSequence(actionSequence, tool)
-		else
-			buildSequenceData = craftableModule[craftableComponent:getStringValue("build_sequence")]
-		end
-	end
-
-	local craftableBase = {
-		name = description:getStringOrNil("name"):asLocalizedString(getNameLocKey(identifier)),
-		plural = description:getStringOrNil("plural"):asLocalizedString(getPluralLocKey(identifier)),
-		summary = description:getStringOrNil("summary"):asLocalizedString(getSummaryLocKey(identifier)),
-
-		buildSequence = buildSequenceData,
-
-		skills = {
-			required = craftableComponent:getStringOrNil("skill"):asTypeIndex(skillModule.types)
-		},
-
-		-- TODO throw a warning here
-		iconGameObjectType = craftableComponent:getStringOrNil("display_object"):default(identifier):asTypeIndex(gameObjectModule.types),
-
-		requiredTools = requiredTools,
-
-		requiredResources = craftableComponent:getTable("resources"):select(getResources, true):clear()
-	}
-
-	return craftableBase
-end
-
 -- TODO: selectionGroupTypeIndexes
 function objectManager:generateGameObject(objDef)
 	return objectManager:generateGameObjectInternal(objDef, false)
@@ -995,7 +998,6 @@ function objectManager:generateGameObjectInternal(objDef, isBuildVariant)
 	local harvestableModule = moduleManager:get("harvestable")
 	local seatModule = moduleManager:get("seat")
 	local craftAreaGroupModule = moduleManager:get("craftAreaGroup")
-	--local mobModule = moduleManager:get("mob")
 
 	-- Setup
 	local description = objDef:getTable("description")
@@ -1167,75 +1169,7 @@ function objectManager:generateMaterial(material)
 end
 
 ---------------------------------------------------------------------------------
--- Skill
----------------------------------------------------------------------------------
-
-function objectManager:generateSkill(objDef)
-	-- TODO : To be redone. Currently disabled
-
-	--[[
-	-- Modules
-	local skillModule = moduleManager:get("skill")
-
-	-- Setup
-	local skills = config["skills"]
-
-	for _, s in pairs(skills) do
-
-		local desc = s["description"]
-		local skil = s["skill"]
-
-		log:schema("ddapi", "  " .. desc["identifier"])
-
-		local required = {
-			identifier = true,
-			name = true,
-			description = true,
-			icon = true,
-
-			row = true,
-			column = true,
-			requiredSkillTypes = false,
-			startLearned = false,
-			partialCapacityWithLimitedGeneralAbility = false,
-		}
-
-		local data = utils:compile(required, {
-
-			identifier = utils:getField(desc, "identifier", {
-				notInTypeTable = skillModule.types
-			}),
-			name = utils:getField(desc, "name"),
-			description = utils:getField(desc, "description"),
-			icon = utils:getField(desc, "icon"),
-
-			row = utils:getField(skil, "row", {
-				type = "number"
-			}),
-			column = utils:getField(skil, "column", {
-				type = "number"
-			}),
-			requiredSkillTypes = utils:getTable(skil, "requiredSkills", {
-				-- Make sure each skill exists and transform skill name to index
-				map = function(e) return utils:getTypeIndex(skillModule.types, e, "Skill") end
-			}),
-			startLearned = utils:getField(skil, "startLearned", {
-				type = "boolean"
-			}),
-			partialCapacityWithLimitedGeneralAbility = utils:getField(skil, "impactedByLimitedGeneralAbility", {
-				type = "boolean"
-			}),
-		})
-
-		if data ~= nil then
-			skillModule:addSkill(data.identifier, data)
-		end
-	end
-	]]
-end
-
----------------------------------------------------------------------------------
--- Plannable Actions
+-- Behavior
 ---------------------------------------------------------------------------------
 do
 	function objectManager:generatePlan(objDef)
@@ -1297,7 +1231,7 @@ do
 		local addPlanFunction = planComponent:get("addPlanFunction"):ofType("function"):getValue()
 
 		typeMapsModule:insert("plan", planModule.types, newPlan)
-		planManager.addPlansFunctions[newPlan.index] = addPlanFunction
+		planManagerModule.addPlansFunctions[newPlan.index] = addPlanFunction
 	end
 
 	function objectManager:generatePlanHelperBehavior(objDef)
@@ -1312,17 +1246,18 @@ do
 		-- Setup
 		local components = objDef:getTable("components")
 
-		local planHelperComponent = objDef:getTableOrNil("hs_planAvailability")
+		local planHelperComponent = components:getTableOrNil("hs_planAvailability")
 		if planHelperComponent.isNil() then return end 
 
 		local targetObjects = planHelperComponent:getTableOrNil("targets")
 
 		if not targetObjects:isNil() then
-			local availablePlansFunction = planHelperComponent:get("availablePlansFunction"):getValue()
+			local availablePlansFunction = planHelperComponent:get("available_plans_function"):getValue()
 
 			if type(availablePlansFunction) == "string" then
 				availablePlansFunction = planHelperModule[availablePlansFunction]
-			elseif not type(availablePlansFunction) == "function" then
+
+			elseif type(availablePlansFunction) ~= "function" then
 				log:schema("ddapi", "availablePlansFunction must be a string or a function")
 				return
 			end
@@ -1339,8 +1274,8 @@ do
 			local requiredTool = planHelperComponent:getOrNil("tool")
 
 			local ok, requiredToolTypeIndex = 
-				switch(type(requiredToolTypeIndex:getValue())) : caseof {
-					["string"] = function() return true, requiredTool:asTypeIndex(tool.types) end, 
+				switch(type(requiredTool:getValue())) : caseof {
+					["string"] = function() return true, requiredTool:asTypeIndex(toolModule.types) end, 
 					["function"] = function() return true, requiredTool:getValue() end, 
 					["nil"] = function() return true, nil end, 
 					default = function() 
@@ -1532,6 +1467,90 @@ do
 	end
 end
 ---------------------------------------------------------------------------------
+-- Knowledge
+---------------------------------------------------------------------------------
+function objectManager:generateSkill(objDef)
+	-- Modules
+	local skillModule = moduleManager:get("skill")
+
+	-- Setup
+	local description = objDef:getTable("description")
+	local components = objDef:getTable("components")
+
+	local identifier = description:getStringValue("identifier")
+	log:schema("ddapi", "  " .. identifier)
+
+	local skillComponent = components:getTableOrNil("hs_skill")
+
+	if skillComponent:isNil() then return end 
+
+	local newSkill = {
+		name = description:getString("identifier"):asLocalizedString(getNameKey("skill", identifier)), 
+		description = description:getStringOrNil("description"):asLocalizedString(getDescriptionKey("skill", identifier)),
+		icon = description:getString("icon"), 
+		noCapacityWithLimitedGeneralAbility = skillComponent:getBooleanOrNil("limiting"):default(true):getValue(), 
+		isDefault = skillComponent:getBooleanOrNil("start_learned"):default(false):getValue(), 
+		parentSkills = skillComponent.getTableOrNil("parents"):asTypeIndex(skillModule.types), 
+		childSkills = skillComponent.getTableOrNil("children"):asTypeIndex(skillModule.types)
+	}
+
+	if skillComponent:hasKey("props") then
+		newSkill = skillComponent:getTable("props"):mergeWith(newSkill):clear()
+	end
+
+	skillModule.addSkill(newSkill)
+end
+
+function objectManager:generateResearch(objDef)
+	-- Modules
+	local researchModule = moduleManager:get("research")
+	local resourceModule = moduleManager:get("resource")
+	local orderModule = moduleManager:get("order")
+	local constructableModule = moduleManager:get("constructable")
+	local skillModule = moduleManager:get("skill)")
+	local toolModule = moduleManager:get("tool")
+
+	-- Setup
+	local description = objDef:getTable("description")
+	local components = objDef:getTable("components")
+
+	local identifier = description:getStringValue("identifier")
+	log:schema("ddapi", "  " .. identifier)
+
+	local researchComponent = components:getTableOrNil("hs_research")
+
+	if researchComponent:isNil() then return end 
+
+	local newResearch = {
+		skillTypeIndex = researchComponent:getStringOrNil("skill"):asTypeIndex(skillModule.types), 
+		requiredToolTypeIndex = researchComponent:getStringOrNil("tool"):asTypeIndex(toolModule.types),
+		orderTypeIndex = researchComponent:getStringOrNil("order"):asTypeIndex(orderModule.types), 
+		heldObjectOrderTypeIndex = researchComponent:getStringOrNil("order_object"):asTypeIndex(orderModule.types),
+		constructableTypeIndex = researchComponent:getStringOrNil("constructable"):asTypeIndex(constructableModule.types),
+		allowResearchEvenWhenDark = researchComponent:getBooleanOrNil("need_light"):default(false):with(function (value) return not value end):getValue(), 
+		disallowsLimitedAbilitySapiens = researchComponent:getBooleanOrNil("limited"):default(true):getValue(), 
+		initialResearchSpeedLearnMultiplier = researchComponent:getNumberValueOrNil("speed"), 
+		researchRequiredForVisibilityDiscoverySkillTypeIndexes = researchComponent:getTableOrNil("needed_skills"):asTypeIndex(skillModule.types), 
+		shouldRunWherePossibleWhileResearching = researchComponent:getBooleanValueOrNil("should_run"), 
+	}
+
+	if researchComponent:hasKey("resources") then
+		local addConstructables = researchComponent:getBooleanValueOrNil("add_constructables")
+		if addConstructables then
+			newResearch.resourceTypeIndexes = researchComponent:getTable("resources"):selectKeys(function(key) return key:asTypeIndex(resourceModule.types) end, true)
+			newResearch.constructableTypeIndexArraysByBaseResourceTypeIndex = researchComponent:selectPairs(
+				function(key, value)
+					return 	key:asTypeIndex(resourceModule.types), 
+							value:asTypeIndex(constructableModule.types)
+				end, hmtPairsMode.KeysAndValues)
+		else
+			newResearch.resourceTypeIndexes = researchComponent:getTable("resources"):asTypeIndex(resourceModule.types)
+		end
+	end
+
+	researchModule:addResearch(identifier, newResearch)
+end
+---------------------------------------------------------------------------------
 -- Configuation and Loading
 ---------------------------------------------------------------------------------
 
@@ -1547,14 +1566,20 @@ end
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
 -- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
 -- @field configType - The configType for which to load configs/objectDefinitions
+local sortedObjectLoaders = {}
 local objectLoaders = {
 
 	storage = {
 		configType = configLoader.configTypes.storage,
 		moduleDependencies = {
 			"storage",
+			"typeMaps",
 			"resource", 
 			"gameObject"
+		},
+		dependencies = {
+			"resource",
+			"gameObject",
 		},
 		loadFunction = objectManager.generateStorageObject
 	},
@@ -1562,6 +1587,10 @@ local objectLoaders = {
 	-- Special one: This handles injecting the resources into storage zones
 	storageLinkHandler = {
 		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"storage", 
+			"resource"
+		},
 		dependencies = {
 			"storage", 
 			"resource"
@@ -1576,6 +1605,9 @@ local objectLoaders = {
 		moduleDependencies = {
 			"gameObject"
 		},
+		dependencies = {
+			"gameObject"
+		},
 		loadFunction = objectManager.handleEatByProducts
 	},
 
@@ -1584,6 +1616,10 @@ local objectLoaders = {
 		waitingForStart = true,
 		moduleDependencies = {
 			"evolvingObject",
+			"typeMaps",
+			"gameObject"
+		},
+		dependencies = {
 			"gameObject"
 		},
 		loadFunction = objectManager.generateEvolvingObject
@@ -1592,9 +1628,8 @@ local objectLoaders = {
 	resource = {
 		configType = configLoader.configTypes.object,
 		moduleDependencies = {
-			"typeMaps",
 			"resource", 
-			"gameObject"
+			"typeMaps",
 		},
 		loadFunction = objectManager.generateResource
 	},
@@ -1603,17 +1638,25 @@ local objectLoaders = {
 		configType = configLoader.configTypes.object,
 		moduleDependencies = {
 			"buildable",
+			"typeMaps",
 			"constructable",
 			"plan",
+			"research", 
 			"skill",
-			"resource",
-			"action",
 			"craftable",
 			"tool",
 			"actionSequence",
 			"gameObject",
-
-			"research" -- TODO: Test to ensure this isn't causing load order issues. See research.lua
+			"resource",
+			"action"
+		},
+		dependencies = {
+			"plan", 
+			"skill",
+			"resource",
+			"craftable",
+			"gameObject",
+			"research"
 		},
 		loadFunction = objectManager.generateBuildable
 	},
@@ -1622,16 +1665,24 @@ local objectLoaders = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
 		moduleDependencies = {
+			"craftable",
+			"typeMaps",
 			"gameObject",
 			"constructable",
 			"craftAreaGroup",
 			"skill",
-			"resource",
-			"action",
-			"craftable",
 			"tool",
-			-- "resourceGroups", -- Adding this dependency breaks the craftable menu. Why was this originally added?
-			"actionSequence"
+			"actionSequence",
+			"resource",
+			"action"
+		},
+		dependencies = {
+			"gameObject", 
+			"skill", 
+			"resource", 
+			"action", 
+			"actionSequence", 
+			"buildable"
 		},
 		loadFunction = objectManager.generateCraftable
 	},
@@ -1640,6 +1691,7 @@ local objectLoaders = {
 		configType = configLoader.configTypes.object,
 		moduleDependencies = {
 			"modelPlaceholder",
+			"typeMaps",
 			"resource",
 			"gameObject",
 			"model"
@@ -1654,14 +1706,16 @@ local objectLoaders = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
 		moduleDependencies = {
-			"resource",
 			"gameObject",
+			"resource",			
 			"tool",
 			"harvestable",
-			"seat"
+			"seat",
+			"craftAreaGroup"
 		},
 		dependencies = {
-			"seats"
+			"seats", 
+			"harvestable",
 		},
 		loadFunction = objectManager.generateGameObject
 	},
@@ -1674,19 +1728,22 @@ local objectLoaders = {
 			"gameObject",
 			"animationGroups"
 		},
+		dependencies = {
+			"gameObject",
+		},
 		loadFunction = objectManager.generateMobObject
 	},
 
 	harvestable = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true,
-		dependencies = {
-			"gameObject"
-		},
 		moduleDependencies = {
 			"harvestable",
+			"typeMaps",
 			"gameObject",
-			"typeMaps"
+		},
+		dependencies = {
+			"gameObject"
 		},
 		loadFunction = objectManager.generateHarvestableObject
 	},
@@ -1694,17 +1751,21 @@ local objectLoaders = {
 	planHelper_object = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
-		dependencies = {
+		moduleDependencies = {
+			"planHelper", 
 			"gameObject"
 		},
-		moduleDependencies = {
-			"planHelper"
+		dependencies = {
+			"gameObject"
 		},
 		loadFunction = objectManager.generatePlanHelperObject
 	},
 	
 	resourceGroupHandler = {
 		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"resource"
+		},
 		dependencies = {
 			"resourceGroups",
 			"resource"
@@ -1719,7 +1780,6 @@ local objectLoaders = {
 		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"plan",
-			"typeMaps", 
 			"planManager"
 		}, 
 		loadFunction = objectManager.generatePlan
@@ -1733,11 +1793,11 @@ local objectLoaders = {
 			"plan", 
 			"tool", 
 			"skill", 
-			"research"
+			"research", 
+			"gameObject"
 		}, 
 		dependencies = {
 			"plan", 
-			"tool", 
 			"skill", 
 			"research", 
 			"gameObject"
@@ -1749,7 +1809,6 @@ local objectLoaders = {
 		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"order",
-			"typeMaps",
 		},
 		loadFunction = objectManager.generateOrder
 	}, 
@@ -1763,7 +1822,8 @@ local objectLoaders = {
 			"activeOrderAI"
 		}, 
 		dependencies = {
-			"action"
+			"action", 
+			"skill"
 		}, 
 		loadFunction = objectManager.generateActiveOrder
 	},
@@ -1772,7 +1832,7 @@ local objectLoaders = {
 		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"action",
-			"typeMaps",
+			"gameObject"			
 		}, 
 		dependencies = {
 			"gameObject"
@@ -1784,8 +1844,7 @@ local objectLoaders = {
 		configType = configLoader.configTypes.behavior,
 		moduleDependencies = {
 			"actionSequence", 
-			"action",
-			"typeMaps"
+			"action"
 		},
 		dependencies = {
 			"action", 
@@ -1798,18 +1857,39 @@ local objectLoaders = {
 		configType = configLoader.configTypes.behavior, 
 		moduleDependencies = {
 			"action", 
-			"typeMaps"
 		}, 
 		loadFunction = objectManager.generateActionModifier
 	},
 
+	---------------------------------------------------------------------------------
+	-- Knowledge
+	---------------------------------------------------------------------------------
 	skill = {
-		configType = configLoader.configTypes.behavior,
-		disabled = true,
+		configType = configLoader.configTypes.knowledge,
 		moduleDependencies = {
-			"skill"
+			"skill", 
+			"typeMaps"
 		},
 		loadFunction = objectManager.generateSkill
+	},
+	research = {
+		configType = configLoader.configTypes.knowledge, 
+		moduleDependencies = {
+			"research", 
+			"typeMaps",
+			"skill", 
+			"resource", 
+			"order", 
+			"constructable", 
+			"tool"
+		}, 
+		dependencies = {
+			"skill", 
+			"resource", 
+			"order", 
+			"buildable"
+		}, 
+		loadFunction = objectManager.generateResearch
 	},
 	---------------------------------------------------------------------------------
 	-- Shared Configs
@@ -1832,10 +1912,10 @@ local objectLoaders = {
 		shared_getter = "getResourceGroups",
 		moduleDependencies = {
 			"resource",
-			"typeMaps",
 			"gameObject"
 		},
 		dependencies = {
+			"resource",
 			"gameObject"
 		},
 		loadFunction = objectManager.generateResourceGroup
@@ -1847,11 +1927,7 @@ local objectLoaders = {
 		shared_unwrap = "hs_seat_types",
 		shared_getter = "getSeatTypes",
 		moduleDependencies = {
-			"seat",
-			"typeMaps"
-		},
-		dependencies = {
-			"storage"
+			"seat"
 		},
 		loadFunction = objectManager.generateSeat
 	},
@@ -1893,12 +1969,11 @@ function objectManager:init()
 
 	log:schema("ddapi", "Initializing DDAPI...")
 
+	-- checks if we have circular dependencies and sorts the loaders
+	objectManager:checkAndSortLoaders()
+
 	-- Find config files from FS
 	configLoader:findConfigFiles()
-
-	local test = hmt({ message = "helloWorld!"})
-	local valueT = test:get("message")
-
 end
 
 
@@ -1937,8 +2012,12 @@ local function canLoadObjectType(objectLoader)
 	-- Don't load until all dependencies are satisfied (dependent types loaded first!)
 	if objectLoader.dependencies ~= nil then
 		for i, dependency in pairs(objectLoader.dependencies) do
-			if objectLoaders[dependency].loaded ~= true then
-				return false
+			if not objectLoaders[dependency] then
+				mj:error("Dependency ", dependency, " does not exist")
+			else
+				if objectLoaders[dependency].loaded ~= true then
+					return false
+				end
 			end
 		end
 	end
@@ -1958,7 +2037,8 @@ end
 
 --- Attempts to load object definitions from the objectLoaders
 function objectManager:tryLoadObjectDefinitions()
-	for objectType, objectLoader in pairs(objectLoaders) do
+	for _, objectType in ipairs(sortedObjectLoaders) do
+		local objectLoader = objectLoaders[objectType]
 		if canLoadObjectType(objectLoader) then
 			objectManager:loadObjectDefinition(objectType, objectLoader)
 		end
@@ -2073,6 +2153,53 @@ function objectManager:isProcessDone(configType)
 	end
 
 	return true, allLoaded
+end
+
+local function allDependenciesResolved(loader)
+	if loader.dependencies then
+		for _, dependency in ipairs(loader.dependencies) do 
+			if not objectLoaders[dependency] then
+				mj:error("ERROR IN DDAPI: ObjectLoader with name ", dependency, " does not exist")
+				os.exit(1)
+				return false
+			elseif not objectLoaders[dependency].sorted then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+function objectManager:checkAndSortLoaders()
+	local allSorted = false
+
+	while not allSorted do
+		local found = false 
+		allSorted = true 
+
+		for objectType, loader in pairs(objectLoaders) do 
+			if not loader.sorted then
+				allSorted = false 
+				if allDependenciesResolved(loader) then
+					found = true
+					loader.sorted = true 
+					table.insert(sortedObjectLoaders, objectType)
+				end
+			end
+		end
+
+		if not allSorted and not found then
+			local unsorted = {}
+			for objectType, loader in pairs(objectLoaders) do 
+				if not loader.index then
+					table.insert(unsorted, objectType)
+				end
+			end
+
+			mj:error("ERROR IN DDAPI. Circular dependencies found. These loaders could not be sorted: ", unsorted)
+			os.exit(1)
+		end
+	end
 end
 
 return objectManager

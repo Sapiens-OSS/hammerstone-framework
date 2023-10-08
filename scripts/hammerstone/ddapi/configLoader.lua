@@ -33,11 +33,9 @@ local configLoader = {
 			isGlobal = true,
 			configPath = "/hammerstone/builders/",
 		},
-		skill = {
-			key = "skill",
-			unwrap = "hammerstone:skill_definition",
-			configPath = "/hammerstone/skills",
-			luaGetter = "getSkillConfigs",
+		knowledge = {
+			key = "knowledge",
+			configPath = "/hammerstone/knowledge",
 			configFiles = {},
 		}, 
 		behavior = {

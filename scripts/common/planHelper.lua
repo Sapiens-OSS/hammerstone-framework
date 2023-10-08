@@ -12,7 +12,8 @@ end
 
 function planHelper:init(super)
 	super()
-	objectManager:markObjectAsReadyToLoad("planHelper")
+	objectManager:markObjectAsReadyToLoad("planHelper_object")
+	objectManager:markObjectAsReadyToLoad("planHelper_behavior")
 end
 
 --- Allows you to set the available plans for an object.

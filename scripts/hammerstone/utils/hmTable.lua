@@ -467,6 +467,18 @@ do
                 return init(self, data)
             end
 
+            function mt:selectKeys(predicate, keysToHMT)
+                local data = {}
+
+                for k in pairs(self) do 
+                    local keyHMT = init(self, k)
+                    local result = predicate(keysToHMT and keyHMT or keyHMT:getValue())
+                    if result then table.insert(data, result) end
+                end
+
+                return init(self, data)
+            end
+
             function mt:with(predicate)
                 return init(self, predicate(self))
             end

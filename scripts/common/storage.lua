@@ -14,6 +14,8 @@ local typeMaps = mjrequire "common/typeMaps"
 local log = mjrequire "hammerstone/logging"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
+local canTrace = true 
+
 function mod:onload(storage)
 	--- Allows adding a storage.
 	--- @param key: The key to add, such as 'cake'
@@ -21,7 +23,11 @@ function mod:onload(storage)
 	function storage:addStorage(key, objectType)
 		local typeIndexMap = typeMaps.types.storage -- Created automatically in storage.lua
 
+		if canTrace then canTrace = false witchyTrace = true end  
+
 		local index = typeIndexMap[key]
+		witchyTrace = false 
+
 		if not index then
 			log:error("attempt to add storage type that isn't in typeIndexMap:", key)
 		else
