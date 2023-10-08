@@ -767,6 +767,43 @@ function objectManager:generateMobObject(objDef)
 	end
 end
 
+function objectManager:handleClientMob(def)
+	local mobModule = moduleManager:get("mob")
+	local clientMobModule = moduleManager:get("clientMob")
+
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local components = def:getTable("components")
+	local mobComponent = components:getTableOrNil("hs_mob")
+
+	-- Early return
+	if mobComponent:getValue() == nil then
+		return
+	end
+
+	local emulateAI = mobComponent:getBooleanOrNil("emulate_ai"):default(false):getValue()
+	local mobIndex = identifier:asTypeIndex(mobModule.types)
+
+	-- TODO: Clean this up
+	local dummyAI = {}
+	dummyAI.serverUpdate = function(object, notifications, pos, rotation, scale, incomingServerStateDelta)
+	end
+	dummyAI.objectWasLoaded = function(object, pos, rotation, scale)
+	end
+	function dummyAI:update(object, dt, speedMultiplier)
+	end
+	function dummyAI:init(clientGOM_)
+	end
+
+
+	if emulateAI then
+		log:schema("ddapi", string.format("  Mob '%s' is using emulated AI.", identifier:getValue()))
+		clientMobModule.mobClassMap[mobIndex] = dummyAI
+	else
+		log:schema("ddapi", string.format("  WARNING: Mob '%s' is not using emulated AI. You will be responsible for creating an AI yourself in clientMob.lua", identifier:getValue()))
+	end
+end
+
 ---------------------------------------------------------------------------------
 -- Harvestable  Object
 ---------------------------------------------------------------------------------
@@ -1674,6 +1711,15 @@ local objectLoaders = {
 			"animationGroups"
 		},
 		loadFunction = objectManager.generateMobObject
+	},
+
+	clientMobHandler = {
+		configType = configLoader.configTypes.object,
+		moduleDependencies = {
+			"clientMob",
+			"mob"
+		},
+		loadFunction = objectManager.handleClientMob
 	},
 
 	harvestable = {
