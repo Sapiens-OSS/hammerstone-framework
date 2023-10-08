@@ -754,9 +754,56 @@ function objectManager:generateMobObject(objDef)
 		animationGroupIndex = mobComponent:getString("animation_group"):asTypeIndex(animationGroupsModule),
 	}
 
-	if mobComponent:hasKey("props") then
-		mobObject = mobComponent:getTable("props"):mergeWith(mobObject):clear()
-	end
+	local defaultProps = hmt{
+		-- These values are all sensible defaults, more or less averaging mammoth, aplaca, and chicken stats
+		initialHealth = 10.0,
+
+		spawnFrequency = 0.5,
+		spawnDistance = mj:mToP(400.0),
+
+		reactDistance = mj:mToP(50.0),
+        agroDistance = mj:mToP(5.0),
+        runDistance = mj:mToP(20.0),
+        
+        agroTimerDuration = 3.0,
+        aggresionLevel = nil, -- no agro
+
+		pathFindingRayRadius = mj:mToP(0.5),
+        pathFindingRayYOffset = mj:mToP(1),
+        walkSpeed = mj:mToP(0.8),
+        runSpeedMultiplier = 3,
+        embedBoxHalfSize = vec3(0.3,0.2,0.5),
+
+		-- Coppied from Alpaca
+		maxSoundDistance2 = mj:mToP(200.0) * mj:mToP(200.0),
+        soundVolume = 0.2,
+        soundRandomBaseName = "alpaca",
+        soundRandomBaseCount = 2,
+        soundAngryBaseName = "alpacaAngry",
+        soundAngryBaseCount = 1,
+        deathSound = "alpacaAngry1",
+
+		-- NOT IMPLEMENTED. These are more specific, and should be handled internally.
+		-- idleAnimations = {
+        --     "stand1",
+        --     "stand2",
+        --     "stand3",
+        --     "stand4",
+        --     "sit1",
+        --     "sit2",
+        -- },
+
+        -- sleepAnimations = {
+        --     "sit1",
+        --     "sit2",
+        -- },
+        
+        -- runAnimation = "trot",
+        -- deathAnimation = "die",
+	}
+
+	mobObject = defaultProps:mergeWith(mobComponent:getTableOrNil("props"):default({})):mergeWith(mobObject):clear()
+
 
 	-- Insert
 	mobModule:addType(identifier, mobObject)
@@ -781,7 +828,7 @@ function objectManager:handleClientMob(def)
 		return
 	end
 
-	local emulateAI = mobComponent:getBooleanOrNil("emulate_ai"):default(false):getValue()
+	local emulateAI = mobComponent:getBooleanOrNil("emulate_client_ai"):default(false):getValue()
 	local mobIndex = identifier:asTypeIndex(mobModule.types)
 
 	-- TODO: Clean this up
@@ -803,6 +850,52 @@ function objectManager:handleClientMob(def)
 		log:schema("ddapi", string.format("  WARNING: Mob '%s' is not using emulated AI. You will be responsible for creating an AI yourself in clientMob.lua", identifier:getValue()))
 	end
 end
+
+function objectManager:handleServerMob(def)
+	local mobModule = moduleManager:get("mob")
+	local serverMobModule = moduleManager:get("serverMob")
+	local serverGOMModule = moduleManager:get("serverGOM")
+	
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local components = def:getTable("components")
+	local mobComponent = components:getTableOrNil("hs_mob")
+
+	-- Early return
+	if mobComponent:getValue() == nil then
+		return
+	end
+
+	local emulateAI = mobComponent:getBooleanOrNil("emulate_server_ai"):default(false):getValue()
+	local objectSetString = mobComponent:getStringOrNil("object_set"):default(identifier)
+	local objectSet = serverGOMModule.objectSets[objectSetString] -- TODO add better error handling here
+	local mobIndex = identifier:asTypeIndex(mobModule.types)
+
+	
+	-- serverGOM.objectSets.moas
+	local function initAI() -- No params because these are handled magically via local leaking (yay...)
+		serverGOMModule:addObjectLoadedFunctionForTypes({ mobIndex }, function(object)
+			serverGOMModule:addObjectToSet(object, serverGOMModule.objectSets.interestingToLookAt)
+			serverGOMModule:addObjectToSet(object, objectSet)
+			
+			serverMobModule:mobLoaded(object)
+		end)
+		
+		local reactDistance = mobModule.types[identifier].reactDistance
+		
+		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 2.0, serverMobModule.infrequentUpdate)
+		serverGOMModule:addProximityCallbackForGameObjectsInSet(serverGOMModule.objectSets.moas, serverGOMModule.objectSets.sapiens, reactDistance, serverMobModule.mobSapienProximity)
+	end
+
+	-- TODO LIAM
+	if emulateAI then
+		log:schema("ddapi", string.format("  Mob '%s' is using emulated server AI.", identifier:getValue()))
+		initAI()
+	else
+		log:schema("ddapi", string.format("  WARNING: Mob '%s' is not using emulated server AI. You will be responsible for creating an AI yourself in serverMob.lua", identifier:getValue()))
+	end
+end
+
 
 ---------------------------------------------------------------------------------
 -- Harvestable  Object
@@ -1702,6 +1795,8 @@ local objectLoaders = {
 		loadFunction = objectManager.generateGameObject
 	},
 
+
+	-- Mob section
 	mob = {
 		configType = configLoader.configTypes.object,
 		waitingForStart = true, -- Set to true in `mob.lua`
@@ -1712,7 +1807,6 @@ local objectLoaders = {
 		},
 		loadFunction = objectManager.generateMobObject
 	},
-
 	clientMobHandler = {
 		configType = configLoader.configTypes.object,
 		moduleDependencies = {
@@ -1720,6 +1814,16 @@ local objectLoaders = {
 			"mob"
 		},
 		loadFunction = objectManager.handleClientMob
+	},
+	serverMobHandler = {
+		configType = configLoader.configTypes.object,
+		waitingForStart = true, -- Custom start triggered from serverMob.lua
+		moduleDependencies = {
+			"serverMob",
+			"mob",
+			"serverGOM"
+		},
+		loadFunction = objectManager.handleServerMob
 	},
 
 	harvestable = {
