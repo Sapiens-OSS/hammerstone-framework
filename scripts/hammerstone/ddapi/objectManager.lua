@@ -686,16 +686,41 @@ function objectManager:generatePlanHelperObject(objDef)
 	end
 
 
-	local objectIndex = description:getString("identifier"):asTypeIndex(gameObjectModule.types)
-	local availablePlansFunction = plansComponent:getStringOrNil("available_plans"):with(
+	local identifier = description:getString("identifier")
+	local objectIndex = identifier:asTypeIndex(gameObjectModule.types)
+
+	local availablePlans = plansComponent:getStringOrNil("available_plans")
+	local availablePlansFunction = availablePlans:with(
 		function (value)
 			return planHelperModule[value]
 		end
 	):getValue()
 
-	-- Nil plans would override desired vanilla plans
-	if availablePlansFunction ~= nil then
-		planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
+	if availablePlans:getValue() ~= nil then
+		-- Nil plans would override desired vanilla plans
+		if availablePlansFunction ~= nil then
+			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlans:getValue(), identifier:getValue()))
+			planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
+		else
+			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlans:getValue(), identifier:getValue()))
+		end
+	end
+
+	local huntingPreset = plansComponent:getStringOrNil("hunting_preset")
+	local huntingPresetData = huntingPreset:with(
+		function (value)
+			return planHelperModule[value]
+		end
+	):getValue()
+
+	if huntingPreset:getValue() ~= nil then
+		-- Nil plans would override desired vanilla plans
+		if huntingPresetData ~= nil then
+			log:schema("ddapi", string.format("  Assigning hunting preset '%s' to object '%s'", huntingPreset:getValue(), identifier:getValue()))
+			planHelperModule.huntPlanInfosByObjectType[objectIndex] = huntingPresetData
+		else
+			log:schema("ddapi", string.format("  WARING: Tried to assign hunting preset '%s' to object '%s', but the plan was nil.", huntingPreset:getValue(), identifier:getValue()))
+		end
 	end
 end
 
