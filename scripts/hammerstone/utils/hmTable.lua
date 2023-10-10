@@ -295,6 +295,19 @@ do
 
                 return indexArray
             end
+
+            function mt:asTypeIndexMap(typeTable, displayAlias)
+                local indexArray = {}
+
+                for k in pairs(self) do
+                    local index = self:getString(k):asTypeIndexMap(typeTable, displayAlias)
+                    if index then
+                        table.insert(indexArray, index)
+                    end
+                end
+
+                return indexArray
+            end
         end
 
         --- Table Operations --
@@ -561,14 +574,18 @@ do
             end
 
             function valueMt:isNil()
-                return getValue() == nil
+                return self:getValue() == nil
             end
 
             function valueMt:isType(typeName)
-                return type(getValue()) == typeName
+                return type(self:getValue()) == typeName
             end
 
             function valueMt:getValue() return getValue(self) end
+
+            function valueMt:clear()
+                return self:getValue()
+            end
         end
 
         --- Validation ---
@@ -681,9 +698,23 @@ do
                 end
             end
 
+            function valueMt:asTypeIndexMap(typeIndexMapTable, displayAlias)
+                local value, _, fieldKey = getMetaValues(self)
+
+                if value then
+                    displayAlias = displayAlias or fieldKey
+
+                    if not typeIndexMapTable[value] then
+                        return raiseError(self, hmtErrors.NotInTypeTable, string.format("hmt.asTypeIndexMap -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeIndexMapTable, displayAlias)
+                    else
+                        return typeIndexMapTable[value]
+                    end
+                end
+            end
+
             function valueMt:asLocalizedString(default)
                 -- The key, which is either user submited, or the default
-                local localKey = getValue(self) or default
+                local localKey = self:getValue() or default
 
                 if localKey then
                     -- Unchecked fetch, returns localized result, or source string.

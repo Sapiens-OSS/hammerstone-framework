@@ -20,6 +20,7 @@ function mod:onload(inspectCraftPanel)
 				inspectCraftPanel.itemLists[key] = {}
 			end
 			for _, v in ipairs(value) do
+				mj:log("Adding index to inspectCraftPanel: ", v)
 				table.insert(inspectCraftPanel.itemLists[key], 1, v)
 			end
 		end

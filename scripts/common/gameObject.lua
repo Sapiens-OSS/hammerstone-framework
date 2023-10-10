@@ -1,24 +1,20 @@
 --- Hammerstone: gameObject.lua
 --- @author SirLich
 
-local mod = {
-	loadOrder = 1
-}
-
 -- Hammerstone
 local objectManager = mjrequire "hammerstone/ddapi/objectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
+local shadow = mjrequire "hammerstone/utils/shadow"
 
-function mod:onload(gameObject)
+local gameObject = {}
 
-	local super_mjInit = gameObject.mjInit
-	gameObject.mjInit = function(self)
-		objectManager:markObjectAsReadyToLoad("gameObject")
-		super_mjInit(self)
-		objectManager:markObjectAsReadyToLoad("eatByProductsHandler")
-	end
-
-	moduleManager:addModule("gameObject", gameObject)
+function gameObject:preload(base)
+	moduleManager:addModule("gameObject", base)
 end
 
-return mod
+function gameObject:addGameObjects(super)
+	super(self)
+	objectManager:markObjectAsReadyToLoad("gameObject")
+end
+
+return shadow:shadow(gameObject, 0)

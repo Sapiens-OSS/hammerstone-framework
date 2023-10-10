@@ -2,7 +2,6 @@
 -- --- @Author SirLich
 
 -- Sapiens
-local typeMaps = mjrequire "common/typeMaps"
 local gameObject = mjrequire "common/gameObject"
 
 -- Hammerstone
@@ -21,7 +20,7 @@ end
 
 -- Automatically made available
 function evolvingObject:addEvolvingObject(key, objectData)
-	local index = typeMaps:keyToIndex(key, gameObject.validTypes)
+	local index = gameObject.types[key]
 
 	if not index then
 		log:error("Attempting to add evolving object which isn't a GameObject:", key)
