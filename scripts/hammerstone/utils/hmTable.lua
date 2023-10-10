@@ -377,28 +377,28 @@ do
 
             function mt:first(predicate, valuesToHMT)
                 for i, e in ipairs(self) do
-                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e) end
+                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e), i end
                 end
                 return hmt(self, nil)
             end
 
-            function mt:firstOrDefault(predicate, defaultValue, valuesToHMT)
+            function mt:firstOrNil(predicate, defaultValue, valuesToHMT)
                 for i, e in ipairs(self) do
-                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e) end
+                    if predicate(valuesToHMT and init(self, e) or e) then return init(self, e), i end
                 end
                 return hmt(self, defaultValue)
             end
 
             function mt:last(predicate, valuesToHMT)
                 for i = #self, 1 do 
-                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]) end
+                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]), i end
                 end
                 return hmt(self, nil)
             end
 
-            function mt:lastOrDefault(predicate, defaultValue, valuesToHMT)
+            function mt:lastOrNil(predicate, defaultValue, valuesToHMT)
                 for i = #self, 1 do 
-                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]) end
+                    if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]), i end
                 end
                 return hmt(self, defaultValue)
             end

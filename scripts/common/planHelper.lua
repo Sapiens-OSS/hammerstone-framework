@@ -2,7 +2,7 @@
 -- Hammerstone
 local shadow = mjrequire "hammerstone/utils/shadow"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local planHelper = {}
 
@@ -12,8 +12,8 @@ end
 
 function planHelper:init(super)
 	super()
-	objectManager:markObjectAsReadyToLoad("planHelper_object")
-	objectManager:markObjectAsReadyToLoad("planHelper_behavior")
+	ddapiManager:markObjectAsReadyToLoad("planHelper_object")
+	ddapiManager:markObjectAsReadyToLoad("planHelper_behavior")
 end
 
 --- Allows you to set the available plans for an object.

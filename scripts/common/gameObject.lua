@@ -2,7 +2,7 @@
 --- @author SirLich
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
@@ -14,7 +14,7 @@ end
 
 function gameObject:addGameObjects(super)
 	super(self)
-	objectManager:markObjectAsReadyToLoad("gameObject")
+	ddapiManager:markObjectAsReadyToLoad("gameObject")
 end
 
 return shadow:shadow(gameObject, 0)

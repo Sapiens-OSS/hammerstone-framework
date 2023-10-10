@@ -6,14 +6,14 @@ local materialShadow = {
 }
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
 --- @implements
 function materialShadow:postload(parent)
     -- Load DDAPI
-    objectManager:init()
+    ddapiManager:init()
     moduleManager:addModule("material", parent)
 end
 

@@ -1,6 +1,6 @@
 --- Hammerstone
 local shadow = mjrequire "hammerstone/utils/shadow"
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local planManager = {
 }
@@ -22,8 +22,8 @@ function planManager:addPlans(super, tribeID, userData)
     if userData then
         local planTypeIndex = userData.planTypeIndex 
 
-        if objectManager.addPlansFunctions[planTypeIndex] then
-            objectManager.addPlansFunctions[planTypeIndex](context, tribeID, userData)
+        if ddapiManager.addPlansFunctions[planTypeIndex] then
+            ddapiManager.addPlansFunctions[planTypeIndex](context, tribeID, userData)
             self:updatePlansForFollowerOrOrderCountChange(tribeID)
         else
             super(self, tribeID, userData)

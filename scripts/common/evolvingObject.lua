@@ -6,7 +6,7 @@ local gameObject = mjrequire "common/gameObject"
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
@@ -38,7 +38,7 @@ function evolvingObject:init(super, dayLength, yearLength)
 
 	super(self, dayLength, yearLength)
 
-	objectManager:markObjectAsReadyToLoad("evolvingObject")
+	ddapiManager:markObjectAsReadyToLoad("evolvingObject")
 end
 
 return shadow:shadow(evolvingObject, 0)

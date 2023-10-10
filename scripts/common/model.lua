@@ -2,7 +2,7 @@
 --- @author SirLich
 
 -- Hammerstone: 
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 local mod = {
@@ -18,7 +18,7 @@ function mod:onload(model)
 
     local super_loadRemaps = model.loadRemaps
     model.loadRemaps = function(model_)
-		objectManager:markObjectAsReadyToLoad("customModel")
+		ddapiManager:markObjectAsReadyToLoad("customModel")
         super_loadRemaps(model_)
     end
 
