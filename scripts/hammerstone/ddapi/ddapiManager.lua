@@ -7,7 +7,9 @@
 local ddapiManager = {
 	inspectCraftPanelData = {},
 	constructableIndexes = {},
-	addPlansFunctions = {}
+	addPlansFunctions = {}, 
+	orderActionSequenceLinks = {}, 
+	createOrderInfos = {}
 }
 
 -- Hammerstone
@@ -20,7 +22,7 @@ local hammerAPI = mjrequire "hammerAPI"
 local entityManagers = {
 	mjrequire "hammerstone/ddapi/entityManagers/behaviorManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/builderManager", 
-	mjrequire "hammerstone/ddapi/entityManagers/knowledgeManager", 
+	--mjrequire "hammerstone/ddapi/entityManagers/knowledgeManager", will be in 1.6.0
 	mjrequire "hammerstone/ddapi/entityManagers/objectsManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/sharedManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/storageManager", 
@@ -43,7 +45,6 @@ hammerAPI:test()
 -- @field loadFunction - Function which is called when the config type will be loaded. Must take in a single param: the config to load!
 -- @field waitingForStart - Whether this config is waiting for a custom trigger or not.
 -- @field unwrap - The top level data to 'unwrap' when loading from File. This allows some structure to be ommited.
--- @field configType - The configType for which to load configs/objectDefinitions
 local sortedObjectLoaders = {}
 
 local function newModuleAdded(module)
@@ -93,10 +94,13 @@ local function canLoadObjectType(objectLoader)
 		return false, "Waiting for start"
 	end
 	
+	--[[ We need to let them "try" to load. If we don't, dependencies will not load
+		 We do a check in loadObjectDefinitions and exit right away if it's disabled
 	-- Don't enable disabled modules
 	if objectLoader.disabled then
 		return false, "Disabled"
 	end
+	]]
 
 	-- Don't double-load objects
 	if objectLoader.loaded == true then
@@ -274,6 +278,13 @@ function ddapiManager:fetchRuntimeCompatibleDefinitions(objectLoader, settings)
 	return outDefinitions
 end
 
+function ddapiManager:raiseError(...)
+	log:schema("ddapi", ...)
+	
+	log:schema("ddapi", debug.traceback())
+	os.exit(1)
+end
+
 -- Error handler for hmTables
 local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
 
@@ -282,22 +293,20 @@ local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg
 	switch(errorCode) : caseof {
 		[hmtErrors.ofLengthFailed] = function()
 			local requiredLength = arg[1]
-			log:schema("ddapi", "    ERROR: Value of key '" .. fieldKey .. "' requires " .. requiredLength .. " elements")
+			ddapiManager:raiseError("    ERROR: Value of key '" .. fieldKey .. "' requires " .. requiredLength .. " elements")
 		end,
 
-		[hmtErrors.ofTypeFailed] = function() log:schema("ddapi", "    ERROR: key='" .. fieldKey .. "' should be of type '" .. arg[1] .. "', not '" .. type(fieldKey) .. "'") end,
+		[hmtErrors.ofTypeFailed] = function() ddapiManager:raiseError("    ERROR: key='" .. fieldKey .. "' should be of type '" .. arg[1] .. "', not '" .. type(fieldKey) .. "'") end,
 
-		[hmtErrors.ofTypeTableFailed] = function() return log:schema("ddapi", "    ERROR: Value type of key '" .. fieldKey .. "' is a table") end,
+		[hmtErrors.ofTypeTableFailed] = function() return ddapiManager:raiseError("    ERROR: Value type of key '" .. fieldKey .. "' is a table") end,
 
 		[hmtErrors.RequiredFailed] = function()
-			log:schema("ddapi", "    ERROR: Missing required field: " .. fieldKey .. " in table: ")
-			log:schema("ddapi", parentTable)
-			os.exit(1)
+			ddapiManager:raiseError("    ERROR: Missing required field: " .. fieldKey .. " in table: ", parentTable)
 		end,
 
 		[hmtErrors.isNotInTypeTableFailed] = function() 
 			local displayAlias = arg[2]
-			log:schema("ddapi", "    WARNING: " .. displayAlias .. " already exists with key '" .. parentTable[fieldKey] .. "'") 
+			ddapiManager:raiseError("    WARNING: " .. displayAlias .. " already exists with key '" .. parentTable[fieldKey] .. "'") 
 		end,
 
 		[hmtErrors.isInTypeTableFailed] = function()
@@ -316,21 +325,16 @@ local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg
 
 		[hmtErrors.VectorWrongElementsCount] = function() 
 			local vecType = arg[1]
-			log:schema("ddapi", "    ERROR: Not enough elements in table to make vec"..vecType.." for table with key '"..fieldKey.."'")
-			log:schema("ddapi", "Table: ",  parentTable)
+			ddapiManager:raiseError("    ERROR: Not enough elements in table to make vec"..vecType.." for table with key '"..fieldKey.."' in table: ", parentTable)
 		end,
 
 		[hmtErrors.NotVector] = function()
 			local vecType = arg[1]
-			log:schema("ddapi", "    ERROR: Not able to convert to vec"..vecType.." with infos from table with key '"..fieldKey.."'")
-			log:schema("ddapi", "Table: ", parentTable)
+			ddapiManager:raiseError("    ERROR: Not able to convert to vec"..vecType.." with infos from table with key '"..fieldKey.."' in table: ", parentTable)
 		end,
 
-		default = function() log:schema("ddapi", "ERROR: ", msg) end
+		default = function() ddapiManager:raiseError("    ERROR: ", msg) end
 	}
-
-	log:schema("ddapi", debug.traceback())
-	os.exit(1)
 end
 
 -- Loads all objects for a given objectType
@@ -379,22 +383,22 @@ function ddapiManager:loadObjectDefinitions(objectType, objectLoader, settings)
 	end
 
 	-- Frees up memory now that the configs are cached
-	local configTypeDone, allDone = ddapiManager:isProcessDone(objectLoader.configType)
-	if configTypeDone then
-		objectLoader.configType.cachedConfigs = nil
+	local settingsDone, allDone = ddapiManager:isProcessDone(settings)
+	if settingsDone then
+		settings.cachedDefinitions = nil
 	end
 	if allDone then
 		configLoader.cachedSharedGlobalDefinitions = nil
 	end
 
-	log:schema("ddapi", "\r\n")
+	log:schema("ddapi", "-----")
 end
 
 function ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
 	objDef = hmt(objDef, ddapiErrorHandler)
 
-	if objectLoader.shared_unwrap then
-		objectLoader.loadFunction(self, objDef)
+	if objectLoader.shared_unwrap or not objectLoader.rootComponent then
+		objectLoader.loadFunction(objectLoader.manager, objDef)
 	else
 		local components = objDef:getTable("components")
 
@@ -408,7 +412,7 @@ function ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
 
 		log:schema("ddapi", "  " .. identifier)
 
-		objectLoader.loadFunction(self, objDef, description, components, identifier, rootComponent)
+		objectLoader.loadFunction(objectLoader.manager, objDef, description, components, identifier, rootComponent)
 
 		if objectLoader.callbacks and objectLoader.callbacks[identifier] then
 			local moduleName = objectLoader.moduleName or objectType
@@ -432,12 +436,12 @@ function ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
 	objDef:clear()
 end
 
-function ddapiManager:isProcessDone(configType)
+function ddapiManager:isProcessDone(settings)
 	local allLoaded = true 
 
 	for _, entityManager in ipairs(entityManagers) do 
 		for _, objectLoader in pairs(entityManager.loaders) do 
-			if objectLoader.configType == configType and not objectLoader.loaded then
+			if entityManager.settings == settings and not objectLoader.loaded then
 				return false, false
 			elseif not objectLoader.loaded then 
 				allLoaded = false
@@ -454,6 +458,7 @@ function ddapiManager:checkAndSortLoaders()
 
 	for _, entityManager in ipairs(entityManagers) do 
 		for objectType, loader in pairs(entityManager.loaders) do 
+			loader.manager = entityManager
 			dependencies[objectType] = {}
 
 			if loader.dependencies then

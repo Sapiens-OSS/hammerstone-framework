@@ -7,6 +7,7 @@ local vec4 = mjm.vec4
 ---------------------------------------------------------------
 -- error codes
 hmtErrors = mj:enum {
+    "KeyIsNil",
     "RequiredFailed",
     "ofLengthFailed",
     "ofTypeTableFailed",
@@ -95,7 +96,7 @@ do
 
         local function getField(tbl, key)
             if not key then
-                error("hmt.get -> key is nil")
+                raiseError(tbl, hmtErrors.KeyIsNil, "hmt.get -> key is nil")
             end
 
             return init(tbl, rawget(tbl, key), tbl, key)
@@ -146,6 +147,10 @@ do
 
             function mt:isNil()
                 return false
+            end
+
+            function mt:isType(typeName)
+                return typeName == "table"
             end
         end
 

@@ -231,7 +231,7 @@ end
 local function localVariableToModule(variableName, moduleName)
     variableName = getStringParameter(variableName, "variableName")
 
-    if not functionName then
+    if not variableName then
         logging:error("'variableName' is nil")
         return false
     end
@@ -244,7 +244,7 @@ local function localVariableToModule(variableName, moduleName)
 
     local count = nil
 
-    local lvStart, lvEnd, lv, lvAssign = 
+    local lvStart, _, _, lvAssign = 
         fileContent:find("(local " .. variableName .. ")([^%a%d][^\r\n]*)[\r\n]+")
 
     local mdStart = fileContent:find("local " .. moduleName .. "[%s=]+")
@@ -296,7 +296,7 @@ local function insertAfter(after, string)
     if not after then
         fileContent = fileContent .. string
     else
-        local lastStart, lastEnd = searchNodes(after)
+        local _, lastEnd = searchNodes(after)
 
         if not lastEnd then return false end
 
@@ -336,8 +336,6 @@ local function removeAt(startAt, endAt)
         logging:error("'startAt' is nil")
         return false
     end
-
-    local success = false
 
     local removeStart, startEnd = searchNodes(startAt)
 
@@ -409,7 +407,7 @@ local function replaceBetween(startAt, endAt, repl)
         return false
     end
 
-    local lastStart, replaceStart = searchNodes(startAt)
+    local _, replaceStart = searchNodes(startAt)
 
     if not replaceStart then return fileContent, false end
 

@@ -13,7 +13,7 @@ local roleUICommon = {}
 local nodes = hmt{}
 local edges = hmt{}
 local dummyIndex = -1
-local maxLayer = nil
+local columnCount = nil
 
 -- Dave put some hacks to show the lines
 -- However, they kinda fuck up the flow of the graph
@@ -68,12 +68,12 @@ local function flattenLists(base)
     end
 end
 
--- assign layers (columns) according to dependencies
-local function assignLayers()
-    local layerIndex = 0 
+-- assign columns according to dependencies
+local function assignColumns()
+    local colIndex = 0 
 
     while nodes:firstOrNil(function(e) return not e.ordered end) do 
-        layerIndex = layerIndex + 1
+        colIndex = colIndex + 1
         local foundOne = false
         
         for skillTypeIndex, node in pairs(nodes) do
@@ -89,7 +89,7 @@ local function assignLayers()
 
                 if canOrder then
                     foundOne = true
-                    node.layer = layerIndex
+                    node.colIndex = colIndex
                 end
             end
         end
@@ -123,72 +123,104 @@ local function getChildNodes(skillTypeIndex)
     return childNodes
 end
 
--- Handles cases like flax spinning which doesn't have a parent but its child is not on layer 2
+-- Handles cases like flax spinning which doesn't have a parent but its child is not on column 2
 local function handleFloatingNodes()
-    for _, leafNode in pairs(nodes:wherePairs(function (k,v) return v.layer == 1 end)) do
-        local minChildLayer = getChildNodes(leafNode.index):min(function(e) return e.layer end)
+    for _, leafNode in pairs(nodes:wherePairs(function (k,v) return v.colIndex == 1 end)) do
+        local minChildColumn = getChildNodes(leafNode.index):min(function(e) return e.colIndex end)
 
         local function push(n)
-            n.layer = n.layer + 1
+            n.colIndex = n.colIndex + 1
 
             for _, childNode in ipairs(getChildNodes(n.index)) do 
                 push(childNode)
             end
         end
 
-        if minChildLayer > 2 and minChildLayer ~= math.huge then
+        if minChildColumn > 2 and minChildColumn ~= math.huge then
             push(leafNode)
-            leafNode.layer = minChildLayer
+            leafNode.colIndex = minChildColumn
         end
     end
 end
 
--- create dummy nodes when the layer difference between a parent and child is greater than one
+-- create dummy nodes when the column difference between a parent and child is greater than one
 -- ex:  [A] ----------------> [B]
 --      [A] ---> [Dummy] ---> [B]
 local function createDummies()
-    local edge = edges:firstOrNil(function(e) return nodes[e.to].layer - nodes[e.from].layer > 1 end)
+    local edge = nil
 
-    while edge do 
-        local toNode = nodes[edge.to]
+    repeat 
+        edge = edges:firstOrNil(function(e) return nodes[e.to].colIndex - nodes[e.from].colIndex > 1 end)
 
-        toNode.edges:remove(toNode.edges:indexOf(edge))
+        if edge then
+            local toNode = nodes[edge.to]
 
-        local dummyNode = { index = dummyIndex, edges = {}}
-        dummyIndex = dummyIndex - 1
-        nodes:insert(dummyNode)
+            toNode.edges:remove(toNode.edges:indexOf(edge))
+
+            local dummyNode = { index = dummyIndex, edges = {}}
+            dummyIndex = dummyIndex - 1
+            nodes:insert(dummyNode)
+            
+            edge.to = dummyNode.index
+
+            local dummyEdge = { from = dummyNode.index, to = toNode.index }
+            edges:insert(dummyEdge)
+
+            toNode.edges:insert(dummyEdge)
+        end
         
-        edge.to = dummyNode.index
-
-        local dummyEdge = { from = dummyNode.index, to = toNode.index }
-        edges:insert(dummyEdge)
-
-        toNode.edges:insert(dummyEdge)
-
-        edge = edges:firstOrNil(function(e) return nodes[e.to].layer - nodes[e.from].layer > 1 end)
-    end
+    until not edge 
 end
 
 local function assignInitialPos()
-    maxLayer = nodes:max(function(e) return e.layer end)
+    columnCount = nodes:max(function(e) return e.colIndex end)
 
-    for i = 1, maxLayer do 
-        local layerNodes = nodes:where(function(e) return e.layer == i end)
-        for pos, node in ipairs(layerNodes) do 
+    for i = 1, columnCount do 
+        local columnNodes = nodes:where(function(e) return e.colIndex == i end)
+        for pos, node in ipairs(columnNodes) do 
             node.pos = pos
         end
     end
 end
 
-local function median(leftToRight)
-end        
+local function assignLayers()
+    local function traverse(edge, parentCount)
+        parentCount = parentCount + 1 or 1 
+
+        local fromNode = nodes[edge.from]
+
+        for _, parentEdge in ipairs(fromNode.edges:where(function(e) return e.to == fromNode.index end)) do 
+            parentCount = math.max(parentCount, traverse(parentEdge, parentCount))
+        end
+
+        return parentCount
+    end
+
+    for _, edge in ipairs(edges) do 
+        edge.layer = traverse(edge)
+    end
+end
+
+local function median()
+end       
+
+local function transpose()
+    for _, edge in ipairs(edges) do 
+        local from = edge.from
+        edge.from = edge.to
+        edge.to = from
+    end
+end
+
+local function getNbCrossings()
+end
 
 function roleUICommon:createDerivedTreeDependencies(super)
     -- If we have modded skills, we need to redraw the tree graph to compensate for new relationships
     if next(skillModule.moddedSkills) then
         undoHacks()
         flattenLists()
-        assignLayers()
+        assignColumns()
         handleFloatingNodes()
         createDummies()
         assignInitialPos()

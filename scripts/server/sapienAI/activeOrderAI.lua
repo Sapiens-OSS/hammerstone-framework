@@ -4,10 +4,9 @@
 -- Hammerstone
 local shadow = mjrequire "hammerstone/utils/shadow"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local activeOrderAI = {}
-
-local context = nil
 
 function activeOrderAI:preload(parent)
 	moduleManager:addModule("activeOrderAI", parent)
@@ -23,6 +22,8 @@ function activeOrderAI:init(super, serverSapienAI_, serverSapien_, serverGOM_, s
 		serverWorld = serverWorld_,
 		findOrderAI = findOrderAI_
 	}
+
+	ddapiManager:markObjectAsReadyToLoad("actionLogic")
 end
 
 return shadow:shadow(activeOrderAI)
