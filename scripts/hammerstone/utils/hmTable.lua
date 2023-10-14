@@ -340,6 +340,24 @@ do
                 return mergeTables(self, t)
             end
 
+            local function copy(tblOrValue)
+                if type(tblOrValue) == "table" then
+                    local newCopy = {}
+
+                    for k, v in pairs(tblOrValue) do 
+                        newCopy[k] = copy(v)
+                    end
+
+                    return newCopy
+                else
+                    return tblOrValue
+                end
+            end
+
+            function mt:copy()
+                return init(self, copy(self))
+            end
+
             --[[
             -- http://lua-users.org/wiki/CopyTable
             local function deepCopy(orig)
@@ -373,6 +391,30 @@ do
                     if predicate(valuesToHMT and init(self, e) or e) then count = count + 1 end
                 end
                 return count
+            end
+
+            function mt:min(predicate, valuesToHMT)
+                local min = math.huge
+                for i, e in ipairs(self) do 
+                    min = math.min(min, predicate(valuesToHMT and init(self, e) or e))
+                end
+                return min
+            end
+
+            function mt:max(predicate, valuesToHMT)
+                local max = -math.huge
+                for i, e in ipairs(self) do 
+                    max = math.max(max, predicate(valuesToHMT and init(self, e) or e))
+                end
+                return max
+            end
+
+            function mt:indexOf(predicate, valuesToHMT)
+                for i, e in ipairs(self) do 
+                    if predicate(valuesToHMT and init(self, e) or e) then
+                        return i
+                    end
+                end
             end
 
             function mt:first(predicate, valuesToHMT)

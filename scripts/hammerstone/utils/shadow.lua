@@ -48,12 +48,8 @@ function shadow:shadow(outerModule, loadOrder)
 					local superFunction = functionValue
 					parentModule[functionName] = function(...)
 
-						-- @param FIRST  is the function to run, to access base game functionality
-						-- @param 'SECOND is the 'self' param pointing to the module
-
-						local packedArgs = {...}
-						table.insert(packedArgs, 2, superFunction) -- Insert super into second position, so it's available, but not treated as the 'self' arg.
-						return outerModule[functionName](unpack(packedArgs)) -- Return and call the result
+						local selfArg = select(1, ...)
+						return outerModule[functionName](selfArg, superFunction, select(2, ...)) -- Return and call the result
 					end
 				end
 			end
