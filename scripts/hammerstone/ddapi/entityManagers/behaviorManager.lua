@@ -218,6 +218,7 @@ do
 
         return hmt {
             planTypeIndex = description:getStringOrNil("plan"):default(identifier):asTypeIndex(modules["plan"].types), 
+            addCondition = rootComponent:getOrNil("add_condition"):ofTypeOrNil("function"):getValue(),
             requiredToolTypeIndex = requiredToolTypeIndex,
             requiredSkillIndex = rootComponent:getString("skill"):asTypeIndex(modules["skill"].types), 
             getCountFunction = rootComponent:getOrNil("get_count"):ofTypeOrNil("function"):default(defaultGetCountFunction):getValue(), 

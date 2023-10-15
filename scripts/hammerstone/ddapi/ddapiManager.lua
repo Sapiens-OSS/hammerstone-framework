@@ -22,7 +22,7 @@ local hammerAPI = mjrequire "hammerAPI"
 local entityManagers = {
 	mjrequire "hammerstone/ddapi/entityManagers/behaviorManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/builderManager", 
-	--mjrequire "hammerstone/ddapi/entityManagers/knowledgeManager", will be in 1.6.0
+	mjrequire "hammerstone/ddapi/entityManagers/knowledgeManager", --will be in 1.6.0
 	mjrequire "hammerstone/ddapi/entityManagers/objectsManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/sharedManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/storageManager", 

@@ -177,17 +177,19 @@ function planHelper:availablePlansForObjectInfos(super, objectInfos, tribeID)
         local availablePlanCounts = {}
 
         for _, settings in ipairs(self.objectPlansSettings[objectInfos[1].objectTypeIndex] or {}) do 
-            local planInfo = self:getPlanInfosFromSettings(objectInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
+            if not settings.addCondition or settings.addCondition(self, objectInfos, tribeID) then
+                local planInfo = self:getPlanInfosFromSettings(objectInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
 
-            if planInfo then
+                if planInfo then
 
-				for i = #plans, 1, -1 do 
-					if plans[i].planTypeIndex == planInfo.planTypeIndex then
-						table.remove(plans, i)
-					end
-				end
+                    for i = #plans, 1, -1 do 
+                        if plans[i].planTypeIndex == planInfo.planTypeIndex then
+                            table.remove(plans, i)
+                        end
+                    end
 
-                table.insert(plans, planInfo)
+                    table.insert(plans, planInfo)
+                end
             end
         end
 
