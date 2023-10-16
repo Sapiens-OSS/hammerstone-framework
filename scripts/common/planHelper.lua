@@ -101,7 +101,7 @@ function planHelper:getPlanInfosFromSettings(vertOrObjectInfos, tribeID, setting
     planCache[planTypeIndex] = { planInfo = planInfo, count = applicableCount, planHash = planHash, context = context, extraInfoFunction = settings.extraInfoFunction}
     availablePlanCounts[planHash] = applicableCount
 
-    if applicableCount > 0 or not settings.checkForDiscovery then
+    if not settings.addCondition or settings.addCondition(context, vertOrObjectInfos, tribeID, planHash, availablePlanCounts, queuedPlanInfos, self) then
 
         if hasDiscovery then
             return planInfo
@@ -172,24 +172,21 @@ function planHelper:availablePlansForObjectInfos(super, objectInfos, tribeID)
 	local plans = super(self, objectInfos, tribeID) or {}
 
 	if objectInfos and objectInfos[1] then
-		local queuedPlanInfos = self:getQueuedPlanInfos(objectInfos, tribeID, true)
+		local queuedPlanInfos = self:getQueuedPlanInfos(objectInfos, tribeID, false)
         local planCache = {}
         local availablePlanCounts = {}
 
         for _, settings in ipairs(self.objectPlansSettings[objectInfos[1].objectTypeIndex] or {}) do 
-            if not settings.addCondition or settings.addCondition(self, objectInfos, tribeID) then
-                local planInfo = self:getPlanInfosFromSettings(objectInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
+            local planInfo = self:getPlanInfosFromSettings(objectInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
 
-                if planInfo then
-
-                    for i = #plans, 1, -1 do 
-                        if plans[i].planTypeIndex == planInfo.planTypeIndex then
-                            table.remove(plans, i)
-                        end
+            if planInfo then
+                for i = #plans, 1, -1 do 
+                    if plans[i].planTypeIndex == planInfo.planTypeIndex then
+                        table.remove(plans, i)                            
                     end
-
-                    table.insert(plans, planInfo)
                 end
+
+                table.insert(plans, planInfo)
             end
         end
 

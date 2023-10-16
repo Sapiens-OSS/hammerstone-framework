@@ -1,5 +1,10 @@
+local function defaultTerrainAddConditionFunction(context, vertOrObjectInfos, tribeID, planHash, availablePlanCounts, queuedPlanInfos)
+    return availablePlanCounts[planHash] > 0
+end
+
 planHelper.terrainPlansSettings = {
     {
+        addCondition = function() return true end,
         planTypeIndex = plan.types.clear.index,
         requiredSkillIndex = skill.types.gathering.index, 
         getCountFunction = function(vertInfos)
@@ -28,6 +33,7 @@ planHelper.terrainPlansSettings = {
         }
     }, 
     {
+        addCondition = defaultTerrainAddConditionFunction,
         planTypeIndex = plan.types.fill.index,
         requiredSkillIndex = skill.types.digging.index, 
         requiredToolTypeIndex = tool.types.dig.index, 
@@ -45,6 +51,7 @@ planHelper.terrainPlansSettings = {
         }
     },
     {
+        addCondition = defaultTerrainAddConditionFunction,
         planTypeIndex = plan.types.dig.index,
         requiredSkillIndex = skill.types.digging.index, 
         requiredToolTypeIndex = tool.types.dig.index, 
@@ -67,6 +74,7 @@ planHelper.terrainPlansSettings = {
         }
     }, 
     {
+        addCondition = defaultTerrainAddConditionFunction,
         planTypeIndex = plan.types.mine.index,
         requiredSkillIndex = skill.types.mining.index, 
         requiredToolTypeIndex = tool.types.mine.index, 
@@ -90,6 +98,7 @@ planHelper.terrainPlansSettings = {
         }
     }, 
     {
+        addCondition = defaultTerrainAddConditionFunction,
         planTypeIndex = plan.types.chiselStone.index,
         initFunction = function(vertInfos)
             local softChiselableVertexCount = 0
@@ -130,6 +139,7 @@ planHelper.terrainPlansSettings = {
         }
     }, 
     {
+        addCondition = defaultTerrainAddConditionFunction,
         planTypeIndex = plan.types.fertilize.index,
         requiredSkillIndex = skill.types.mulching.index, 
         requiredToolTypeIndex = nil, --weird but okay...
