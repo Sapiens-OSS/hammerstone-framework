@@ -73,3 +73,7 @@ The first release of Hammerstone
  - Fixed major issue where Hammerstone Framework wouldn't load if downloaded from steam
 
  # 1.5.0
+ - Added DDAPI support for plans, orders and action sequences
+ - Added HMT (Hammerstone tables), a utility to better work with tables and values.
+ - Fixed an issue with the route tab not showing the correct selected route on opening
+ - Fixed a couple of DDAPI issues
