@@ -1,13 +1,17 @@
+--- Hammerstone: hmTable
+--- Allows for easier table and value manipulations
+--- @author Witchy
+
 -- Math
 local mjm = mjrequire "common/mjm"
 local vec2 = mjm.vec2
 local vec3 = mjm.vec3
 local vec4 = mjm.vec4 
 
----------------------------------------------------------------
+
 -- error codes
 hmtErrors = mj:enum {
-    "KeyIsNil",
+    "keyIsNil",
     "RequiredFailed",
     "ofLengthFailed",
     "ofTypeTableFailed",
@@ -18,11 +22,15 @@ hmtErrors = mj:enum {
     "ConversionFailed",
     "VectorWrongElementsCount",
     "NotVector",
+    "notFound"
 }
 
+-- modes for predicates
 hmtPairsMode  = mj:enum {
-    "ValuesOnly",
-    "KeysAndValues"
+    "none",
+    "keysOnly",
+    "valuesOnly",
+    "both"
 }
 
 -- default error handler
@@ -37,6 +45,11 @@ local valueMt = {}
 -- internal Hammerstone Table module
 local hmTable = {}
 do
+    -- Creates a new hmt
+    -- @param tblOrValue:   The table or value to convert to hmt
+    -- @param parentTable:  The table that requested the creation of the new hmt, if any
+    -- @param key:          The key used to fetch the new tblOrValue, if any
+    -- @param errorHandler: The error handler to assign to the new hmt. If nil, the default error handler will be applied
     function hmTable:new(tblOrValue, parentTable, key, errorHandler)
         if tblOrValue and type(tblOrValue) == "table" then
             local metatable = getmetatable(tblOrValue)
@@ -45,7 +58,6 @@ do
                 if metatable.__isHMT then return tblOrValue
                 else 
                     setmetatable(tblOrValue, nil)
-                    --error("hmt.new -> table already has a metatable. Remove it first") 
                 end
             end
         end
@@ -96,7 +108,7 @@ do
 
         local function getField(tbl, key)
             if not key then
-                raiseError(tbl, hmtErrors.KeyIsNil, "hmt.get -> key is nil")
+                raiseError(tbl, hmtErrors.keyIsNil, "hmt.get -> key is nil")
             end
 
             return init(tbl, rawget(tbl, key), tbl, key)
@@ -104,10 +116,6 @@ do
 
         --- General stuff
         do
-            function mt:getValue()
-                return self
-            end
-
             local function clearTable(t)
                 for k, v in pairs(t) do 
                     if type(k) == "table" then clearTable(k) end 
@@ -117,18 +125,32 @@ do
                 return setmetatable(t, nil)
             end
 
+            -- Removes the metatable from the table and all its children, reverting the hmt table to a normal table
+            -- If a table needs to be stored by the game, please call "clear" on it
             function mt:clear()
                 return clearTable(self)
             end
+        end
 
+        --- Compatibility with value tables ---
+        do
+            -- Returns the hmt
+            function mt:getValue()
+                return self
+            end
+
+            -- Returns the hmt as it cannot be nil
             function mt:required()
                 return self
             end
 
+            -- Returns itself as it cannot be nil
             function mt:default()
                 return self
             end
 
+            -- Checks if the hmt's value is of type "typeName". If not, raises an error
+            -- @param typeName: The name of the type
             function mt:ofType(typeName)
                 if typeName ~= "table" then
                     raiseError(self, hmtErrors.ofTypeTableFailed, "hmt.ofType -> Table is not a "..typeName, typeName)
@@ -137,6 +159,8 @@ do
                 end
             end
 
+            -- Checks if the hmt's value is of type "typeName". If not, raises an error
+            -- @param typeName: The name of the type
             function mt:ofTypeOrNil(typeName)
                 if typeName ~= "table" then
                     raiseError(self, hmtErrors.ofTypeTableFailed, "hmt.ofType -> Table is not a "..typeName, typeName)
@@ -145,10 +169,13 @@ do
                 end
             end
 
+            -- Returns false as tables cannot be nil
             function mt:isNil()
                 return false
             end
 
+            -- Returns true if "typeName" is a table
+            -- @param typeName: The name of the type
             function mt:isType(typeName)
                 return typeName == "table"
             end
@@ -156,10 +183,14 @@ do
 
         --- Getters ---
         do        
+            -- Gets the value of the table corresponding to "key". If not found, raises an error
+            -- @param key:  The key of the value to get
             function mt:get(key)
                 return getField(self, key):required()
             end
 
+            -- Gets the value of the table corresponding to "key" or nil if not found.
+            -- @param key:  The key of the value to get
             function mt:getOrNil(key)
                 return getField(self, key)
             end
@@ -192,10 +223,12 @@ do
 
         --- Utils ---
         do
+            -- Returns true if the table contains no elements
             function mt:isEmpty()
                 return not next(self)
             end
 
+            -- Returns the length of the table
             function mt:length()
                 local count = 0
                 for k, v in pairs(self) do
@@ -204,6 +237,8 @@ do
                 return count
             end
 
+            -- Returns true if the table has a value corresponding to "key"
+            -- @param key: The key of the value to get
             function mt:hasKey(key)
                 if not key then
                     error("hmt.get -> key is null")
@@ -224,6 +259,7 @@ do
                 return count
             end
 
+            -- Returns the total size (length) of the table, including children
             function mt:estimateSize()
                 return estimateTableSize(self)
             end
@@ -231,6 +267,8 @@ do
 
         --- Validation ---
         do
+            -- Raises an error if the table does not have [length] elements
+            -- @param length: The required length
             function mt:ofLength(length)
                 if not length then
                     error("htm.ofLength -> length is nil")
@@ -246,6 +284,7 @@ do
 
         --- Casting ---
         do
+            -- Converts the table to a vec2
             function mt:asVec2()
                 if self:length() < 2 then
                     return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec2 -> Table has too few elements", 2)
@@ -260,6 +299,7 @@ do
                 end
             end
 
+            -- Converts the table to a vec3
             function mt:asVec3()
                 if self:length() < 3 then
                     return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 3)
@@ -274,6 +314,7 @@ do
                 end
             end
 
+            -- Converts the table to a vec4
             function mt:asVec4()
                 if self:length() < 4 then
                     return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 4)
@@ -288,6 +329,9 @@ do
                 end
             end
 
+            -- Converts a table of strings into a table of type indexes
+            -- @param typeTable:    The table to fetch the types from (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function mt:asTypeIndex(typeTable, displayAlias)
                 local indexArray = {}
 
@@ -301,6 +345,9 @@ do
                 return indexArray
             end
 
+            -- Converts a table of strings into a table of types
+            -- @param typeTable:    The table to fetch the types from (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function mt:asTypeIndexMap(typeTable, displayAlias)
                 local indexArray = {}
 
@@ -323,8 +370,10 @@ do
                 mt[k] = v
             end
 
+            -- Returns true if the table contains the desired value
+            -- @param value: The value to search for
             function mt:contains(value)
-                return self:first(function(v) return v==value end)
+                return self:firstOrNil(function(v) return v==value end) ~= nil
             end
 
             local function mergeTables(t1, t2)
@@ -341,6 +390,8 @@ do
                 return t1
             end
 
+            -- Merges a table into the current hmt
+            -- @param t: The table to merge
             function mt:mergeWith(t)
                 return mergeTables(self, t)
             end
@@ -359,6 +410,7 @@ do
                 end
             end
 
+            -- Creates a copy of the current hmt
             function mt:copy()
                 return init(self, copy(self))
             end
@@ -390,6 +442,10 @@ do
 
         --- LINQ type stuff ---
         do
+            -- Returns the number of elements that correspond to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:count(predicate, valuesToHMT)
                 local count = 0 
                 for i, e in ipairs(self) do
@@ -398,6 +454,10 @@ do
                 return count
             end
 
+            -- Returns the minimum value that correspond to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:min(predicate, valuesToHMT)
                 local min = math.huge
                 for i, e in ipairs(self) do 
@@ -406,6 +466,10 @@ do
                 return min
             end
 
+            -- Returns the maximum value that correspond to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:max(predicate, valuesToHMT)
                 local max = -math.huge
                 for i, e in ipairs(self) do 
@@ -414,6 +478,10 @@ do
                 return max
             end
 
+            -- Returns the index of the value corresponding to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:indexOf(predicate, valuesToHMT)
                 for i, e in ipairs(self) do 
                     if predicate(valuesToHMT and init(self, e) or e) then
@@ -422,34 +490,56 @@ do
                 end
             end
 
+            -- Returns the first value corresponding to the predicate. If not found, raises an error.
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:first(predicate, valuesToHMT)
                 for i, e in ipairs(self) do
                     if predicate(valuesToHMT and init(self, e) or e) then return init(self, e), i end
                 end
-                return hmt(self, nil)
+                raiseError(self, hmtErrors.notFound, "predicate did not find a value. Maybe use firstOrNil instead")
             end
 
-            function mt:firstOrNil(predicate, defaultValue, valuesToHMT)
+            -- Returns the first value corresponding to the predicate or the default value if not found.
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- @param defaultValue: The default to return if the desired value is not found.
+            -- Note: table must be an array
+            function mt:firstOrNil(predicate, valuesToHMT, defaultValue)
                 for i, e in ipairs(self) do
                     if predicate(valuesToHMT and init(self, e) or e) then return init(self, e), i end
                 end
-                return hmt(self, defaultValue)
+                return init(self, defaultValue)
             end
 
+            -- Returns the last value corresponding to the predicate. If not found, raises an error.
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:last(predicate, valuesToHMT)
                 for i = #self, 1 do 
                     if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]), i end
                 end
-                return hmt(self, nil)
+                raiseError(self, hmtErrors.notFound, "predicate did not find a value. Maybe use lastOrNil instead")
             end
 
+            -- Returns the last value corresponding to the predicate or the default value if not found.
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- @param defaultValue: The default to return if the desired value is not found.
+            -- Note: table must be an array
             function mt:lastOrNil(predicate, defaultValue, valuesToHMT)
                 for i = #self, 1 do 
                     if predicate(valuesToHMT and init(self, self[i]) or self[i]) then return init(self, self[i]), i end
                 end
-                return hmt(self, defaultValue)
+                return init(self, defaultValue)
             end
             
+            -- Returns true if all of the values of the table correspond to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:all(predicate, valuesToHMT)
                 for i, e in ipairs(self) do
                     if not predicate(valuesToHMT and init(self, e) or e) then return false end 
@@ -457,92 +547,109 @@ do
                 return true
             end
 
-            --- Returns true if all pairs satisfy the predicate
-            --- @param predicate: predicate function to evaluate
-            --- @param pairsToHMT: Indicates if the pairs should be passed as hmt to the predicate
-            ---                     0 or nil:   no HMT
-            ---                     1:          values only
-            ---                     2:          keys and values
+            -- Returns true if all of the values of the table correspond to the predicate
+            -- @param predicate:    The predicate function
+            -- @param pairsToHMT:   Indicates wether to pass the values and/or keys as hmt to the predicate (see hmtPairsMode)
             function mt:allPairs(predicate, pairsToHMT)
-                pairsToHMT = pairsToHMT or 0 
+                pairsToHMT = pairsToHMT or hmtPairsMode.none
 
                 for k, v in pairs(self) do 
-                    if not predicate(pairsToHMT > 1 and init(self, k) or k, pairsToHMT > 0 and init(self, v) or v) then return false end
+                    local key = (pairsToHMT == hmtPairsMode.keysOnly or pairsToHMT == hmtPairsMode.both) and init(self, k) or k
+                    local value = (pairsToHMT == hmtPairsMode.valuesOnly or pairsToHMT == hmtPairsMode.both) and init(self, v) or v
+                    if not predicate(key, value) then return false end
                 end
                 return true
             end
 
-            function mt:where(predicate, valuesToHMT, resultToHMT)
+            -- Returns all values corresponding to the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
+            function mt:where(predicate, valuesToHMT)
                 local data = {}
 
                 for i, e in ipairs(self) do
-                    local valueHMT = init(self, e)
-                    if predicate(valuesToHMT and valueHMT or valueHMT:getValue()) then
-                        table.insert(data, resultToHMT and valueHMT or valueHMT:getValue())
+                    if predicate(valuesToHMT and init(self, e) or e) then
+                        table.insert(data, e)
                     end
                 end
 
                 return init(self, data)
             end
 
-            function mt:wherePairs(predicate, pairsToHMT, resultToHMT)
+            -- Returns all pairs corresponding to the predicate
+            -- @param predicate:    The predicate function
+            -- @param pairsToHMT:   Indicates wether to pass the values and/or keys as hmt to the predicate (see hmtPairsMode)
+            function mt:wherePairs(predicate, pairsToHMT)
                 local data = {}
-                pairsToHMT = pairsToHMT or 0 
+                pairsToHMT = pairsToHMT or hmtPairsMode.none
 
                 for k, v in pairs(self) do 
-                    local kHMT = init(self, k)
-                    local vHMT = init(self, v)
+                    local key = (pairsToHMT == hmtPairsMode.keysOnly or pairsToHMT == hmtPairsMode.both) and init(self, k) or k
+                    local value = (pairsToHMT == hmtPairsMode.valuesOnly or pairsToHMT == hmtPairsMode.both) and init(self, v) or v
 
-                    if predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue()) then
-                        data[resultToHMT > 1 and kHMT or kHMT:getValue()] = resultToHMT > 0 and vHMT or vHMT:getValue()
+                    if predicate(key, value) then
+                        data[k] = v
                     end
                 end
 
                 return init(self, data)
             end
 
+            -- Returns a table containing the result of the predicate
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:select(predicate, valuesToHMT)
                 local data = {}
 
                 for i, e in ipairs(self) do 
-                    local valueHMT = init(self, e)
-                    local result = predicate(valuesToHMT and valueHMT or valueHMT:getValue())
+                    local result = predicate(valuesToHMT and init(self, e) or e)
                     if result then table.insert(data, result) end
                 end
 
                 return init(self, data)
             end
 
+            -- Returns a table containing the result of the predicate
+            -- @param predicate:    The predicate function
+            -- @param pairsToHMT:   Indicates wether to pass the values and/or keys as hmt to the predicate (see hmtPairsMode)
             function mt:selectPairs(predicate, pairsToHMT)
                 local data = {}
+                pairsToHMT = pairsToHMT or hmtPairsMode.none
 
                 for k, v in pairs(self) do 
-                    local kHMT = init(self, k)
-                    local vHMT = init(self, v)
+                    local key = (pairsToHMT == hmtPairsMode.keysOnly or pairsToHMT == hmtPairsMode.both) and init(self, k) or k
+                    local value = (pairsToHMT == hmtPairsMode.valuesOnly or pairsToHMT == hmtPairsMode.both) and init(self, v) or v
 
-                    local newK, newV = predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue())
+                    local newK, newV = predicate(key, value)
                     if newK and newV then data[newK] = newV end
                 end
 
                 return init(self, data)
             end
 
+            -- Returns a table containing the result of the predicate
+            -- @param predicate:    The predicate function
+            -- @param keysToHMT:  If true, passes the key as an hmt to the predicate
             function mt:selectKeys(predicate, keysToHMT)
                 local data = {}
 
                 for k in pairs(self) do 
-                    local keyHMT = init(self, k)
-                    local result = predicate(keysToHMT and keyHMT or keyHMT:getValue())
+                    local result = predicate(keysToHMT and init(self, k) or k)
                     if result then table.insert(data, result) end
                 end
 
                 return init(self, data)
             end
 
+            -- Returns the result of the predicate
+            -- @param predicate:    The predicate function
             function mt:with(predicate)
                 return init(self, predicate(self))
             end
 
+            -- Returns a lookup table (inverses the keys and the values)
             function mt:toLookup()
                 local data = {}
                 for k, v in pairs(self) do 
@@ -551,20 +658,28 @@ do
                 return init(self, data)
             end
 
+            -- Executes a predicate on each value of the table
+            -- @param predicate:    The predicate function
+            -- @param valuesToHMT:  If true, passes the value as an hmt to the predicate
+            -- Note: table must be an array
             function mt:forEach(predicate, valuesToHMT)
                 for i, e in ipairs(self) do 
-                    local valueHMT = init(self, e)
-                    predicate(valuesToHMT and valueHMT or valueHMT:getValue())
+                    self[i] = predicate(valuesToHMT and init(e) or e)
                 end
                 return self
             end
 
+            -- Executes a predicate on each pair of the table
+            -- @param predicate:    The predicate function
+            -- @param pairsToHMT:   Indicates wether to pass the values and/or keys as hmt to the predicate (see hmtPairsMode)
             function mt:forEachPair(predicate, pairsToHMT)
-                for k, v in pairs(self) do 
-                    local kHMT = init(self, k)
-                    local vHMT = init(self, v)
+                pairsToHMT = pairsToHMT or hmtPairsMode.none
 
-                    predicate(pairsToHMT > 1 and kHMT or kHMT:getValue(), pairsToHMT > 0 and vHMT or vHMT:getValue())
+                for k, v in pairs(self) do 
+                    local key = (pairsToHMT == hmtPairsMode.keysOnly or pairsToHMT == hmtPairsMode.both) and init(self, k) or k
+                    local value = (pairsToHMT == hmtPairsMode.valuesOnly or pairsToHMT == hmtPairsMode.both) and init(self, v) or v
+
+                    self[k] = predicate(key, value)
                 end
                 return self
             end
@@ -610,6 +725,8 @@ do
                 return str
             end
 
+            -- If the true value is nil, returns the default value
+            -- @param defaultValue: The default value
             function valueMt:default(defaultValue)
                 local value = self:getValue()
 
@@ -620,16 +737,21 @@ do
                 return self
             end
 
+            -- Returns true if the true value is nil
             function valueMt:isNil()
                 return self:getValue() == nil
             end
 
+            -- Returns true if the true value is of type [typeName]
+            -- @param typeName: name of the type
             function valueMt:isType(typeName)
                 return type(self:getValue()) == typeName
             end
 
+            -- Returns the true value
             function valueMt:getValue() return getValue(self) end
 
+            -- Compatibility with table hmt. Returns the true value
             function valueMt:clear()
                 return self:getValue()
             end
@@ -637,53 +759,64 @@ do
 
         --- Validation ---
         do
+            -- If the true value is nil raises an error
             function valueMt:required()
                 local value = self:getValue()
 
                 if not value then 
-                    return raiseError(self, hmtErrors.RequiredFailed, "hmt.require -> The value is nil") 
+                    return raiseError(self, hmtErrors.RequiredFailed, "The value is nil") 
                 else
                     return self
                 end
             end
 
+            -- Raises an error if the true value's type is not [typeName]
+            -- @param typeName: name of the type
             function valueMt:ofType(typeName)
                 local value = self:getValue()
 
                 if type(value) ~= typeName then 
-                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
+                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
                 else
                     return self
                 end
             end
 
+            -- Raises an error if the true value's type is not [typeName] or nil
+            -- @param typeName: name of the type
             function valueMt:ofTypeOrNil(typeName)
                 local value = self:getValue()
 
                 if value and type(value) ~= typeName then 
-                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("hmt.ofType -> Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
+                    return raiseError(self, hmtErrors.ofTypeFailed, string.format("Value '%s' is of type %s, not %s", value, type(value), typeName), typeName)
                 else
                     return self
                 end                
             end
 
+            -- Raises an error if the true value is not in the type table
+            -- @param typeTable:    The type table to use (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function valueMt:isInTypeTable(typeTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
                 displayAlias = displayAlias or fieldKey
 
                 if not typeTable[value] then 
-                    return raiseError(self, hmtErrors.isInTypeTableFailed, string.format("hmt.isInTypeTable -> Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                    return raiseError(self, hmtErrors.isInTypeTableFailed, string.format("Value '%s' is not in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
                 else
                     return self
                 end         
             end
 
+            -- Raises an error if the true value is in the type table
+            -- @param typeTable:    The type table to use (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function valueMt:isNotInTypeTable(typeTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
                 displayAlias = displayAlias or fieldKey
 
                 if typeTable[value] then 
-                    return raiseError(self, hmtErrors.isNotInTypeTableFailed, string.format("hmt.isNotInTypeTable -> Value '%s' is already in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
+                    return raiseError(self, hmtErrors.isNotInTypeTableFailed, string.format("Value '%s' is already in typeTable '%s'", value, displayAlias), typeTable, displayAlias)
                 else
                     return self
                 end
@@ -696,6 +829,7 @@ do
                 return tonumber(tostring(vector):gmatch("vec(%d)")())
             end
 
+            -- Casts the true value as a vec2
             function valueMt:asVec2()
                 local value = self:required():ofType("cdata"):getValue()
 
@@ -707,6 +841,7 @@ do
                 }
             end
 
+            -- Casts the true value as a vec3
             function valueMt:asVec3()
                 local value = self:required():ofType("cdata"):getValue()
 
@@ -719,6 +854,7 @@ do
                 }
             end
 
+            -- Casts the true value as a vec4
             function valueMt:asVec4()
                 local value = self:required():ofType("cdata"):getValue()
 
@@ -731,6 +867,9 @@ do
                 }
             end
 
+            -- Converts the true value to an index. If the true value is nil, returns nil
+            -- @param typeTable:    The table to fetch the types from (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function valueMt:asTypeIndex(typeTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
 
@@ -745,6 +884,9 @@ do
                 end
             end
 
+            -- Converts the true value to an type. If the true value is nil, returns nil
+            -- @param typeTable:    The table to fetch the types from (ex: skill.types)
+            -- @param displayAlias: Alias/name of the typeTable. Used for logs (Ex: skill.types's alias would be "skill")
             function valueMt:asTypeIndexMap(typeIndexMapTable, displayAlias)
                 local value, _, fieldKey = getMetaValues(self)
 
@@ -759,6 +901,8 @@ do
                 end
             end
 
+            -- Converts the true value to a localized string.
+            -- @param default:  default key to use
             function valueMt:asLocalizedString(default)
                 -- The key, which is either user submited, or the default
                 local localKey = self:getValue() or default
@@ -813,6 +957,10 @@ do
                 end
             end
 
+            -- The following functions are self explanatory
+            -- Converts the true value to an other type. Raises an error if it cannot convert.
+            -- @param coerceNil:    Returns a default value if the true value is nil (ex: "nil" for strings, 0 for numbers, false for boolean)
+
             function valueMt:asStringValue(coerceNil) return asString(self, false, coerceNil) end
             function valueMt:asString(coerceNil) return init(self, asString(self, false, coerceNil)) end
             function valueMt:asStringValueOrNil(coerceNil) return asString(self, true, coerceNil) end
@@ -831,6 +979,8 @@ do
 
         --- LINQ type stuff ---
         do
+            -- Returns the result of the predicate
+            -- @param predicate:    The predicate function
             function valueMt:with(predicate)
                 local value = self:getValue()
                 return init(self, predicate(value))

@@ -72,6 +72,119 @@ function ddapiManager:init()
 	configLoader:findConfigFiles(entityManagers)
 end
 
+function ddapiManager:checkAndSortLoaders()
+	local dependencies = {}
+
+	for _, entityManager in ipairs(entityManagers) do 
+		for objectType, loader in pairs(entityManager.loaders) do 
+			loader.manager = entityManager
+			dependencies[objectType] = {}
+
+			if loader.dependencies then
+				for _, dep in ipairs(loader.dependencies) do 
+					if not ddapiManager:getLoaderAndSettings(dep) then
+						ddapiManager:raiseError("ERROR. ObjectType ", dep, " does not exist")
+					end
+
+					table.insert(dependencies[objectType], dep)
+				end
+			end
+		end
+	end
+
+	while next(dependencies) do
+		local found = false 
+
+		for objectType, deps in pairs(dependencies) do 
+			for i = #deps, 1, -1 do 
+				if not dependencies[deps[i]] then
+					found = true
+					table.remove(deps, i)
+				end
+			end
+
+			if #deps == 0 then
+				table.insert(sortedObjectLoaders, objectType)
+				dependencies[objectType] = nil
+			end
+		end
+
+		if next(dependencies) and not found then
+			ddapiManager:raiseError("ERROR IN DDAPI. Circular dependencies found. These dependencies could not be resolved: ", dependencies)
+		end
+	end
+
+	log:schema("ddapi", "No circular dependencies found. Here are the sorted loaders: ", sortedObjectLoaders)
+end
+
+--- In cases where we might have a circular reference, we can try to get indexes later
+--- Attempts to retrieve the index. If it fails, creates a callback 
+--- @param objectType: 			The objectType which will create the missing type if retrieval fails
+--- @param sourceObjectType:	The objectType which requested the index (for logging purposes)
+--- @param identifier:			The identifier of the definition which requested the index (for logging purposes)
+--- @param hmTable:				The hmt which contains the typeTableKey or table of typeTableKeys to map to an index
+--- @param key:					The key of the field to retrive from the hmt
+--- @param optional:			Wether or not the value of the field is allowed to be nil
+--- @param typeTable:			The typeTable from which to retrieve the index or indexes
+--- @param typeTableName		Name of the typeTable (for logging purposes)
+--- @param onSuccess			The function which to execute once the index or indexes have all been found
+function ddapiManager:tryAsTypeIndex(objectType, sourceObjectType, identifier, hmTable, key, optional, typeTable, typeTableName, onSuccess)
+
+	local value = (optional and hmTable:getOrNil(key) or hmTable:get(key)):getValue()
+
+	if not value then return end 
+
+	local function addCallback(typeMapKey, setIndexFunction)
+		ddapiManager:registerCallback(objectType, typeMapKey, typeTable, setIndexFunction, 
+				typeTableName .. " with key " .. typeMapKey .. " was never created for " .. sourceObjectType .. " with identifier ".. identifier)
+	end
+
+	if type(value) == "table" then
+		local resultTable = {}
+
+		-- Note: This might create bugs if the order in the table is important
+		local function onSuccessForTable(typeMapIndex)
+			table.insert(resultTable, typeMapIndex)
+			
+			if #resultTable == #value then
+				onSuccess(resultTable)
+			end
+		end
+
+		for _, typeMapKey in ipairs(value) do 
+			if typeTable[typeMapKey] then
+				onSuccessForTable(typeTable[typeMapKey].index)
+			else
+				addCallback(typeMapKey, onSuccessForTable)
+			end
+		end
+	elseif type(value) == "string" then
+		local typeMapKey = value
+
+		if typeTable[typeMapKey] then
+			onSuccess(typeTable[typeMapKey].index)
+		else
+			addCallback(typeMapKey, onSuccess)
+		end
+	else
+		hmTable:getString(key) -- This is a bit of a hack to let the ddapi error handler log the "wrong type" error
+	end	
+end
+
+function ddapiManager:registerCallback(objectType, typeMapKey, typeTable, setIndexFunction, errorMessage)
+	local objectLoader = ddapiManager:getLoaderAndSettings(objectType)
+
+	if not objectLoader.callbacks then
+		objectLoader.callbacks = {}
+	end
+
+	if not objectLoader.callbacks[typeMapKey] then
+		objectLoader.callbacks[typeMapKey] = {}
+	end
+
+	table.insert(objectLoader.callbacks[typeMapKey], {setIndexFunction = setIndexFunction, typeTable = typeTable, errorMessage = errorMessage})
+end
+
 function ddapiManager:getLoaderAndSettings(objectType)
 	for _, entityManager in ipairs(entityManagers) do 
 		if entityManager.loaders[objectType] then
@@ -165,74 +278,6 @@ function ddapiManager:tryLoadObjectDefinitions()
 	end
 end
 
---- In cases where we might have a circular reference, we can try to get indexes later
---- Attempts to retrieve the index. If it fails, creates a callback 
---- @param objectType: 			The objectType which will create the missing type if retrieval fails
---- @param sourceObjectType:	The objectType which requested the index (for logging purposes)
---- @param identifier:			The identifier of the definition which requested the index (for logging purposes)
---- @param hmTable:				The hmt which contains the typeTableKey or table of typeTableKeys to map to an index
---- @param key:					The key of the field to retrive from the hmt
---- @param optional:			Wether or not the value of the field is allowed to be nil
---- @param typeTable:			The typeTable from which to retrieve the index or indexes
---- @param typeTableName		Name of the typeTable (for logging purposes)
---- @param onSuccess			The function which to execute once the index or indexes have all been found
-function ddapiManager:tryAsTypeIndex(objectType, sourceObjectType, identifier, hmTable, key, optional, typeTable, typeTableName, onSuccess)
-
-	local value = (optional and hmTable:getOrNil(key) or hmTable:get(key)):getValue()
-
-	if not value then return end 
-
-	local function addCallback(typeMapKey, setIndexFunction)
-		ddapiManager:registerCallback(objectType, typeMapKey, typeTable, setIndexFunction, 
-				typeTableName .. " with key " .. typeMapKey .. " was never created for " .. sourceObjectType .. " with identifier ".. identifier)
-	end
-
-	if type(value) == "table" then
-		local resultTable = {}
-
-		-- Note: This might create bugs if the order in the table is important
-		local function onSuccessForTable(typeMapIndex)
-			table.insert(resultTable, typeMapIndex)
-			
-			if #resultTable == #value then
-				onSuccess(resultTable)
-			end
-		end
-
-		for _, typeMapKey in ipairs(value) do 
-			if typeTable[typeMapKey] then
-				onSuccessForTable(typeTable[typeMapKey].index)
-			else
-				addCallback(typeMapKey, onSuccessForTable)
-			end
-		end
-	elseif type(value) == "string" then
-		local typeMapKey = value
-
-		if typeTable[typeMapKey] then
-			onSuccess(typeTable[typeMapKey].index)
-		else
-			addCallback(typeMapKey, onSuccess)
-		end
-	else
-		hmTable:getString(key) -- This is a bit of a hack to let the ddapi error handler log the "wrong type" error
-	end	
-end
-
-function ddapiManager:registerCallback(objectType, typeMapKey, typeTable, setIndexFunction, errorMessage)
-	local objectLoader = ddapiManager:getLoaderAndSettings(objectType)
-
-	if not objectLoader.callbacks then
-		objectLoader.callbacks = {}
-	end
-
-	if not objectLoader.callbacks[typeMapKey] then
-		objectLoader.callbacks[typeMapKey] = {}
-	end
-
-	table.insert(objectLoader.callbacks[typeMapKey], {setIndexFunction = setIndexFunction, typeTable = typeTable, errorMessage = errorMessage})
-end
-
 -- @param objectLoader - The loader to fetch definitions for
 function ddapiManager:fetchRuntimeCompatibleDefinitions(objectLoader, settings)
 
@@ -283,6 +328,61 @@ function ddapiManager:raiseError(...)
 	
 	log:schema("ddapi", debug.traceback())
 	os.exit(1)
+end
+
+-- Loads all objects for a given objectType
+-- @param objectType - The type of object to load
+-- @param objectLoader - A table, containing fields from 'objectLoaders'
+function ddapiManager:loadObjectDefinitions(objectType, objectLoader, settings)
+	objectLoader.loaded = true
+
+	if objectLoader.disabled then
+		log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectType)
+		return
+	end
+
+	log:schema("ddapi", string.format("\r\n\r\nGenerating %s definitions:", objectType))
+
+	local objDefinitions = ddapiManager:fetchRuntimeCompatibleDefinitions(objectLoader, settings)
+
+	if objDefinitions == nil or #objDefinitions == 0 then
+		log:schema("ddapi", "  (no objects of this type created)")
+		return
+	end
+
+	log:schema("ddapi", "Available Possible Definitions: " .. #objDefinitions)
+
+	for i, objDef in ipairs(objDefinitions) do
+		ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
+	end
+
+	-- Check for callbacks
+	if objectLoader.callbacks and next(objectLoader.callbacks) then
+		for missingKey, callbackInfos in pairs(objectLoader.callbacks) do 
+			for _, callbackInfo in ipairs(callbackInfos) do 
+				-- Retry in case some other process added the type
+				-- Note: This is the case for eatByProducts. gameObject has a self reference
+				local index = callbackInfo.typeTable[missingKey]
+
+				if index then
+					callbackInfo.setIndexFunction(index)
+				else
+					ddapiManager:raiseError("  ERROR: " .. callbackInfo.errorMessage, "\r\nAvailable types: ", callbackInfo.typeTable)
+				end
+			end
+		end
+	end
+
+	-- Frees up memory now that the configs are cached
+	local settingsDone, allDone = ddapiManager:isProcessDone(settings)
+	if settingsDone then
+		settings.cachedDefinitions = nil
+	end
+	if allDone then
+		configLoader.cachedSharedGlobalDefinitions = nil
+	end
+
+	log:schema("ddapi", "-----")
 end
 
 -- Error handler for hmTables
@@ -337,63 +437,6 @@ local function ddapiErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg
 	}
 end
 
--- Loads all objects for a given objectType
--- @param objectType - The type of object to load
--- @param objectLoader - A table, containing fields from 'objectLoaders'
-function ddapiManager:loadObjectDefinitions(objectType, objectLoader, settings)
-	objectLoader.loaded = true
-
-	if objectLoader.disabled then
-		log:schema("ddapi", "WARNING: Object is disabled, skipping: " .. objectType)
-		return
-	end
-
-	log:schema("ddapi", string.format("\r\n\r\nGenerating %s definitions:", objectType))
-
-	local objDefinitions = ddapiManager:fetchRuntimeCompatibleDefinitions(objectLoader, settings)
-
-	if objDefinitions == nil or #objDefinitions == 0 then
-		log:schema("ddapi", "  (no objects of this type created)")
-		return
-	end
-
-	log:schema("ddapi", "Available Possible Definitions: " .. #objDefinitions)
-
-	for i, objDef in ipairs(objDefinitions) do
-		ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
-	end
-
-	-- Check for callbacks
-	if objectLoader.callbacks and next(objectLoader.callbacks) then
-		for missingKey, callbackInfos in pairs(objectLoader.callbacks) do 
-			for _, callbackInfo in ipairs(callbackInfos) do 
-				-- Retry in case some other process added the type
-				-- Note: This is the case for eatByProducts. gameObject has a self reference
-				local index = callbackInfo.typeTable[missingKey]
-
-				if index then
-					callbackInfo.setIndexFunction(index)
-				else
-					log:schema("ddapi", "  ERROR: " .. callbackInfo.errorMessage)
-					log:schema("ddapi", "Available types: ", callbackInfo.typeTable)
-					os.exit(1)
-				end
-			end
-		end
-	end
-
-	-- Frees up memory now that the configs are cached
-	local settingsDone, allDone = ddapiManager:isProcessDone(settings)
-	if settingsDone then
-		settings.cachedDefinitions = nil
-	end
-	if allDone then
-		configLoader.cachedSharedGlobalDefinitions = nil
-	end
-
-	log:schema("ddapi", "-----")
-end
-
 function ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
 	objDef = hmt(objDef, ddapiErrorHandler)
 
@@ -421,8 +464,7 @@ function ddapiManager:loadObjectDefinition(objDef, objectLoader, objectType)
 			local typeTableType = moduleManager:get(moduleName)[typeTable][identifier]
 
 			if not typeTableType then
-				log:schema("ddapi", "  ERROR: Object was created but could not find identifier '", identifier, "' in '", moduleName, ".", typeTable, "'")
-				os.exit(1)
+				ddapiManager:raiseError("  ERROR: Object was created but could not find identifier '", identifier, "' in '", moduleName, ".", typeTable, "'")
 			else
 				for _ , callbackInfos in ipairs(objectLoader.callbacks[identifier]) do 
 					callbackInfos.setIndexFunction(typeTableType.index)
@@ -450,54 +492,6 @@ function ddapiManager:isProcessDone(settings)
 	end
 
 	return true, allLoaded
-end
-
-
-function ddapiManager:checkAndSortLoaders()
-	local dependencies = {}
-
-	for _, entityManager in ipairs(entityManagers) do 
-		for objectType, loader in pairs(entityManager.loaders) do 
-			loader.manager = entityManager
-			dependencies[objectType] = {}
-
-			if loader.dependencies then
-				for _, dep in ipairs(loader.dependencies) do 
-					if not ddapiManager:getLoaderAndSettings(dep) then
-						log:schema("ddapi", "ERROR. ObjectType ", dep, " does not exist")
-						os.exit(1)
-					end
-
-					table.insert(dependencies[objectType], dep)
-				end
-			end
-		end
-	end
-
-	while next(dependencies) do
-		local found = false 
-
-		for objectType, deps in pairs(dependencies) do 
-			for i = #deps, 1, -1 do 
-				if not dependencies[deps[i]] then
-					found = true
-					table.remove(deps, i)
-				end
-			end
-
-			if #deps == 0 then
-				table.insert(sortedObjectLoaders, objectType)
-				dependencies[objectType] = nil
-			end
-		end
-
-		if next(dependencies) and not found then
-			mj:error("ERROR IN DDAPI. Circular dependencies found. These dependencies could not be resolved: ", dependencies)
-			os.exit(1)
-		end
-	end
-
-	log:schema("ddapi", "No circular dependencies found. Here are the sorted loaders: ", sortedObjectLoaders)
 end
 
 return ddapiManager

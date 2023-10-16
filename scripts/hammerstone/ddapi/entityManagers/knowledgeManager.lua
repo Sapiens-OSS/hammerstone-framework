@@ -90,7 +90,7 @@ function knowledgeManager:generateResearch(objDef, description, components, iden
 				function(key, value)
 					return 	key:asTypeIndex(modules["resource"].types), 
 							value:asTypeIndex(modules["constructable"].types)
-				end, hmtPairsMode.KeysAndValues)
+				end, hmtPairsMode.both)
 		else
 			newResearch.resourceTypeIndexes = rootComponent:getTable("resources"):asTypeIndex(modules["resource"].types)
 		end

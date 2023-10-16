@@ -442,7 +442,7 @@ function objectsManager:generateCraftable(objDef, description, components, ident
 			outputArraysByResourceObjectType = outputComponent:getTableOrNil("output_by_object"):with(
 				function(value)
 					if value then
-						return hmt(value):selectPairs(mapIndexes, hmtPairsMode.KeysAndValues)
+						return hmt(value):selectPairs(mapIndexes, hmtPairsMode.both)
 					end
 				end
 			):getValue()				
@@ -587,7 +587,7 @@ function objectsManager:generateModelPlaceholder(objDef, description, components
             end
 
         end
-    ):clear() -- Calling clear() converts it back to a regular non hmt table
+    ,true):clear() -- Calling clear() converts it back to a regular non hmt table
 
     utils:debug(identifier, objDef, modelPlaceholderData)
     modules["modelPlaceholder"]:addModel(modelName, modelPlaceholderData)

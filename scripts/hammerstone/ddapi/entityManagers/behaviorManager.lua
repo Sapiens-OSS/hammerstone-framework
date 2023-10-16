@@ -1,5 +1,4 @@
 -- Hammerstone
-local log = mjrequire "hammerstone/logging"
 local utils = mjrequire "hammerstone/ddapi/ddapiUtils"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
@@ -62,6 +61,7 @@ function behaviorManager:init(ddapiManager_)
     
     behaviorManager.loaders.actionLogic = {
         waitingForStart = true,
+        rootComponent = "hs_action_logic",
         moduleDependencies = {
             "action", 
             "tool",
@@ -336,19 +336,24 @@ end
 ---------------------------------------
 -- Action Logic (activeOrderAI)
 ---------------------------------------
-function behaviorManager:generateActionLogic(objDef)
+function behaviorManager:generateActionLogic(objDef, description, components, identifier, rootComponent)
 
-    if not objDef:getTable("components"):hasKey("hs_action_logic") then return end
-
-    local rootComponent = objDef:getTable("components"):get("hs_action_logic")
-
+    local shadow = rootComponent:getBooleanValueOrNil("shadow")
     local updateInfos = nil
-    if rootComponent:isType("function") then
-        updateInfos = rootComponent:getValue()(modules.activeOrderAI)
-    else
-        local description = objDef:getTable("description")
-        local identifier = description:getStringValue("identifier")
-        
+
+    if shadow then
+        updateInfos = modules.activeOrderAI.updateInfos[rootComponent:getString("action"):asTypeIndex(modules.action.types)]
+        updateInfos.checkFrequency = rootComponent:getNumberOrNil("check_frequency"):default(updateInfos.checkFrequency):getValue()
+        updateInfos.defaultSkillIndex = rootComponent:hasKey("default_skill") and rootComponent:getString("default_skill"):asTypeIndex(modules.skill.types) or updateInfos.defaultSkillIndex
+        updateInfos.toolMultiplierTypeIndex = rootComponent:hasKey("tool_multiplier") and rootComponent:getString("tool_multiplier"):asTypeIndex(modules.tool.types) or updateInfos.toolMultiplierTypeIndex
+
+        local superFunction = updateInfos.completionFunction
+        local shadowFunction = rootComponent:get("completion_function"):ofType("function"):getValue()
+            
+        updateInfos.completionFunction = function(allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
+            shadowFunction(superFunction, allowCompletion, sapien, orderObject, orderState, actionState, constructableType, requiredLearnComplete)
+        end
+    else        
         updateInfos = {
             actionTypeIndex = rootComponent:getStringOrNil("action"):default(identifier):asTypeIndex(modules["action"].types, "Action"),
             checkFrequency = rootComponent:getNumberValue("check_frequency"), 
@@ -356,10 +361,10 @@ function behaviorManager:generateActionLogic(objDef)
             defaultSkillIndex = rootComponent:getStringOrNil("default_skill"):asTypeIndex(modules["skill"].types, "Skill"),
             toolMultiplierTypeIndex = rootComponent:getStringOrNil("tool_multiplier"):asTypeIndex(modules["tool"].types, "Tool")
         }
-    
-        if rootComponent:hasKey("props") then
-            updateInfos = rootComponent:getTable("props"):mergeWith(updateInfos):clear()
-        end
+    end
+
+    if rootComponent:hasKey("props") then
+        updateInfos = rootComponent:getTable("props"):mergeWith(updateInfos):clear()
     end
 
     modules["activeOrderAI"].updateInfos[updateInfos.actionTypeIndex] = updateInfos
