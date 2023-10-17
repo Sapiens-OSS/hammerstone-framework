@@ -749,9 +749,9 @@ function objectManager:generateMobObject(objDef)
 
 	local mobObject = {
 		name = name,
-		gameObjectTypeIndex = gameObjectModule.types[identifier].index,
-		deadObjectTypeIndex = mobComponent:getString("dead_object"):asTypeIndex(gameObjectModule.types),
-		animationGroupIndex = mobComponent:getString("animation_group"):asTypeIndex(animationGroupsModule),
+		gameObjectTypeIndex = gameObjectModule.types[identifier].index, -- TODO: Make this less error prone
+		deadObjectTypeIndex = mobComponent:getString("dead_object"):asTypeIndex(gameObjectModule.types), -- TODO: Make default identifier
+		animationGroupIndex = mobComponent:getString("animation_group"):asTypeIndex(animationGroupsModule), -- TODO: Make default identifier
 	}
 
 	local defaultProps = hmt{
@@ -893,7 +893,7 @@ function objectManager:handleServerMob(def)
 
 		local reactDistance = mobModule.types[mobIndex].reactDistance -- TODO: Add better handling here
 		
-		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 2.0, infrequentUpdate)
+		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 10.0, infrequentUpdate)
 		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, mobSapienProximity)
 	end
 
