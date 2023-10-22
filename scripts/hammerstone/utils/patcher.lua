@@ -372,12 +372,12 @@ local function replaceAt(startAt, endAt, repl)
 
     local removeStart, startEnd = searchNodes(startAt)
 
-    if not removeStart then return fileContent, false end
+    if not removeStart then return false end
 
     if endAt then
         local _, removeEnd = searchNodes(endAt, startEnd + 1)
 
-        if not removeEnd then return fileContent, false end 
+        if not removeEnd then return false end 
 
         fileContent = fileContent:sub(1, removeStart - 1) .. repl .. fileContent:sub(removeEnd + 1, fileContent:len())
     else
@@ -409,12 +409,12 @@ local function replaceBetween(startAt, endAt, repl)
 
     local _, replaceStart = searchNodes(startAt)
 
-    if not replaceStart then return fileContent, false end
+    if not replaceStart then return false end
 
     if endAt then
         local replaceEnd = searchNodes(endAt, replaceStart + 1)
 
-        if not replaceEnd then return fileContent, false end 
+        if not replaceEnd then return false end 
 
         fileContent = fileContent:sub(1, replaceStart) .. repl .. fileContent:sub(replaceEnd, fileContent:len())
     else

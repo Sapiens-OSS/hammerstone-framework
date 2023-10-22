@@ -54,7 +54,7 @@ end
 moduleManager:bind(newModuleAdded)
 
 -- Initialize the full Data Driven API (DDAPI).
-function ddapiManager:init()
+function ddapiManager:init(modManager)
 	if utils:runOnceGuard("ddapi") then return end
 
 	log:schema("ddapi", os.date() .. "\n")
@@ -69,7 +69,7 @@ function ddapiManager:init()
 	ddapiManager:checkAndSortLoaders()
 
 	-- Find config files from FS
-	configLoader:findConfigFiles(entityManagers)
+	configLoader:findConfigFiles(modManager, entityManagers)
 end
 
 function ddapiManager:checkAndSortLoaders()

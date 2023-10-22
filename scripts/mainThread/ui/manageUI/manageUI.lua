@@ -8,14 +8,9 @@ local shadow = mjrequire "hammerstone/utils/shadow"
 
 local manageUI = {}
 
-function manageUI:show(super, modeIndexOrNil, contextOrNil)
-	super(self, modeIndexOrNil, contextOrNil)
-	uiManager:hideAllManageElements()
-end
-
-function manageUI:hide(super)
-	super(self)
-	uiManager:hideAllManageElements()
+function manageUI:init(super, gameUI, controller, hubUI_, world_)
+	super(self, gameUI, controller, hubUI_, world_)
+	uiManager:initManageElements(self)
 end
 
 return shadow:shadow(manageUI)
