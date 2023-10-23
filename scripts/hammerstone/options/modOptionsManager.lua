@@ -135,6 +135,10 @@ function modOptionsManager:getModOptionsValues(configKey)
     return clientModOptions[configKey]
 end
 
+function modOptionsManager:getModOptionsValue(configKey, optionKey)
+    return (clientModOptions[configKey] or {})[optionKey]
+end
+
 function modOptionsManager:setModOptionsValues(configKey, values)
     clientModOptions[configKey] = values
     saveClientModOptions()
