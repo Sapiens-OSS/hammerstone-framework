@@ -6,7 +6,7 @@ local mod = {
 }
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 function mod:onload(inspectCraftPanel)
 
@@ -15,11 +15,12 @@ function mod:onload(inspectCraftPanel)
 	inspectCraftPanel.load = function(inspectCraftPanel_, serinspectUI_, inspectObjectUI_, world_, parentContainerView)
 
 		-- Append new data to existing
-		for key, value in pairs(objectManager.inspectCraftPanelData) do
+		for key, value in pairs(ddapiManager.inspectCraftPanelData) do
 			if inspectCraftPanel.itemLists[key] == nil then
 				inspectCraftPanel.itemLists[key] = {}
 			end
 			for _, v in ipairs(value) do
+				mj:log("Adding index to inspectCraftPanel: ", v)
 				table.insert(inspectCraftPanel.itemLists[key], 1, v)
 			end
 		end

@@ -1,7 +1,7 @@
 local patch = {
 	version = "0.4.2.5",
 	patchOrder = 0,
-	debugCopyAfter = true,
+	debugCopyAfter = false,
 	debugOnly = false, 
 	operations = {
 		[1] = { type = "replaceAt", startAt = "local innerSegmentModelNames = {", endAt = { "local innerSegmentToolTipInfos = {", "\r\n}" }, repl = { chunk = "actionUI_innerWheel" } },

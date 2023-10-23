@@ -3,7 +3,7 @@
 
 --- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local mod = {
     loadOrder = 1,
@@ -23,7 +23,7 @@ function mod:onload(serverGOM)
 	local super_createObjectSets = serverGOM.createObjectSets
     serverGOM.createObjectSets = function(serverGOM_)
         super_createObjectSets(serverGOM_)
-		objectManager:markObjectAsReadyToLoad("objectSets")
+		ddapiManager:markObjectAsReadyToLoad("objectSets")
 	end
 
 	moduleManager:addModule("serverGOM", serverGOM)

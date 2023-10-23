@@ -2,6 +2,7 @@
 --- @author Witchy
 
 --- Hammerstone
+mjrequire "hammerstone/globals" -- by loading it here, every script from now on should be able to use them since mod manager loads super early
 local logging = mjrequire "hammerstone/logging"
 local patcher = mjrequire "hammerstone/utils/patcher"
 
@@ -121,7 +122,7 @@ local function applyPatch(path)
     local newFileContent = fileContent
 
     for _, patchInfos in ipairs(orderedPatchInfos) do
-        --logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
+        logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
 
         -- if the patch mod requests it, save a "before" copy of the file for debug purposes
         if patchInfos.debugCopyBefore then
@@ -208,10 +209,10 @@ function mod:onload(modManager)
     -- we go through that list to find all of the lua files of the mods in their "patches" folder
     local patchFilesPerPath = {}
 	for _, modsByType in pairs(modManager.enabledModDirNamesAndVersionsByType) do
-        for index, mod in ipairs(modsByType) do 
-            local patchesPath = mod.path .. "/patches"
+        for index, modValue in ipairs(modsByType) do 
+            local patchesPath = modValue.path .. "/patches"
             if fileUtils.isDirectoryAtPath(patchesPath) then
-                recursivelyFindScripts(patchesPath, nil, "scripts", mod.path, patchFilesPerPath)
+                recursivelyFindScripts(patchesPath, nil, "scripts", modValue.path, patchFilesPerPath)
             end
         end
 	end

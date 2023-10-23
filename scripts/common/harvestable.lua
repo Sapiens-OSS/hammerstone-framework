@@ -7,7 +7,7 @@ local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
 --- @implement
@@ -18,7 +18,7 @@ end
 --- @shadow
 function harvestable:load(super, gameObject)
 	super(self, gameObject)
-	objectManager:markObjectAsReadyToLoad("harvestable")
+	ddapiManager:markObjectAsReadyToLoad("harvestable")
 end
 
 

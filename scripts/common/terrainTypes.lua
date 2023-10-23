@@ -1,72 +1,46 @@
 --- Hammerstone: terainTypes.lua
 --- @author nmattela
 
-local mod = {
-
-	-- A low load order makes sense, because we're exposing new methods.
-	loadOrder = 0
-}
-
 -- Sapiens
 local typeMaps = mjrequire "common/typeMaps"
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
+local shadow = mjrequire "hammerstone/utils/shadow"
 
-function mod:onload(terrainTypes)
+local terrainTypes = {}
 
-	--- Add a new terrain base type.
-	-- @param key: The key to add, such as 'riverSand'
-	-- @param objectData: The object to add, containing all fields.
-	function terrainTypes:addBaseType(key, objectData)
-		local typeIndexMap = typeMaps.types.terrainBase
-	
-		local index = typeIndexMap[key]
-		if not index then
-			log:warn("Failed to add baseType because index was nil for key: ", key)
-			return nil
-		end
-
-		if terrainTypes.baseTypes[key] then
-			log:warn("Overwriting baseType:", key)
-		end
-
-		objectData.key = key
-		objectData.index = index
-		typeMaps:insert("terrainBase", terrainTypes.baseTypes, objectData)
-
-		-- Recache the type maps
-		terrainTypes.baseTypesArray = typeMaps:createValidTypesArray("terrainBase", terrainTypes.baseTypes)
-
-		return index
+--- Add a new terrain base type.
+-- @param key: The key to add, such as 'riverSand'
+-- @param objectData: The object to add, containing all fields.
+function terrainTypes:addBaseType(key, objectData)
+	if self.baseTypes[key] then
+		log:warn("Overwriting baseType:", key)
 	end
 
-	--- Allows adding a terrain variation.
-	-- @param key: The key to add, such as 'snow'
-	-- @param objectData: The object to add, containing all fields.
-	function terrainTypes:addVariation(key, objectType)
-		local typeIndexMap = typeMaps.types.terrainVariations
-	
-		local index = typeIndexMap[key]
-		if not index then
-			log:warn("Failed to add variation because index was nil for key: ", key)
-			return nil
-		end
+	typeMaps:insert("terrainBase", self.baseTypes, objectData)
 
-		if terrainTypes.variations[key] then
-			log:warn("Overwriting variation:", key)
-		end
+	-- Recache the type maps
+	self.baseTypesArray = typeMaps:createValidTypesArray("terrainBase", self.baseTypes)
 
-		objectType.key = key
-		objectType.index = index
-		typeMaps:insert("terrainVariations", terrainTypes.variations, objectType)
-
-		-- Recache the type maps
-		terrainTypes.variationsArray = typeMaps:createValidTypesArray("terrainVariations", terrainTypes.variations)
-	
-	
-		return index
-	end
+	return objectData.index
 end
 
-return mod
+--- Allows adding a terrain variation.
+-- @param key: The key to add, such as 'snow'
+-- @param objectData: The object to add, containing all fields.
+function terrainTypes:addVariation(key, objectType)
+	if self.variations[key] then
+		log:warn("Overwriting variation:", key)
+	end
+
+	typeMaps:insert("terrainVariations", self.variations, objectType)
+
+	-- Recache the type maps
+	self.variationsArray = typeMaps:createValidTypesArray("terrainVariations", self.variations)
+
+
+	return objectType.index
+end
+
+return shadow:shadow(terrainTypes, 0)

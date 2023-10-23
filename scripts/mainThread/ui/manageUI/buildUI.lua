@@ -3,7 +3,7 @@
 
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local mod = {
     loadOrder = 30,
@@ -23,7 +23,7 @@ function mod:onload(buildUI)
     buildUI.createItemList = function()
         super_createItemList()
 
-        for i, value in ipairs(objectManager.constructableIndexes) do
+        for i, value in ipairs(ddapiManager.constructableIndexes) do
             table.insert(buildUI.itemList, value)
         end
     end

@@ -13,7 +13,7 @@ local tool = mjrequire "common/tool"
 
 
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/object/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
 local buildSequenceData = {
@@ -146,7 +146,7 @@ function mod:onload(craftable)
     local super_load = craftable.load
     craftable.load = function(craftable_, gameObject, flora)
         super_load(craftable_, gameObject, flora)
-        objectManager:markObjectAsReadyToLoad("craftable")
+        ddapiManager:markObjectAsReadyToLoad("craftable")
     end
 
     -- This is just exposing the build sequences from the 'buildable.lua' and making them available in craftable.lua, since this is where
