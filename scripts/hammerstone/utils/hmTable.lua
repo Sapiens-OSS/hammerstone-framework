@@ -22,7 +22,8 @@ hmtErrors = mj:enum {
     "ConversionFailed",
     "VectorWrongElementsCount",
     "NotVector",
-    "notFound"
+    "notFound",
+    "notEmptyFailed"
 }
 
 -- modes for predicates
@@ -263,6 +264,31 @@ do
             function mt:estimateSize()
                 return estimateTableSize(self)
             end
+
+            -- Allows to iterate over an hmt table where the values are also converted to hmt
+            function mt:pairs()
+                local key = nil
+                local iterator = function()
+                    local nextKey = next(self, key)
+                    if not nextKey then return nil end
+                    key = nextKey
+                    return key, self:get(key)
+                end
+
+                return iterator, self, key
+            end
+
+            -- Allows to iterate over an hmt table (array) where the values are also converted to hmt
+            function mt:ipairs()
+                local index = 0
+                local iterator = function()
+                    index = index + 1
+                    if index > #self then return nil end
+                    return index, self:get(index)
+                end
+
+                return iterator, self, index
+            end
         end
 
         --- Validation ---
@@ -278,7 +304,16 @@ do
                     return self
                 end
 
-                return raiseError(self, hmtErrors.ofLengthFailed, "hmt.ofLength -> Table is of length= " .. self:length() .. ". Required Length:" .. tostring(length), length)
+                return raiseError(self, hmtErrors.ofLengthFailed, "Table is of length= " .. self:length() .. ". Required Length:" .. tostring(length), length)
+            end
+
+            -- Raises an error if the table is empty
+            function mt:notEmpty()
+                if not next(self) then
+                    return raiseError(self, hmtErrors.notEmptyFailed, "Table is empty")
+                end
+
+                return self
             end
         end
 
@@ -287,7 +322,7 @@ do
             -- Converts the table to a vec2
             function mt:asVec2()
                 if self:length() < 2 then
-                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec2 -> Table has too few elements", 2)
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "Table has too few elements", 2)
                 end
 
                 if self:hasKey("x") and self:hasKey("y") then
@@ -302,7 +337,7 @@ do
             -- Converts the table to a vec3
             function mt:asVec3()
                 if self:length() < 3 then
-                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 3)
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "Table has too few elements", 3)
                 end
 
                 if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") then
@@ -317,7 +352,7 @@ do
             -- Converts the table to a vec4
             function mt:asVec4()
                 if self:length() < 4 then
-                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "hmt.asVec3 -> Table has too few elements", 4)
+                    return raiseError(self, hmtErrors.VectorWrongElementsCount, "Table has too few elements", 4)
                 end
 
                 if self:hasKey("x") and self:hasKey("y") and self:hasKey("z") and self:hasKey("w") then
@@ -359,6 +394,24 @@ do
                 end
 
                 return indexArray
+            end
+
+            -- Returns an array containing the keys of the table
+            function mt:keysToTable()
+                local data = {}
+                for k, v in pairs(self) do 
+                    table.insert(data, k)
+                end
+                return init(self, data)
+            end
+
+            -- Returns an array containing the values of the table
+            function mt:valuesToTable()
+                local data = {}
+                for k, v in pairs(self) do 
+                    table.insert(data, v)
+                end
+                return init(self, data)
             end
         end
 
@@ -623,7 +676,7 @@ do
                     local value = (pairsToHMT == hmtPairsMode.valuesOnly or pairsToHMT == hmtPairsMode.both) and init(self, v) or v
 
                     local newK, newV = predicate(key, value)
-                    if newK and newV then data[newK] = newV end
+                    if newK then data[newK] = newV end
                 end
 
                 return init(self, data)
@@ -681,6 +734,43 @@ do
 
                     self[k] = predicate(key, value)
                 end
+                return self
+            end
+
+            -- Sorts the table by a specific key
+            -- @param key:   The key to use
+            -- Note: table must be an array
+            function mt:orderBy(key)
+                for i = 1, #self - 1 do 
+                    local a = self:get(i):get(key):getValue()
+                    for n = i + 1, #self do
+                        local b = self:get(n):get(key):getValue()
+
+                        if b < a then
+                            local temp = self[i]
+                            self[i] = self[n]
+                            self[n] = temp
+                        end
+                    end
+                end
+
+                return self
+            end
+
+            function mt:orderByDescending(key)
+                for i = 1, #self - 1 do 
+                    local a = self:get(i):get(key):getValue()
+                    for n = i + 1, #self do
+                        local b = self:get(n):get(key):getValue()
+
+                        if b > a then
+                            local temp = self[i]
+                            self[i] = self[n]
+                            self[n] = temp
+                        end
+                    end
+                end
+
                 return self
             end
         end

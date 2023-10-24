@@ -26,9 +26,7 @@ local uiManager = {
 
 
 -- Base
-local keyMapping = mjrequire "mainThread/keyMapping"
 local uiStandardButton = mjrequire "mainThread/ui/uiCommon/uiStandardButton"
-local uiToolTip = mjrequire "mainThread/ui/uiCommon/uiToolTip"
 local logger = mjrequire "hammerstone/logging"
 
 -- Math
@@ -42,7 +40,7 @@ local vec2 = mjm.vec2
 
 -- This is just an example:
 local example_manage_element = {
-	name = "The name of the icon",
+	name = "The name of the element",
 	icon = "The name of the icon such as 'icon_configure' (points to glb file)",
 
 	-- The function that is called when the element is clicked
@@ -63,127 +61,81 @@ function uiManager:registerManageElement(element)
 	table.insert(self.manageElements, element)
 end
 
-function uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
+function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
+	logger:log("Initializing Manage Elements' buttons...")
+
+	-- Rebuild the modeTypes enum
+	local modeTypes = mj:cloneTable(manageUI.modeTypes)
+	local nextIndex = 0
+
+	for modeIndex in ipairs(manageUI.modeTypes) do
+		nextIndex = math.max(nextIndex, modeIndex)
+	end 
+
+	for i, element in ipairs(self.manageElements) do
+		logger:log("Adding Manage Element Button: ", element.name)
+		local elementIndex = nextIndex + i
+		local elementModeType = string.format("manageElement_%d", i)
+		modeTypes[elementIndex] = elementModeType
+		modeTypes[elementModeType] = elementIndex
+
+		manageUI.modeInfos[elementIndex] = {
+			title = element.name,
+			icon = element.icon, 
+			onClick = element.onClick
+		}
+
+		-- Increase the number of buttons to be displayed
+		manageButtonsUI.menuButtonCount = manageButtonsUI.menuButtonCount + 1
+	end
+
+	manageUI.modeTypes = modeTypes
+end
+
+local belowTopPadding = 40
+function uiManager:initManageElements(manageUI)
 	--- Function that allows Hammerstone to build out the ManageElements based on everything that
 	-- has been registered. This is called automatically.
 	logger:log("Initializing Manage Elements...")
 
-	-- Local state
-	local menuButtonsView = manageButtonsUI.menuButtonsView
-	local menuButtonSize = manageButtonsUI.menuButtonSize
-	local menuButtonPadding = manageButtonsUI.menuButtonSize * manageButtonsUI.menuButtonPaddingRatio
-	local toolTipOffset = manageButtonsUI.toolTipOffset
-	local originalButtonsCount = manageButtonsUI.menuButtonCount
-
-	-- Re-usable function to close the element's tab
-	local function closeTab()
-		manageUI:hide()
-		menuButtonsView.hidden = true
-	end		
-
-	-- Capture the last button in the row, as we will place new buttons offset from it.
-	local lastButton = manageButtonsUI.menuButtonsByManageUIModeType[#manageButtonsUI.menuButtonsByManageUIModeType]
-
-	-- Setup keybindings to close the tab
-	local keyMap = {
-		[keyMapping:getMappingIndex("game", "escape")] = function (isDown, isRepeat) if isDown and not isRepeat then closeTab() end return true end,
-		[keyMapping:getMappingIndex("game", "buildMenu")] = function (isDown, isRepeat) if isDown and not isRepeat then closeTab() end return true end,
-	}
-
-	local function keyChanged(isDown, code, modKey, isRepeat)
-		if keyMap[code]  then
-			return keyMap[code](isDown, isRepeat)
-		end
-	end
-
 	-- Loop through all the registered elements and create them.
 	for i, element in ipairs(self.manageElements) do
-		logger:log("Adding Manage Button: ", element.name)
+		logger:log("Adding Manage Element: ", element.name)
 
-		local buttonIndex = originalButtonsCount + 1
-		local buttonKey = string.format("hammerstone_manageElement_%d", i)
-
-		-- Increase the number of buttons to be displayed
-		manageButtonsUI.menuButtonCount = manageButtonsUI.menuButtonCount + 1
+		local elementContentView = View.new(manageUI.mainContentView)
+		elementContentView.relativePosition = ViewPosition(MJPositionCenter, MJPositionBottom)
+		elementContentView.size = vec2(manageUI.mainContentView.size.x, manageUI.mainContentView.size.y - belowTopPadding)
+		elementContentView.hidden = true
 
 		-- Initialize the element itself
-		element:init(gameUI)
+		element:init(elementContentView, manageUI)
 
-		-- Setup keybindings 
-		-- If a keyChanged function is already setup, we call it first
-		if element.view.keyChanged then
-			local super_keyChanged = element.view.keyChanged
-			element.view.keyChanged = function(view, isDown, code, modKey, isRepeat)
-				local handled = super_keyChanged(isDown, code, modKey, isRepeat)
-				if not handled then
-					return keyChanged(isDown, code, modKey, isRepeat)
-				end
+		local elementModeType = string.format("manageElement_%d", i)
+		local elementModeIndex = manageUI.modeTypes[elementModeType]
+
+		manageUI.modeInfos[elementModeIndex].contentView = elementContentView
+		manageUI.modeInfos[elementModeIndex].isCollection = false
+		manageUI.uiObjectsByModeType[elementModeIndex] = element
+
+		if not element.show then
+			element.show = function(element_, contextOrNil)
+				element_.view.hidden = false
 			end
-		else
-			element.view.keyChanged = keyChanged
 		end
 
-		-- Create the button to show in the manageButtonsUI
-		local button = uiStandardButton:create(menuButtonsView, vec2(menuButtonSize, menuButtonSize), uiStandardButton.types.markerLike)
-		button.relativeView = lastButton
-		button.relativePosition = ViewPosition(MJPositionOuterRight, MJPositionCenter)
-
-		uiStandardButton:setIconModel(button, element.icon)
-		uiToolTip:add(button.userData.backgroundView, ViewPosition(MJPositionCenter, MJPositionBelow), element.name, nil, toolTipOffset, nil, button)
-		button.baseOffset = vec3(menuButtonPadding, 0, 0)
-
-		-- Register the button with manageButtonsUI
-		manageButtonsUI.menuButtonsByManageUIModeType[buttonKey] = button
-
-		-- Save the button for the UI into the button itself.
-		element.button = button
-
-		uiStandardButton:setClickFunction(button, function()
-
-			-- Default behavior is to hide the menu.
-			-- After hiding, we must re-show the buttons.
-			manageUI:hide()
-			manageButtonsUI:setSelectedButton(buttonKey)
-			manageButtonsUI.menuButtonsView.hidden = false
-
-			-- Default behavior is to show the element view.
-			element.view.hidden = false
-
-			-- Custom binding from the mod (optional)
-			if element.onClick then
-				element.onClick()
+		if not element.hide then
+			element.hide = function(element_)
+				element_.view.hidden = true
 			end
-		end)
+		end
 
-		-- Provide a "close" button to all manageElements
-		local closeButton = uiStandardButton:create(element.view, vec2(50,50), uiStandardButton.types.markerLike)
-		closeButton.relativePosition = ViewPosition(MJPositionInnerRight, MJPositionAbove)
-		closeButton.baseOffset = vec3(30, -20, 0)
-		uiStandardButton:setIconModel(closeButton, "icon_cross")
-		uiStandardButton:setClickFunction(closeButton, closeTab)
-
-		element.closeButton = closeButton
-
-		-- Update the last button, so we can continue handling offset.
-		lastButton = button
-	end
-
-	-- Recalculate the size of menuButtonsView to compensate for the new buttons
-	menuButtonsView.size = vec2(menuButtonSize * manageButtonsUI.menuButtonCount + menuButtonPadding * (manageButtonsUI.menuButtonCount - 1), menuButtonSize)
-end
-
-function uiManager:hideAllManageElements()
-	--- Hides all the manage elements.
-	-- This is usually called when switching to a native manage element, or
-	-- when the manage UI closes.
-
-	for _, element in ipairs(self.manageElements) do
-
-		uiStandardButton:setSelected(element.button, false)
-		element.view.hidden = true
+		if not element.popUI then
+			element.popUI = function(element_)
+				return false
+			end
+		end
 	end
 end
-
 
 -- ==========================================================================================
 -- Action Elements.
@@ -317,12 +269,9 @@ end
 --- Whether or not a custom GameView panel is displayed.
 function uiManager:hasUIPanelDisplayed()
 	for _, element in pairs(self.gameElements) do
-		if not element.view.hidden then return true end
+		if element.view and not element.view.hidden then return true end
 	end
 
-	for _, element in pairs(self.manageElements) do
-		if not element.view.hidden then return true end
-	end
 	return false
 end
 

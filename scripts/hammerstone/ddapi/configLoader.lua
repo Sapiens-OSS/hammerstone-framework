@@ -18,12 +18,11 @@ function configLoader:addConfig()
 end
 
 -- Loops over known config locations and attempts to find config files
-function configLoader:findConfigFiles(entityManagers)
+function configLoader:findConfigFiles(modManager, entityManagers)
 	configLoader.isInitialized = true
 	log:schema("ddapi", "Loading configuration files from FileSystem:")
 
 	-- Loads files at path to dbTable for each active mod
-	local modManager = mjrequire "common/modManager"
 	local mods = modManager.enabledModDirNamesAndVersionsByType.world
 	
 	for i, mod in ipairs(mods) do

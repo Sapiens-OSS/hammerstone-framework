@@ -1,21 +1,17 @@
 --- Hammerstone: world.lua
 --- @author SirLich
 
-local mod = {
-	loadOrder = 1
-}
-
 -- Hammerstone
 local gameState = mjrequire "hammerstone/state/gameState"
+local shadow = mjrequire "hammerstone/utils/shadow"
+local modOptionsManager = mjrequire "hammerstone/options/modOptionsManager"
 
-function mod:onload(world)
+local world = {}
 
-	-- Shadow setBridge
-	local super_setBridge = world.setBridge
-	world.setBridge = function(_, bridge, serverClientState, isVR)
-		super_setBridge(_, bridge, serverClientState, isVR)
-		gameState.worldBridge = bridge
-	end
+function world:setBridge(super, bridge, serverClientState, isVR)
+	super(self, bridge, serverClientState, isVR)
+	gameState.worldBridge = bridge
+	modOptionsManager:setWorld(self)
 end
 
-return mod
+return shadow:shadow(world)

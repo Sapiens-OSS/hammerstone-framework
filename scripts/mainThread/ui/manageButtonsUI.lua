@@ -7,17 +7,14 @@ local mod = { loadOrder = 1 }
 -- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
 
--- Sapiens
-local mj = mjrequire "common/mj"
-
 function mod:onload(manageButtonsUI)
 	local superInit = manageButtonsUI.init
-	manageButtonsUI.init = function(self, gameUI, manageUI, hubUI, world)
+	manageButtonsUI.init = function(manageButtonsUI_, gameUI, manageUI, hubUI, world)
+		-- Interface with the uiManager
+		uiManager:initManageElementButtons(manageButtonsUI, manageUI)
+
 		-- Super
 		superInit(manageButtonsUI, gameUI, manageUI, hubUI, world)
-
-		-- Interface with the uiManager
-		uiManager:initManageElements(gameUI, manageButtonsUI, manageUI)
 	end
 end
 

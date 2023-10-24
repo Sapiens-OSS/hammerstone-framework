@@ -77,3 +77,8 @@ The first release of Hammerstone
  - Added HMT (Hammerstone tables), a utility to better work with tables and values.
  - Fixed an issue with the route tab not showing the correct selected route on opening
  - Fixed a couple of DDAPI issues
+
+ # 1.6.0
+- Fixed some bugs in the patcher
+- Adapted uiManager to correctly handle UIs for manage elements
+- Added new feature: mod options
