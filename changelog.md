@@ -82,3 +82,12 @@ The first release of Hammerstone
 - Fixed some bugs in the patcher
 - Adapted uiManager to correctly handle UIs for manage elements
 - Added new feature: mod options
+
+# 1.7.0
+
+- Added `hs_animation_groups` to shared configs
+- Added snapping_preset to allow quickly re-using existing sapienObjectSnapping functions
+- Added hs_plans::hunting_preset, to allow quickly registering hunting info for mobs.
+- Added hs_mob::emulate_client_ai
+- Added hs_mob::emulate_server_ai
+- Added hs_mob::object_set (defaults to identifier)

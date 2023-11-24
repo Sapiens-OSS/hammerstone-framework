@@ -10,178 +10,211 @@ local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local modules = moduleManager.modules
 
 local objectsManager = {
-    settings = {
-        unwrap = "hammerstone:object_definition",
-        configPath = "/hammerstone/objects",
-        luaGetter = "getObjectConfigs",
-        configFiles = {},
-    }, 
-    loaders = {}
+	settings = {
+		unwrap = "hammerstone:object_definition",
+		configPath = "/hammerstone/objects",
+		luaGetter = "getObjectConfigs",
+		configFiles = {},
+	}, 
+	loaders = {}
 }
 
 local ddapiManager = nil
 
 function objectsManager:init(ddapiManager_)
-    ddapiManager = ddapiManager_
+	ddapiManager = ddapiManager_
 
-    objectsManager.loaders.evolvingObject = {
-        rootComponent = "hs_evolving_object",
-        waitingForStart = true,
-        moduleDependencies = {
-            "evolvingObject",
-            "typeMaps",
-            "gameObject"
-        },
-        dependencies = {
-            "gameObject"
-        },
-        loadFunction = objectsManager.generateEvolvingObject
-    }
-    
-    objectsManager.loaders.resource = {
-        rootComponent = "hs_resource",
-        moduleDependencies = {
-            "resource", 
-            "typeMaps",
-            "storage", 
-            "gameObject" -- Lich mjrequires it from a config
-        },
-        dependencies = {
-            --"storage", handled by callback
-            --"resourceGroup", handled by callback
-        },
-        loadFunction = objectsManager.generateResource
-    }
-    
-    objectsManager.loaders.buildable = {
-        rootComponent = "hs_buildable",
-        moduleDependencies = {
-            "buildable",
-            "typeMaps",
-            "constructable",
-            "plan",
-            "research", 
-            "skill",
-            "tool",
-            "actionSequence",
-            "gameObject",
-            "resource",
-            "action",
-            "craftable",
-        },
-        dependencies = {
-            "plan", 
-            "skill",
-            "resource",
-            "craftable",
-            --"gameObject", -> handled through typeIndexMap
-            --"research" -> handled through callback
-        },
-        loadFunction = objectsManager.generateBuildable
-    }
-    
-    objectsManager.loaders.craftable = {
-        rootComponent = "hs_craftable",
-        waitingForStart = true,
-        minimalModuleDependencies = {
-            "craftable",
-            "typeMaps",
-        },
-        moduleDependencies = {
-            "craftable",
-            "typeMaps",
-            "gameObject",
-            "constructable",
-            "craftAreaGroup",
-            "skill",
-            "tool",
-            "actionSequence",
-            "resource",
-            "action"
-        },
-        dependencies = {
-            --"gameObject", -> handled through typeIndexMap
-            "skill", 
-            "resource", 
-            "action", 
-            "actionSequence"
-        },
-        loadFunction = objectsManager.generateCraftable
-    }
-    
-    objectsManager.loaders.modelPlaceholder = {
-        rootComponent = "hs_buildable",
-        moduleDependencies = {
-            "modelPlaceholder",
-            "typeMaps",
-            "resource",
-            "gameObject",
-            "model"
-        },
-        dependencies = {
-            "gameObject"
-        },
-        loadFunction = objectsManager.generateModelPlaceholder
-    }
-    
-    objectsManager.loaders.gameObject = {
-        rootComponent = "hs_object",
-        waitingForStart = true,
-        moduleDependencies = {
-            "gameObject",
-            "resource",			
-            "tool",
-            "harvestable",
-            "seat",
-            "craftAreaGroup"
-        },
-        dependencies = {
-            "seats", 
-            "buildable",
-            "craftable",
-            "harvestable"
-        },
-        loadFunction = objectsManager.generateGameObject
-    }
-    
-    objectsManager.loaders.mob = {
-        rootComponent = "hs_mob",
-        moduleDependencies = {
-            "mob",
-            "gameObject",
-            "animationGroups"
-        },
-        dependencies = {
-            "gameObject",
-        },
-        loadFunction = objectsManager.generateMobObject
-    }
-    
-    objectsManager.loaders.harvestable = {
-        rootComponent = "hs_harvestable",
-        waitingForStart = true,
-        moduleDependencies = {
-            "harvestable",
-            "gameObject",
-        },
-        dependencies = {
-            --"gameObject" -> handled by typeIndexMap
-        },
-        loadFunction = objectsManager.generateHarvestableObject
-    }
-    
-    objectsManager.loaders.planHelper_object = {
-        rootComponent = "hs_plans",
-        waitingForStart = true, -- Custom start triggered from planHelper.lua
-        moduleDependencies = {
-            "planHelper", 
-            "gameObject"
-        },
-        dependencies = {
-            "gameObject"
-        },
-        loadFunction = objectsManager.generatePlanHelperObject
-    }
+	objectsManager.loaders.evolvingObject = {
+		rootComponent = "hs_evolving_object",
+		waitingForStart = true,
+		moduleDependencies = {
+			"evolvingObject",
+			"typeMaps",
+			"gameObject"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectsManager.generateEvolvingObject
+	}
+	
+	objectsManager.loaders.objectSnapping = {
+		rootComponent = "hs_object",
+		moduleDependencies = {
+			"sapienObjectSnapping",
+			"gameObject"
+		},
+		loadFunction = objectsManager.generateObjectSnapping
+	}
+
+	objectsManager.loaders.resource = {
+		rootComponent = "hs_resource",
+		moduleDependencies = {
+			"resource", 
+			"typeMaps",
+			"storage", 
+			"gameObject" -- Lich mjrequires it from a config
+		},
+		dependencies = {
+			--"storage", handled by callback
+			--"resourceGroup", handled by callback
+		},
+		loadFunction = objectsManager.generateResource
+	}
+	
+	objectsManager.loaders.buildable = {
+		rootComponent = "hs_buildable",
+		moduleDependencies = {
+			"buildable",
+			"typeMaps",
+			"constructable",
+			"plan",
+			"research", 
+			"skill",
+			"tool",
+			"actionSequence",
+			"gameObject",
+			"resource",
+			"action",
+			"craftable",
+		},
+		dependencies = {
+			"plan", 
+			"skill",
+			"resource",
+			"craftable",
+			--"gameObject", -> handled through typeIndexMap
+			--"research" -> handled through callback
+		},
+		loadFunction = objectsManager.generateBuildable
+	}
+	
+	objectsManager.loaders.craftable = {
+		rootComponent = "hs_craftable",
+		waitingForStart = true,
+		minimalModuleDependencies = {
+			"craftable",
+			"typeMaps",
+		},
+		moduleDependencies = {
+			"craftable",
+			"typeMaps",
+			"gameObject",
+			"constructable",
+			"craftAreaGroup",
+			"skill",
+			"tool",
+			"actionSequence",
+			"resource",
+			"action"
+		},
+		dependencies = {
+			--"gameObject", -> handled through typeIndexMap
+			"skill", 
+			"resource", 
+			"action", 
+			"actionSequence"
+		},
+		loadFunction = objectsManager.generateCraftable
+	}
+	
+	objectsManager.loaders.modelPlaceholder = {
+		rootComponent = "hs_buildable",
+		moduleDependencies = {
+			"modelPlaceholder",
+			"typeMaps",
+			"resource",
+			"gameObject",
+			"model"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectsManager.generateModelPlaceholder
+	}
+	
+	objectsManager.loaders.gameObject = {
+		rootComponent = "hs_object",
+		waitingForStart = true,
+		moduleDependencies = {
+			"gameObject",
+			"resource",			
+			"tool",
+			"harvestable",
+			"seat",
+			"craftAreaGroup"
+		},
+		dependencies = {
+			"seats", 
+			"buildable",
+			"craftable",
+			"harvestable"
+		},
+		loadFunction = objectsManager.generateGameObject
+	}
+	
+	-- Mob Section 
+
+	objectsManager.loaders.mob = {
+		rootComponent = "hs_mob",
+		moduleDependencies = {
+			"mob",
+			"gameObject",
+			"animationGroups"
+		},
+		dependencies = {
+			"gameObject",
+		},
+		loadFunction = objectsManager.generateMobObject
+	}
+	objectsManager.loaders.clientMobHandler = {
+		rootComponent = "hs_mob",
+		moduleDependencies = {
+			"clientMob",
+			"mob"
+		},
+		loadFunction = objectsManager.handleClientMob
+	}
+	objectsManager.loaders.serverMobHandler = {
+		rootComponent = "hs_mob",
+		waitingForStart = true, -- Custom start triggered from serverMob.lua
+		dependencies = {
+			"mob"
+		},
+		moduleDependencies = {
+			"serverMob",
+			"mob",
+			"serverGOM",
+			"gameObject"
+		},
+		loadFunction = objectsManager.handleServerMob
+	}
+	
+	objectsManager.loaders.harvestable = {
+		rootComponent = "hs_harvestable",
+		waitingForStart = true,
+		moduleDependencies = {
+			"harvestable",
+			"gameObject",
+		},
+		dependencies = {
+			--"gameObject" -> handled by typeIndexMap
+		},
+		loadFunction = objectsManager.generateHarvestableObject
+	}
+	
+	objectsManager.loaders.planHelper_object = {
+		rootComponent = "hs_plans",
+		waitingForStart = true, -- Custom start triggered from planHelper.lua
+		moduleDependencies = {
+			"planHelper", 
+			"gameObject"
+		},
+		dependencies = {
+			"gameObject"
+		},
+		loadFunction = objectsManager.generatePlanHelperObject
+	}
 end
 
 ---------------------------------------------------------------------------------
@@ -518,81 +551,81 @@ end
 -- Takes in a remap table, and returns the 'placeholderModelIndexForObjectTypeFunction' that can handle this data.
 --- @param remaps table string->string mapping
 local function createIndexFunction(remaps, default)
-    local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
-        local objectKey = modules["typeMaps"]:indexToKey(objectTypeIndex, modules["gameObject"].validTypes)
+	local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
+		local objectKey = modules["typeMaps"]:indexToKey(objectTypeIndex, modules["gameObject"].validTypes)
 
-        local remap = remaps[objectKey]
+		local remap = remaps[objectKey]
 
-        -- Return a remap if exists
-        if remap ~= nil then
-            return modules["model"]:modelIndexForName(remap)
-        end
+		-- Return a remap if exists
+		if remap ~= nil then
+			return modules["model"]:modelIndexForName(remap)
+		end
 
-        -- TODO: We should probbaly re-handle this old default type
-        -- Else, return the default model associated with this resource
-        local defaultModel = modules["gameObject"].types[objectKey].modelName
+		-- TODO: We should probbaly re-handle this old default type
+		-- Else, return the default model associated with this resource
+		local defaultModel = modules["gameObject"].types[objectKey].modelName
 
-        return modules["model"]:modelIndexForName(defaultModel)
-    end
+		return modules["model"]:modelIndexForName(defaultModel)
+	end
 
-    return inner
+	return inner
 end
 
 function objectsManager:generateModelPlaceholder(objDef, description, components, identifier, rootComponent)
-    -- Components
-    local objectComponent = components:getTableOrNil("hs_object")
-                
-    -- Otherwise, give warning on potential ill configuration
-    if rootComponent.model_placeholder == nil then
-        log:schema("ddapi", string.format("   Warning: %s is being created without a model placeholder. In this case, you are responsible for creating one yourself.", identifier))
-        return
-    end
+	-- Components
+	local objectComponent = components:getTableOrNil("hs_object")
+				
+	-- Otherwise, give warning on potential ill configuration
+	if rootComponent.model_placeholder == nil then
+		log:schema("ddapi", string.format("   Warning: %s is being created without a model placeholder. In this case, you are responsible for creating one yourself.", identifier))
+		return
+	end
 
-    -- TODO @Lich = You set objectComponent as 'optional'. 
-    -- Shouldn't you check if it's nil first?
-    -- This code will throw an exception if objectComponent is nil
-    local modelName = objectComponent:getStringValue("model")
-    log:schema("ddapi", string.format("  %s (%s)", identifier, modelName))
-    
-    -- TODO @Lich you warned that model_placeholder is nil before but didn't set it as optional
-    -- So I use "getTable" instead of "getTableOrNil". Is that the intention?
-    -- This will crash
-    local modelPlaceholderData = rootComponent:getTable("model_placeholder"):select(
-        function(data)
+	-- TODO @Lich = You set objectComponent as 'optional'. 
+	-- Shouldn't you check if it's nil first?
+	-- This code will throw an exception if objectComponent is nil
+	local modelName = objectComponent:getStringValue("model")
+	log:schema("ddapi", string.format("  %s (%s)", identifier, modelName))
+	
+	-- TODO @Lich you warned that model_placeholder is nil before but didn't set it as optional
+	-- So I use "getTable" instead of "getTableOrNil". Is that the intention?
+	-- This will crash
+	local modelPlaceholderData = rootComponent:getTable("model_placeholder"):select(
+		function(data)
 
-            local isStore = data:getBooleanOrNil("is_store"):default(false):getValue()
-            
-            if isStore then
-                return {
-                    key = data:getStringValue("key"),
-                    offsetToStorageBoxWalkableHeight = true
-                }
-            else
-                local default_model = data:getStringValue("default_model")
-                local resource_type = data:getString("resource"):asTypeIndex(modules["resource"].types)
-                local resource_name = data:getStringValue("resource")
-                local remap_data = data:getTableOrNil("remaps"):default( { [resource_name] = default_model } )
+			local isStore = data:getBooleanOrNil("is_store"):default(false):getValue()
+			
+			if isStore then
+				return {
+					key = data:getStringValue("key"),
+					offsetToStorageBoxWalkableHeight = true
+				}
+			else
+				local default_model = data:getStringValue("default_model")
+				local resource_type = data:getString("resource"):asTypeIndex(modules["resource"].types)
+				local resource_name = data:getStringValue("resource")
+				local remap_data = data:getTableOrNil("remaps"):default( { [resource_name] = default_model } )
 
-                    
-                return {
-                    key = data:getStringValue("key"),
-                    defaultModelName = default_model,
-                    resourceTypeIndex = resource_type,
+					
+				return {
+					key = data:getStringValue("key"),
+					defaultModelName = default_model,
+					resourceTypeIndex = resource_type,
 
-                    -- TODO
-                    additionalIndexCount = data:getNumberValueOrNil("additional_index_count"),
-                    defaultModelShouldOverrideResourceObject = data:getNumberValueOrNil("use_default_model"),
-                    placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
-                }
-            end
+					-- TODO
+					additionalIndexCount = data:getNumberValueOrNil("additional_index_count"),
+					defaultModelShouldOverrideResourceObject = data:getNumberValueOrNil("use_default_model"),
+					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
+				}
+			end
 
-        end
-    ,true):clear() -- Calling clear() converts it back to a regular non hmt table
+		end
+	,true):clear() -- Calling clear() converts it back to a regular non hmt table
 
-    utils:debug(identifier, objDef, modelPlaceholderData)
-    modules["modelPlaceholder"]:addModel(modelName, modelPlaceholderData)
+	utils:debug(identifier, objDef, modelPlaceholderData)
+	modules["modelPlaceholder"]:addModel(modelName, modelPlaceholderData)
 
-    return modelPlaceholderData
+	return modelPlaceholderData
 end
 
 ---------------------------------------------------------------------------------
@@ -602,7 +635,7 @@ end
 function objectsManager:generateGameObject(objDef, description, components, identifier, rootComponent, isBuildVariant)
 	local nameKey = identifier
 	
-    if isBuildVariant then
+	if isBuildVariant then
 		identifier = utils:getBuildIdentifier(identifier)
 	end
 
@@ -747,9 +780,55 @@ function objectsManager:generateMobObject(objDef, description, components, ident
 		animationGroupIndex = rootComponent:getString("animation_group"):asTypeIndex(modules["animationGroups"]),
 	}
 
-	if rootComponent:hasKey("props") then
-		mobObject = rootComponent:getTable("props"):mergeWith(mobObject):clear()
-	end
+	local defaultProps = hmt{
+		-- These values are all sensible defaults, more or less averaging mammoth, aplaca, and chicken stats
+		initialHealth = 10.0,
+
+		spawnFrequency = 0.5,
+		spawnDistance = mj:mToP(400.0),
+
+		reactDistance = mj:mToP(50.0),
+		agroDistance = mj:mToP(5.0),
+		runDistance = mj:mToP(20.0),
+
+		agroTimerDuration = 3.0,
+		aggresionLevel = nil, -- no agro
+
+		pathFindingRayRadius = mj:mToP(0.5),
+		pathFindingRayYOffset = mj:mToP(1),
+		walkSpeed = mj:mToP(0.8),
+		runSpeedMultiplier = 3,
+		embedBoxHalfSize = vec3(0.3,0.2,0.5),
+
+		-- Coppied from Alpaca
+		maxSoundDistance2 = mj:mToP(200.0) * mj:mToP(200.0),
+		soundVolume = 0.2,
+		soundRandomBaseName = "alpaca",
+		soundRandomBaseCount = 2,
+		soundAngryBaseName = "alpacaAngry",
+		soundAngryBaseCount = 1,
+		deathSound = "alpacaAngry1",
+
+		-- NOT IMPLEMENTED. These are more specific, and should be handled internally.
+		-- idleAnimations = {
+		--     "stand1",
+		--     "stand2",
+		--     "stand3",
+		--     "stand4",
+		--     "sit1",
+		--     "sit2",
+		-- },
+
+		-- sleepAnimations = {
+		--     "sit1",
+		--     "sit2",
+		-- },
+
+		-- runAnimation = "trot",
+		-- deathAnimation = "die",
+	}
+
+	mobObject = defaultProps:mergeWith(rootComponent:getTableOrNil("props"):default({})):mergeWith(mobObject):clear()
 
 	-- Insert
 	modules["mob"]:addType(identifier, mobObject)
@@ -760,6 +839,126 @@ function objectsManager:generateMobObject(objDef, description, components, ident
 	end
 end
 
+function objectsManager:handleClientMob(def)
+	local mobModule = moduleManager:get("mob")
+	local clientMobModule = moduleManager:get("clientMob")
+
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local components = def:getTable("components")
+	local mobComponent = components:getTableOrNil("hs_mob")
+
+	-- Early return
+	if mobComponent:getValue() == nil then
+		return
+	end
+
+	local emulateAI = mobComponent:getBooleanOrNil("emulate_client_ai"):default(false):getValue()
+	local mobIndex = identifier:asTypeIndex(mobModule.types)
+
+	-- TODO: Clean this up
+	local dummyAI = {}
+	dummyAI.serverUpdate = function(object, notifications, pos, rotation, scale, incomingServerStateDelta)
+	end
+	dummyAI.objectWasLoaded = function(object, pos, rotation, scale)
+	end
+	function dummyAI:update(object, dt, speedMultiplier)
+	end
+	function dummyAI:init(clientGOM_)
+	end
+
+
+	if emulateAI then
+		log:schema("ddapi", string.format("  Mob '%s' is using emulated AI.", identifier:getValue()))
+		clientMobModule.mobClassMap[mobIndex] = dummyAI
+	else
+		log:schema("ddapi", string.format("  WARNING: Mob '%s' is not using emulated AI. You will be responsible for creating an AI yourself in clientMob.lua", identifier:getValue()))
+	end
+end
+
+function objectsManager:handleServerMob(def)
+	local mobModule = moduleManager:get("mob")
+	local serverMobModule = moduleManager:get("serverMob")
+	local serverGOMModule = moduleManager:get("serverGOM")
+	local gameObjectModule = moduleManager:get("gameObject")
+
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local components = def:getTable("components")
+	local mobComponent = components:getTableOrNil("hs_mob")
+
+	-- Early return
+	if mobComponent:getValue() == nil then
+		return
+	end
+
+	local emulateAI = mobComponent:getBooleanOrNil("emulate_server_ai"):default(false):getValue()
+	local objectSetString = mobComponent:getStringOrNil("object_set"):default(identifier):getValue()
+	local objectSet = serverGOMModule.objectSets[objectSetString] -- TODO add better error handling here
+	local mobIndex = identifier:asTypeIndex(mobModule.types)
+	local gameObjectIndex = identifier:asTypeIndex(gameObjectModule.types)
+
+	local function infrequentUpdate(objectID, dt, speedMultiplier)
+		serverMobModule:infrequentUpdate(objectID, dt, speedMultiplier)
+	end
+
+
+	local function mobSapienProximity(objectID, sapienID, distance2, newIsClose)
+		serverMobModule:mobSapienProximity(objectID, sapienID, distance2, newIsClose)
+	end
+
+	-- serverGOM.objectSets.moas
+	local function initAI() -- No params because these are handled magically via local leaking (yay...)
+		serverGOMModule:addObjectLoadedFunctionForTypes({ gameObjectIndex }, function(object)
+			serverGOMModule:addObjectToSet(object, serverGOMModule.objectSets.interestingToLookAt)
+			serverGOMModule:addObjectToSet(object, objectSet)
+
+			serverMobModule:mobLoaded(object)
+		end)
+
+		local reactDistance = mobModule.types[mobIndex].reactDistance -- TODO: Add better handling here
+
+		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 10.0, infrequentUpdate)
+		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, mobSapienProximity)
+	end
+
+	-- TODO LIAM
+	if emulateAI then
+		log:schema("ddapi", string.format("  Mob '%s' is using emulated server AI.", identifier:getValue()))
+		initAI()
+	else
+		log:schema("ddapi", string.format("  WARNING: Mob '%s' is not using emulated server AI. You will be responsible for creating an AI yourself in serverMob.lua", identifier:getValue()))
+	end
+end
+
+---------------------------------------------------------------------------------
+-- Object Snapping
+---------------------------------------------------------------------------------
+
+function objectsManager:generateObjectSnapping(def)
+	-- Modules
+	local sapienObjectSnappingModule = moduleManager:get("sapienObjectSnapping")
+	local gameObjectModule = moduleManager:get("gameObject")
+
+	-- Setup
+	local identifier = def:getTable("description"):getString("identifier")
+	local objectIndex = identifier:asTypeIndex(gameObjectModule.types)
+	local snappingPreset = def:getTable("components"):getTableOrNil("hs_object"):getStringOrNil("snapping_preset")
+
+	if snappingPreset:getValue() ~= nil  then
+		local snappingPresetIndex = snappingPreset:asTypeIndex(gameObjectModule.types)
+
+		local snappingPresetFunction = sapienObjectSnappingModule.snapObjectFunctions[snappingPresetIndex]
+
+		if snappingPresetFunction ~= nil then
+			log:schema("ddapi", string.format("  Object '%s' is using snapping preset '%s' (index='%s')", identifier:getValue(), snappingPreset:getValue(), snappingPresetIndex))
+			sapienObjectSnappingModule.snapObjectFunctions[objectIndex] = snappingPresetFunction
+		else
+			log:schema("ddapi", string.format("  Warning: Object '%s' is using trying to use snapping preset '%s' (index='%s'), which doesn't exist!", identifier:getValue(), snappingPreset:getValue(), snappingPresetIndex))
+		end
+	end
+end
+
 ---------------------------------------------------------------------------------
 -- Harvestable  Object
 ---------------------------------------------------------------------------------
@@ -767,7 +966,7 @@ end
 function objectsManager:generateHarvestableObject(objDef, description, components, identifier, rootComponent)
 	-- Note: We use typeIndexMap here because of the circular dependency.
 	-- The vanilla code uses this trick so why can't we?
-	local resourcesToHarvest = rootComponent:getTable("resources_to_harvest"):asTypeIndexMap(modules["gameObject"].typeIndexMap)
+	local resourcesToHarvest = rootComponent:getTable("resources_to_harvest"):asTypeMapType(modules["gameObject"].typeIndexMap)
 
 	local finishedHarvestIndex = rootComponent:getNumberOrNil("finish_harvest_index"):default(#resourcesToHarvest):getValue()
 	modules["harvestable"]:addHarvestableSimple(identifier, resourcesToHarvest, finishedHarvestIndex)
@@ -778,16 +977,49 @@ end
 ---------------------------------------------------------------------------------
 
 function objectsManager:generatePlanHelperObject(objDef, description, components, identifier, rootComponent)
+	-- Modules
+	local planHelperModule = modules["planHelper"]
+
 	local objectIndex = description:getString("identifier"):asTypeIndex(modules["gameObject"].types)
 	local availablePlansFunction = rootComponent:getStringOrNil("available_plans"):with(
 		function (value)
-			return modules["planHelper"][value]
+			return planHelperModule[value]
 		end
 	):getValue()
 
-	-- Nil plans would override desired vanilla plans
+	-- Shortcut
+	if rootComponent == nil then
+		return
+	end
+
+	-- Handle the normal plan stuff
 	if availablePlansFunction ~= nil then
-		modules["planHelper"]:setPlansForObject(objectIndex, availablePlansFunction)
+		-- Nil plans would override desired vanilla plans
+		planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
+		if availablePlansFunction ~= nil then
+			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlansFunction, identifier:getValue()))
+			planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
+		else
+			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlansFunction, identifier:getValue()))
+		end
+	end
+
+	-- Handle the hunting stuff
+	local huntingPreset = rootComponent:getStringOrNil("hunting_preset")
+	local huntingPresetData = huntingPreset:with(
+		function (value)
+			return planHelperModule[value]
+		end
+	):getValue()
+
+	if huntingPreset:getValue() ~= nil then
+		-- Nil plans would override desired vanilla plans
+		if huntingPresetData ~= nil then
+			log:schema("ddapi", string.format("  Assigning hunting preset '%s' to object '%s'", huntingPreset:getValue(), identifier:getValue()))
+			planHelperModule.huntPlanInfosByObjectType[objectIndex] = huntingPresetData
+		else
+			log:schema("ddapi", string.format("  WARING: Tried to assign hunting preset '%s' to object '%s', but the plan was nil.", huntingPreset:getValue(), identifier:getValue()))
+		end
 	end
 end
 
