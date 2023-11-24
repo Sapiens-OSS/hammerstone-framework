@@ -6,68 +6,77 @@ local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local modules = moduleManager.modules
 
 local sharedManager = {
-    settings = {
-        configPath = "/hammerstone/shared/",
+	settings = {
+		configPath = "/hammerstone/shared/",
 			unwrap = "hammerstone:global_definitions",
 			luaGetter = "getGlobalConfigs",
 			configFiles = {},
-    }, 
-    loaders = {}
+	}, 
+	loaders = {}
 }
 
 function sharedManager:init(ddapiManager_)
-    sharedManager.loaders.objectSets = {
-        shared_unwrap = "hs_object_sets",
-        shared_getter = "getObjectSets",
-        waitingForStart = true, -- Custom start in serverGOM.lua
-        moduleDependencies = {
-            "serverGOM"
-        },
-        loadFunction = sharedManager.generateObjectSets
-    }
-    
-    sharedManager.loaders.resourceGroups = {
-        shared_unwrap = "hs_resource_groups",
-        shared_getter = "getResourceGroups",
-        moduleDependencies = {
-            "resource",
-            "gameObject"
-        },
-        dependencies = {
-            "resource",
-            --"gameObject" -> Handled through typeIndexMap
-        },
-        loadFunction = sharedManager.generateResourceGroup
-    }
-    
-    sharedManager.loaders.seats = {
-        shared_unwrap = "hs_seat_types",
-        shared_getter = "getSeatTypes",
-        moduleDependencies = {
-            "seat"
-        },
-        loadFunction = sharedManager.generateSeat
-    }
-    
-    sharedManager.loaders.material = {
-        shared_unwrap = "hs_materials",
-        shared_getter = "getMaterials",
-        moduleDependencies = {
-            "material"
-        },
-        loadFunction = sharedManager.generateMaterial
-    }
-    
-    sharedManager.loaders.-- Custom models are esentially handling 
-    customModel = {
-        waitingForStart = true, -- See model.lua
-        shared_unwrap = "hs_model_remaps",
-        shared_getter = "getModelRemaps",
-        moduleDependencies = {
-            "model"
-        },
-        loadFunction = sharedManager.generateCustomModel
-    }
+	sharedManager.loaders.objectSets = {
+		shared_unwrap = "hs_object_sets",
+		shared_getter = "getObjectSets",
+		waitingForStart = true, -- Custom start in serverGOM.lua
+		moduleDependencies = {
+			"serverGOM"
+		},
+		loadFunction = sharedManager.generateObjectSets
+	}
+	
+	sharedManager.loaders.resourceGroups = {
+		shared_unwrap = "hs_resource_groups",
+		shared_getter = "getResourceGroups",
+		moduleDependencies = {
+			"resource",
+			"gameObject"
+		},
+		dependencies = {
+			"resource",
+			--"gameObject" -> Handled through typeIndexMap
+		},
+		loadFunction = sharedManager.generateResourceGroup
+	}
+	
+	sharedManager.loaders.seats = {
+		shared_unwrap = "hs_seat_types",
+		shared_getter = "getSeatTypes",
+		moduleDependencies = {
+			"seat"
+		},
+		loadFunction = sharedManager.generateSeat
+	}
+	
+	sharedManager.loaders.material = {
+		shared_unwrap = "hs_materials",
+		shared_getter = "getMaterials",
+		moduleDependencies = {
+			"material"
+		},
+		loadFunction = sharedManager.generateMaterial
+	}
+	
+	sharedManager.loaders.animationGroups = {
+		shared_unwrap = "hs_animation_groups",
+		shared_getter = "getAnimationGroups",
+		moduleDependencies = {
+			"animationGroups"
+		},
+		loadFunction = sharedManager.generateAnimationGroups
+	}
+
+	sharedManager.loaders.-- Custom models are esentially handling 
+	customModel = {
+		waitingForStart = true, -- See model.lua
+		shared_unwrap = "hs_model_remaps",
+		shared_getter = "getModelRemaps",
+		moduleDependencies = {
+			"model"
+		},
+		loadFunction = sharedManager.generateCustomModel
+	}
 end
 
 ---------------------------------------------------------------------------------
@@ -75,7 +84,21 @@ end
 ---------------------------------------------------------------------------------
 
 function sharedManager:generateObjectSets(key)
+	local value = key:getValue()
+	log:schema("ddapi", "  " .. value)	
 	modules["serverGOM"]:addObjectSet(key:getValue())
+end
+
+---------------------------------------------------------------------------------
+-- Animation Groups
+---------------------------------------------------------------------------------
+
+function sharedManager:generateAnimationGroups(key)
+	local animationGroupsModule = moduleManager:get("animationGroups")
+
+	local value = key:getValue()
+	log:schema("ddapi", "  " .. value)
+	animationGroupsModule:addAnimationGroup(value)
 end
 
 ---------------------------------------------------------------------------------
