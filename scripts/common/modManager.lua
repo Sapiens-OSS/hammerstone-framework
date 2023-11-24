@@ -2,7 +2,7 @@
 --- @author Witchy
 
 --- Hammerstone
-mjrequire "hammerstone/globals" -- by loading it here, every script from now on should be able to use them since mod manager loads super early
+local initializer = mjrequire "hammerstone/initializer" -- loading it here allows us to load it at the earliest stage possible
 local logging = mjrequire "hammerstone/logging"
 local patcher = mjrequire "hammerstone/utils/patcher"
 
@@ -119,21 +119,18 @@ local function applyPatch(path)
     end
 
     local patchedModule = nil 
-    local newFileContent = fileContent
 
     for _, patchInfos in ipairs(orderedPatchInfos) do
-        logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
+        logging:log("Applying patch mod to ", path, " for version:", patchInfos.version, " with patchOrder: ", patchInfos.patchOrder, " with filepath:", patchInfos.filePath, " debugOnly:", patchInfos.debugOnly, " debugCopyBefore:", patchInfos.debugCopyBefore, " debugCopyAfter:", patchInfos.debugCopyAfter)
 
         -- if the patch mod requests it, save a "before" copy of the file for debug purposes
         if patchInfos.debugCopyBefore then
             fileUtils.createDirectoriesIfNeededForDirPath(patchInfos.modDirPath .. "/patches" .. getDirPathFromPath(path))
-            fileUtils.writeToFile(patchInfos.modDirPath .. "/patches/" ..path .. "_before.lua.temp", newFileContent)
+            fileUtils.writeToFile(patchInfos.modDirPath .. "/patches/" ..path .. "_before.lua.temp", fileContent)
         end
 
         -- call the patch module's "applyPatch" function and get the new fileContent
-        local success = nil 
-            
-        newFileContent, success = patcher:applyPatch(patchInfos, newFileContent, path)
+        local newFileContent, success = patcher:applyPatch(patchInfos, fileContent, path)
 
         if not newFileContent then
             logging:error("Patching resulted in an empty file for patch at ", patchInfos.path)
@@ -145,18 +142,14 @@ local function applyPatch(path)
             end
 
             if not success then
-                logging:error("Patching did not succeed for patch at ", patchInfos.path)
+                logging:error("Patching did not succeed for patch at ", patchInfos.filePath)
 
             elseif not patchInfos.debugOnly then
                 -- test that the new fileContent is valid
-                local errorMsg = nil 
-                local newPatchedModule = nil 
-
-                newPatchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
+                local newPatchedModule, errorMsg = loadstring(newFileContent, path .. "(patched)")
 
                 if not newPatchedModule then
-                    logging:error(errorMsg)
-                    logging:error("Patch failed for patch file at ", patchInfos.path)
+                    logging:error("Patch failed for patch file at ", patchInfos.filePath, " with error:\r\n", errorMsg)
                 else
                     fileContent = newFileContent
                     patchedModule = newPatchedModule
@@ -180,6 +173,8 @@ local function applyPatch(path)
 end
 
 function mod:onload(modManager)
+    initializer:init(modManager)
+    
     -- package.loaders contains a list of functions that "require" uses to load librairies
     -- lua provides 4 default functions to search for librairies
     -- the first is a list of custom loaders per moduleName so we don't want to superced that

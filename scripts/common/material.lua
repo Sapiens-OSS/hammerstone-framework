@@ -5,19 +5,12 @@ local materialShadow = {
 	loadOrder = 0
 }
 
--- Math
-local mjm = mjrequire "common/mjm"
-local vec3 = mjm.vec3
-
 -- Hammerstone
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
 --- @implements
 function materialShadow:postload(parent)
-    -- Load DDAPI
-    objectManager:init()
     moduleManager:addModule("material", parent)
 end
 

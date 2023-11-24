@@ -2,12 +2,11 @@
 -- --- @Author SirLich
 
 -- Sapiens
-local typeMaps = mjrequire "common/typeMaps"
 local gameObject = mjrequire "common/gameObject"
 
 -- Hammerstone
 local log = mjrequire "hammerstone/logging"
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
@@ -21,7 +20,7 @@ end
 
 -- Automatically made available
 function evolvingObject:addEvolvingObject(key, objectData)
-	local index = typeMaps:keyToIndex(key, gameObject.validTypes)
+	local index = gameObject.types[key]
 
 	if not index then
 		log:error("Attempting to add evolving object which isn't a GameObject:", key)
@@ -39,7 +38,7 @@ function evolvingObject:init(super, dayLength, yearLength)
 
 	super(self, dayLength, yearLength)
 
-	objectManager:markObjectAsReadyToLoad("evolvingObject")
+	ddapiManager:markObjectAsReadyToLoad("evolvingObject")
 end
 
 return shadow:shadow(evolvingObject, 0)

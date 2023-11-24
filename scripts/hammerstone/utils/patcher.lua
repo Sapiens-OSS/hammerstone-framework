@@ -231,7 +231,7 @@ end
 local function localVariableToModule(variableName, moduleName)
     variableName = getStringParameter(variableName, "variableName")
 
-    if not functionName then
+    if not variableName then
         logging:error("'variableName' is nil")
         return false
     end
@@ -244,7 +244,7 @@ local function localVariableToModule(variableName, moduleName)
 
     local count = nil
 
-    local lvStart, lvEnd, lv, lvAssign = 
+    local lvStart, _, _, lvAssign = 
         fileContent:find("(local " .. variableName .. ")([^%a%d][^\r\n]*)[\r\n]+")
 
     local mdStart = fileContent:find("local " .. moduleName .. "[%s=]+")
@@ -296,7 +296,7 @@ local function insertAfter(after, string)
     if not after then
         fileContent = fileContent .. string
     else
-        local lastStart, lastEnd = searchNodes(after)
+        local _, lastEnd = searchNodes(after)
 
         if not lastEnd then return false end
 
@@ -337,8 +337,6 @@ local function removeAt(startAt, endAt)
         return false
     end
 
-    local success = false
-
     local removeStart, startEnd = searchNodes(startAt)
 
     if not removeStart then return false end
@@ -374,12 +372,12 @@ local function replaceAt(startAt, endAt, repl)
 
     local removeStart, startEnd = searchNodes(startAt)
 
-    if not removeStart then return fileContent, false end
+    if not removeStart then return false end
 
     if endAt then
         local _, removeEnd = searchNodes(endAt, startEnd + 1)
 
-        if not removeEnd then return fileContent, false end 
+        if not removeEnd then return false end 
 
         fileContent = fileContent:sub(1, removeStart - 1) .. repl .. fileContent:sub(removeEnd + 1, fileContent:len())
     else
@@ -409,14 +407,14 @@ local function replaceBetween(startAt, endAt, repl)
         return false
     end
 
-    local lastStart, replaceStart = searchNodes(startAt)
+    local _, replaceStart = searchNodes(startAt)
 
-    if not replaceStart then return fileContent, false end
+    if not replaceStart then return false end
 
     if endAt then
         local replaceEnd = searchNodes(endAt, replaceStart + 1)
 
-        if not replaceEnd then return fileContent, false end 
+        if not replaceEnd then return false end 
 
         fileContent = fileContent:sub(1, replaceStart) .. repl .. fileContent:sub(replaceEnd, fileContent:len())
     else

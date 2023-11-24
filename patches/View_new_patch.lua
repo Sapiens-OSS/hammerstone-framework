@@ -1,6 +1,6 @@
 local patch = {
 	version = "0.4.2.5",
-	patcheOrder = 1,
+	patchOrder = 999,
 	debugOnly = false,
 	debugCopyAfter = false,
 	appliesTo = {

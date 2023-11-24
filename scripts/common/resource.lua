@@ -43,7 +43,7 @@ function mod:onload(resource)
 				resource.alphabeticallyOrderedTypes = {}
 			end
 
-			for index, value in ipairs(resource.validTypes) do
+			for _, value in ipairs(resource.validTypes) do
 				if value.key ~= nil and value.key == key then
 					table.insert(resource.alphabeticallyOrderedTypes, resource.validTypes[index])
 					table.sort(resource.alphabeticallyOrderedTypes, function(a, b)
