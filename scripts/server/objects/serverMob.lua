@@ -4,7 +4,7 @@ local serverMob = {}
 
 -- Hammerstone
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
-local objectManager = mjrequire "hammerstone/ddapi/objectManager"
+local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 local shadow = mjrequire "hammerstone/utils/shadow"
 
 --- @implement
@@ -15,7 +15,7 @@ end
 ---  @override
 function serverMob:init(super, serverMob_, serverGOM_, serverWorld_, serverSapien_, planManager_)
 	super(self, serverMob_, serverGOM_, serverWorld_, serverSapien_, planManager_)
-	objectManager:markObjectAsReadyToLoad("serverMobHandler")
+	ddapiManager:markObjectAsReadyToLoad("serverMobHandler")
 end
 
 return shadow:shadow(serverMob)

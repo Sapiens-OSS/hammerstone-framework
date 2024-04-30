@@ -61,7 +61,7 @@ function ddapiManager:init(modManager)
 
 	log:schema("ddapi", "Initializing DDAPI...")
 
-	for _, entityManager in ipairs(entityManagers) do 
+	for _, entityManager in ipairs(entityManagers) do
 		entityManager:init(ddapiManager)
 	end
 
@@ -186,7 +186,7 @@ function ddapiManager:registerCallback(objectType, typeMapKey, typeTable, setInd
 end
 
 function ddapiManager:getLoaderAndSettings(objectType)
-	for _, entityManager in ipairs(entityManagers) do 
+	for _, entityManager in ipairs(entityManagers) do
 		if entityManager.loaders[objectType] then
 			return entityManager.loaders[objectType], entityManager.settings
 		end

@@ -726,6 +726,9 @@ function objectsManager:generateGameObject(objDef, description, components, iden
 		toolUsages = toolUsage,
 		craftAreaGroupTypeIndex = buildableComponent:getValue() and buildableComponent:getStringOrNil("craft_area"):asTypeIndex(modules["craftAreaGroup"].types),
 
+		-- TODO SirLich: This is hard-coded
+		-- mobTypeIndex = modules["mob"].typeIndexMap.tapir,
+
 		-- TODO: Implement marker positions
 		markerPositions = {
 			{
@@ -830,16 +833,26 @@ function objectsManager:generateMobObject(objDef, description, components, ident
 
 	mobObject = defaultProps:mergeWith(rootComponent:getTableOrNil("props"):default({})):mergeWith(mobObject):clear()
 
-	-- Insert
-	modules["mob"]:addType(identifier, mobObject)
 
-	-- Lastly, inject mob index, if required
+
+	-- Insert
+	local mobTypeIndex = modules["mob"]:addType(identifier, mobObject)
+	
+
+	mj:log("MOB IS:")
+	mj:log(mobObject)
+	mj:log(mobObject)
+	mj:log(mobTypeIndex)
+
 	if objectComponent then
-		modules["gameObject"].types[identifier].mobTypeIndex = mobObject.index
+		modules["gameObject"].types[identifier].mobTypeIndex = mobTypeIndex
 	end
+
+	modules["gameObject"].validTypes = modules["typeMaps"]:createValidTypesArray("gameObject", modules["gameObject"].types)
+
 end
 
-function objectsManager:handleClientMob(def)
+function objectsManager:handleClientMob(def, description, components, identifier, rootComponent)
 	local mobModule = moduleManager:get("mob")
 	local clientMobModule = moduleManager:get("clientMob")
 
@@ -876,7 +889,7 @@ function objectsManager:handleClientMob(def)
 	end
 end
 
-function objectsManager:handleServerMob(def)
+function objectsManager:handleServerMob(def, description, components, identifier, rootComponent)
 	local mobModule = moduleManager:get("mob")
 	local serverMobModule = moduleManager:get("serverMob")
 	local serverGOMModule = moduleManager:get("serverGOM")
@@ -898,14 +911,18 @@ function objectsManager:handleServerMob(def)
 	local mobIndex = identifier:asTypeIndex(mobModule.types)
 	local gameObjectIndex = identifier:asTypeIndex(gameObjectModule.types)
 
-	local function infrequentUpdate(objectID, dt, speedMultiplier)
-		serverMobModule:infrequentUpdate(objectID, dt, speedMultiplier)
-	end
+	local dummyAI = {
+		infrequentUpdate = function(self, objectID, dt, speedMultiplier)
+			serverMobModule:infrequentUpdate(objectID, dt, speedMultiplier)
+		end,
+	
+	
+		mobSapienProximity = function(self, objectID, sapienID, distance2, newIsClose)
+			serverMobModule:mobSapienProximity(objectID, sapienID, distance2, newIsClose)
+		end
+	}
 
 
-	local function mobSapienProximity(objectID, sapienID, distance2, newIsClose)
-		serverMobModule:mobSapienProximity(objectID, sapienID, distance2, newIsClose)
-	end
 
 	-- serverGOM.objectSets.moas
 	local function initAI() -- No params because these are handled magically via local leaking (yay...)
@@ -918,11 +935,11 @@ function objectsManager:handleServerMob(def)
 
 		local reactDistance = mobModule.types[mobIndex].reactDistance -- TODO: Add better handling here
 
-		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 10.0, infrequentUpdate)
-		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, mobSapienProximity)
+		serverGOMModule:setInfrequentCallbackForGameObjectsInSet(objectSet, "update", 10.0, dummyAI.infrequentUpdate)
+		serverGOMModule:addProximityCallbackForGameObjectsInSet(objectSet, serverGOMModule.objectSets.sapiens, reactDistance, dummyAI.mobSapienProximity)
 	end
 
-	-- TODO LIAM
+	-- TODO SIRLICH
 	if emulateAI then
 		log:schema("ddapi", string.format("  Mob '%s' is using emulated server AI.", identifier:getValue()))
 		initAI()
@@ -997,10 +1014,10 @@ function objectsManager:generatePlanHelperObject(objDef, description, components
 		-- Nil plans would override desired vanilla plans
 		planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
 		if availablePlansFunction ~= nil then
-			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlansFunction, identifier:getValue()))
+			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlansFunction, identifier))
 			planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
 		else
-			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlansFunction, identifier:getValue()))
+			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlansFunction, identifier))
 		end
 	end
 
@@ -1015,10 +1032,10 @@ function objectsManager:generatePlanHelperObject(objDef, description, components
 	if huntingPreset:getValue() ~= nil then
 		-- Nil plans would override desired vanilla plans
 		if huntingPresetData ~= nil then
-			log:schema("ddapi", string.format("  Assigning hunting preset '%s' to object '%s'", huntingPreset:getValue(), identifier:getValue()))
+			log:schema("ddapi", string.format("  Assigning hunting preset '%s' to object '%s'", huntingPreset:getValue(), identifier))
 			planHelperModule.huntPlanInfosByObjectType[objectIndex] = huntingPresetData
 		else
-			log:schema("ddapi", string.format("  WARING: Tried to assign hunting preset '%s' to object '%s', but the plan was nil.", huntingPreset:getValue(), identifier:getValue()))
+			log:schema("ddapi", string.format("  WARING: Tried to assign hunting preset '%s' to object '%s', but the plan was nil.", huntingPreset:getValue(), identifier))
 		end
 	end
 end
