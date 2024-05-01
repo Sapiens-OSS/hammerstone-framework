@@ -17,8 +17,8 @@ function planHelper:postload(base)
 	moduleManager:addModule("planHelper", planHelper)
 end
 
-function planHelper:init(super)
-	super(self)
+function planHelper:init(super, world_, serverWorld_)
+	super(self, world_, serverWorld_)
 	ddapiManager:markObjectAsReadyToLoad("planHelper_object")
 	ddapiManager:markObjectAsReadyToLoad("planHelper_behavior")
 end
