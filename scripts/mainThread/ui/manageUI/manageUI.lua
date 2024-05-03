@@ -8,8 +8,8 @@ local shadow = mjrequire "hammerstone/utils/shadow"
 
 local manageUI = {}
 
-function manageUI:init(super, gameUI, controller, hubUI_, world_)
-	super(self, gameUI, controller, hubUI_, world_)
+function manageUI:init(super, gameUI, controller, hubUI_, world_, logicInterface_)
+	super(self, gameUI, controller, hubUI_, world_, logicInterface_)
 	uiManager:initManageElements(self)
 end
 
