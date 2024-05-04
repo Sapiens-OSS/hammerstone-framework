@@ -26,6 +26,7 @@ local modOptionsUI = {
 	view = nil,
 	parent = nil,
 	icon = "icon_modOptions",
+    disabled = false,
 }
 
 local viewsByEnableCondition = {}
@@ -121,6 +122,7 @@ function modOptionsUI:init(contentView, manageUI_)
 end
 
 function modOptionsUI:initOptions()
+    log:schema("options", "Initializing UI options...")
     if modOptionsManager:hasOptions() then
         modOptionsUI:initModOptionsViews()
     else
