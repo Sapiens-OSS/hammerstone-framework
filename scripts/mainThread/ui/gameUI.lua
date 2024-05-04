@@ -28,8 +28,8 @@ function mod:onload(gameUI)
 
 	-- Has panel displayed
 	local superHasUIPanelDisplayed = gameUI.hasUIPanelDisplayed
-	function gameUI:hasUIPanelDisplayed()
-		return superHasUIPanelDisplayed(gameUI) or uiManager:hasUIPanelDisplayed()
+	function gameUI:hasUIPanelDisplayed(allowHubUI)
+		return superHasUIPanelDisplayed(gameUI, allowHubUI) or uiManager:hasUIPanelDisplayed()
 	end
 end
 
