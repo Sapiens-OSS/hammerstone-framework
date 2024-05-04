@@ -30,13 +30,14 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
 
     local lastButton = nil
     for modeIndex in ipairs(manageUI.modeTypes) do
-        mj:log(manageUI.modeInfos[modeIndex])
+        mj:log("manageButtonsUI: modeIndex=", modeIndex, " title=", manageUI.modeInfos[modeIndex].title)
+        table.insert(manageButtonsUI.orderedModes, modeIndex)
+
         if manageUI.modeInfos[modeIndex].disabled then
+            mj:log("manageButton at modeIndex=", modeIndex, " title=", manageUI.modeInfos[modeIndex].title, " is disabled, skipping button creation")
             goto continue
         end
 
-        mj:log("manageButtonsUI: modeIndex=", modeIndex, " title=", manageUI.modeInfos[modeIndex].title)
-        table.insert(manageButtonsUI.orderedModes, modeIndex)
 
 
         local horizontalPos = modeIndex == 1 and MJPositionInnerLeft or MJPositionOuterRight
