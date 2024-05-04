@@ -59,6 +59,7 @@ end
 
 function modOptionsUI:setModOptionsManager(modOptionsManager_)
     modOptionsManager = modOptionsManager_
+    modOptionsUI.disabled = not modOptionsManager:hasOptions()
 end
 
 local function changeActiveSelectedControlView(newControlView)
