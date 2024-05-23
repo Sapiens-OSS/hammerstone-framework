@@ -46,8 +46,8 @@ function mod:onload(logic)
 	end
 
 	local super_setBridge = logic.setBridge
-	logic.setBridge = function(self, bridge)
-		super_setBridge(self, bridge)
+	logic.setBridge = function(self, bridge, serverPrivateSharedClientState)
+		super_setBridge(self, bridge, serverPrivateSharedClientState)
 
 		mod.bridge = bridge
 		mod.registerLogicFunctions(self)
