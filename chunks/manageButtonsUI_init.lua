@@ -2,7 +2,10 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
     manageUI = manageUI_
     hubUI = hubUI_
 
-    local menuButtonSize = manageButtonsUI.menuButtonSize
+    -- @FIXME: Why did this need to change to be hard-coded?
+    -- local menuButtonSize = manageButtonsUI.menuButtonSize
+    local menuButtonSize = 200.0
+
     local menuButtonPaddingRatio = manageButtonsUI.menuButtonPaddingRatio
 
     local menuButtonPadding = menuButtonSize * menuButtonPaddingRatio
