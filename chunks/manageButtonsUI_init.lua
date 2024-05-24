@@ -2,10 +2,7 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
     manageUI = manageUI_
     hubUI = hubUI_
 
-    -- @FIXME: Why did this need to change to be hard-coded?
-    -- local menuButtonSize = manageButtonsUI.menuButtonSize
-    local menuButtonSize = 200.0
-
+    local menuButtonSize = manageButtonsUI.menuButtonSize
     local menuButtonPaddingRatio = manageButtonsUI.menuButtonPaddingRatio
 
     local menuButtonPadding = menuButtonSize * menuButtonPaddingRatio
@@ -48,6 +45,8 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
         local button = uiStandardButton:create(menuButtonsView, vec2(menuButtonSize, menuButtonSize),
             uiStandardButton.types.markerLike)
         button.relativePosition = ViewPosition(horizontalPos, MJPositionCenter)
+        button.baseOffset = vec3(menuButtonPadding, 0, 0)
+
         uiStandardButton:setIconModel(button, manageUI.modeInfos[modeIndex].icon)
         uiToolTip:add(button.userData.backgroundView, ViewPosition(MJPositionCenter, MJPositionBelow),
             manageUI.modeInfos[modeIndex].title, nil, toolTipOffset, nil, button)
