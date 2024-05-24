@@ -46,6 +46,12 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
             local objectTypeIndex = planInfo.objectTypeIndex
             if objectTypeIndex then
                 toolTipText = toolTipText .. " " .. gameObject.types[objectTypeIndex].plural
+            elseif planTypeIndexToUse == plan.types.gather.index then
+                if inProgress then
+                    toolTipText = locale:get("plan_gatherAllInProgress")
+                else
+                    toolTipText = locale:get("plan_gatherAll")
+                end
             elseif fillConstructionTypeIndex then
                 toolTipText = toolTipText .. " " .. constructable.types[fillConstructionTypeIndex].name
             elseif planTypeIndexToUse == plan.types.clone.index then
@@ -187,20 +193,25 @@ local function updateButtons(showForPageChange)
 
             local availablePlans = nil
             local objectOrVertIDs = {}
+            local baseObjectOrVertID = nil
+
             if actionUI.selectedObjects then
-                availablePlans = planHelper:availablePlansForObjectInfos(actionUI.selectedObjects, world.tribeID)
+                availablePlans = planHelper:availablePlansForObjectInfos(actionUI.baseObject, actionUI.selectedObjects, world.tribeID)
                 for i,objectInfo in ipairs(actionUI.selectedObjects) do
                     objectOrVertIDs[i] = objectInfo.uniqueID
                 end
+                baseObjectOrVertID = actionUI.baseObject.uniqueID
             else
-                availablePlans = planHelper:availablePlansForVertInfos(actionUI.selectedVertInfos, world.tribeID)
+                availablePlans = planHelper:availablePlansForVertInfos(actionUI.baseVert, actionUI.selectedVertInfos, world.tribeID)
                 for i,vertInfo in ipairs(actionUI.selectedVertInfos) do
                     objectOrVertIDs[i] = vertInfo.uniqueID
                 end
+                baseObjectOrVertID = actionUI.baseVert.uniqueID
             end
 
             local availabilityRequest = {
                 objectOrVertIDs = objectOrVertIDs,
+                baseObjectOrVertID = baseObjectOrVertID,
                 plans = {},
             }
 
