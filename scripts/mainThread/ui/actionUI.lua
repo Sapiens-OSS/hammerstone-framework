@@ -58,7 +58,7 @@ end
 -- replace zoomShortcut with proper handling following patch changes
 function actionUI:zoomShortcut(super)
     if inspectUI.baseObjectOrVertInfo then
-        gameUI:followObject(inspectUI.baseObjectOrVertInfo, inspectUI.isTerrain, false, true, false)
+        gameUI:followObject(inspectUI.baseObjectOrVertInfo, inspectUI.isTerrain, {dismissAnyUI = true})
     end
 end
 

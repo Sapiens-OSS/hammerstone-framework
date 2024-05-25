@@ -9,7 +9,7 @@ local log = mjrequire "hammerstone/logging"
 
 local world = nil
 
-local modOptionsList = hmt{}
+local modOptionsList = hmt {}
 local clientModOptions = nil
 local listeners = {}
 
@@ -19,7 +19,7 @@ local modOptionsManager = {}
 
 local function saveClientModOptions()
     local clientWorldSettingsDatabase = world:getClientWorldSettingsDatabase()
-	clientWorldSettingsDatabase:setDataForKey(clientModOptions, databaseKey)
+    clientWorldSettingsDatabase:setDataForKey(clientModOptions, databaseKey)
 end
 
 local function optionsErrorHandler(hmTable_, errorCode, parentTable, fieldKey, msg, ...)
@@ -30,8 +30,7 @@ end
 local function initOptionsForMod(configKey, modOptions)
     clientModOptions[configKey] = clientModOptions[configKey] or {}
 
-    for optionName, option in pairs(modOptions) do 
-        
+    for optionName, option in pairs(modOptions) do
         if not clientModOptions[configKey][optionName] and option.default_value then
             clientModOptions[configKey][optionName] = option.default_value
         end
@@ -45,36 +44,35 @@ end
 function modOptionsManager:init(modManager)
     log:schema("options", "Initializing mod options")
     local mods = modManager.enabledModDirNamesAndVersionsByType.world
-	
-	for i, mod in ipairs(mods) do
+
+    for i, mod in ipairs(mods) do
         local optionsPath = mod.path .. "/hammerstone/options"
         modOptionsManager:findOptionsFiles(optionsPath)
-	end
+    end
 end
 
 function modOptionsManager:registerUI()
-    local uiManager = mjrequire "hammerstone/ui/uiManager"
-	local modOptionsUI = mjrequire "hammerstone/options/modOptionsUI"
+    log:schema("options", "Registering mod options UI...")
 
-	modOptionsUI:setModOptionsManager(self)
+    local uiManager = mjrequire "hammerstone/ui/uiManager"
+    local modOptionsUI = mjrequire "hammerstone/options/modOptionsUI"
+
+    modOptionsUI:setModOptionsManager(self)
     uiManager:registerManageElement(modOptionsUI)
 end
 
 function modOptionsManager:findOptionsFiles(path)
     local optionsPaths = fileUtils.getDirectoryContents(path)
 
-	for j, optionsPath in ipairs(optionsPaths) do
+    for j, optionsPath in ipairs(optionsPaths) do
+        local fullPath = path .. "/" .. optionsPath
 
-		local fullPath =  path .. "/" .. optionsPath
-		
-		if fullPath:find("%.json$") then
+        if fullPath:find("%.json$") then
             log:schema("options", "Found json mod options file at ", fullPath)
             local jsonString = fileUtils.getFileContents(fullPath)
 
             local modOptions = hmt(json:decode(jsonString), optionsErrorHandler)
             modOptionsList[modOptions:getStringValue("configKey")] = modOptions
-            
-
         elseif fullPath:find("%.lua$") then
             log:schema("options", "Found lua mod options file at ", fullPath)
             local chunk, errMsg = loadfile(fullPath)
@@ -101,10 +99,10 @@ function modOptionsManager:findOptionsFiles(path)
                     listeners[configKey] = modOptions:get("listener"):ofType("function"):getValue()
                 end
             end
-		else
-			modOptionsManager:findOptionsFiles(fullPath)
-		end
-	end
+        else
+            modOptionsManager:findOptionsFiles(fullPath)
+        end
+    end
 end
 
 function modOptionsManager:setWorld(world_)
@@ -113,7 +111,7 @@ function modOptionsManager:setWorld(world_)
     local clientWorldSettingsDatabase = world:getClientWorldSettingsDatabase()
     clientModOptions = clientWorldSettingsDatabase:dataForKey(databaseKey) or {}
 
-    for configKey, modOptions in pairs(modOptionsList) do 
+    for configKey, modOptions in pairs(modOptionsList) do
         initOptionsForMod(configKey, modOptions:getTable("options"))
     end
 
@@ -160,7 +158,7 @@ function modOptionsManager:setModOptionsValue(configKey, optionKey, value)
     clientModOptions[configKey][optionKey] = value
     saveClientModOptions()
 
-    if listeners[configKey] then listeners[configKey]({{optionKey = optionKey, value = value}}) end
+    if listeners[configKey] then listeners[configKey]({ { optionKey = optionKey, value = value } }) end
 end
 
 return modOptionsManager

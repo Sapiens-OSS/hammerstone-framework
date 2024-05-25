@@ -79,6 +79,7 @@ function mod:onload(resource)
 		local index = typeIndexMap[groupKey]
 		if not index then
 			log:error("Attempt addResourceToGroup, but the group doesn't exist:", groupKey)
+			log:error(typeIndexMap)
 		else
 			-- Inject resource into existing group
 			table.insert(resource.groups[groupKey].resourceTypes, resource.types[resourceKey].index)
