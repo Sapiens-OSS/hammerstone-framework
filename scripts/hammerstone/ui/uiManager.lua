@@ -63,9 +63,13 @@ end
 
 function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
 	logger:log("Initializing Manage Elements' buttons...")
+	logger:log("HELLOOOO")
+	logger:log(manageButtonsUI)
+	logger:log(manageUI)
+	logger:log(manageUI.modeTypes)
 
 	-- Rebuild the modeTypes enum
-	local modeTypes = mj:cloneTable(manageUI.modeTypes)
+	local modeTypes = mj:cloneTable()
 	local nextIndex = 0
 
 	for modeIndex in ipairs(manageUI.modeTypes) do
