@@ -62,12 +62,6 @@ function uiManager:registerManageElement(element)
 end
 
 function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
-	logger:log("Initializing Manage Elements' buttons...")
-	logger:log("HELLOOOO")
-	logger:log(manageButtonsUI)
-	logger:log(manageUI)
-	logger:log(manageUI.modeTypes)
-
 	-- Rebuild the modeTypes enum
 	local modeTypes = mj:cloneTable(manageUI.modeTypes)
 	local nextIndex = 0

@@ -14,7 +14,7 @@ function manageButtonsUI:init(super, gameUI, manageUI_, hubUI_, world)
 	uiManager:initManageElementButtons(self, manageUI_)
 
 	-- Super
-	super(gameUI, manageUI_, hubUI_, world)
+	super(self, gameUI, manageUI_, hubUI_, world)
 end
 
 return shadow:shadow(manageButtonsUI)
