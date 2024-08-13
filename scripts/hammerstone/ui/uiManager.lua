@@ -100,7 +100,7 @@ function uiManager:initManageElements(manageUI)
 	for i, element in ipairs(self.manageElements) do
 		logger:log("Adding Manage Element: ", element.name)
 
-		local elementContentView = View.new(manageUI.mainContentView) 
+		local elementContentView = View.new(manageUI.mainContentView)
 		elementContentView.relativePosition = ViewPosition(MJPositionCenter, MJPositionBottom)
 		elementContentView.size = vec2(manageUI.mainContentView.size.x, manageUI.mainContentView.size.y - belowTopPadding)
 		elementContentView.hidden = true
