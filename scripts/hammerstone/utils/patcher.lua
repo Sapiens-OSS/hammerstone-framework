@@ -371,6 +371,7 @@ local function replaceAt(startAt, endAt, repl)
     local removeStart, startEnd = searchNodes(startAt)
 
     if not removeStart then
+        mj:log("start at was " .. startAt)
         return errbox.make_error("removeStart had an issue")
     end
 
@@ -447,7 +448,7 @@ end
 function patcher:runOperations(operations)
     for key, operation in ipairs(operations) do
         local success = true
-        local result = nil
+        local err = nil
 
         if type(operation) == "function" then
             fileContent, success = operation(fileContent)
@@ -466,7 +467,7 @@ function patcher:runOperations(operations)
                 elseif opType == "replace" then
                     success = replace(operation.pattern, operation.repl)
                 elseif opType == "replaceAt" then
-                    result = replaceAt(operation.startAt, operation.endAt, operation.repl)
+                    err = replaceAt(operation.startAt, operation.endAt, operation.repl)
                 elseif opType == "replaceBetween" then
                     success = replaceBetween(operation.startAt, operation.endAt, operation.repl)
                 elseif opType == "removeAt" then
@@ -488,8 +489,8 @@ function patcher:runOperations(operations)
             end
         end
         
-        if result ~= nil and not result.success then
-            result:panic()
+        if err ~= nil and not err.success then
+            err:panic()
         end
 
         if not success then

@@ -14,6 +14,11 @@ function errbox._new ()
    op.success = true
    op._error_stack = {}
 
+   function op:hint(hint)
+      table.insert(self._error_stack[#self._error_stack+1]["hints"], hint)
+      return self
+   end
+
    function op:add_context(error, depth)
       if depth == nil then
          depth = 3
@@ -22,8 +27,10 @@ function errbox._new ()
       self.success = false
       table.insert(self._error_stack, {
          error = error,
-         info = debug.getinfo(depth)
+         info = debug.getinfo(depth),
+         hints = {}
       })
+      return self
    end
 
    -- Panics and quites, printing as much information as possible about the failure
@@ -33,7 +40,10 @@ function errbox._new ()
       mj:log("Panic:")
       for i, err in ipairs(self._error_stack) do
          mj:log(" ! " .. err.error)
-         mj:log("    - " .. err.info.currentline .. " " .. err.info.source)
+         mj:log("    " .. err.info.currentline .. " " .. err.info.source)
+         for j,hint in ipairs(err.hints) do
+            mj:log("     - " .. hint)
+         end
       end
       mj:log("Finished panic")
       os.exit(1)
