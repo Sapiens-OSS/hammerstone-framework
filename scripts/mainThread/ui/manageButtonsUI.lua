@@ -11,9 +11,6 @@ local shadow = mjrequire "hammerstone/utils/shadow"
 -- @shadow
 function manageButtonsUI:init(super, gameUI, manageUI_, hubUI_, world)
 	-- Interface with the uiManager
-
-	mj:log("LIAM LOOK HERE")
-	mj:log(manageUI_)
 	uiManager:initManageElementButtons(self, manageUI_)
 
 	-- Super
