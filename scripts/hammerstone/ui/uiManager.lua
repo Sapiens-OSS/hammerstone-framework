@@ -69,7 +69,7 @@ function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
 	logger:log(manageUI.modeTypes)
 
 	-- Rebuild the modeTypes enum
-	local modeTypes = mj:cloneTable()
+	local modeTypes = mj:cloneTable(manageUI.modeTypes)
 	local nextIndex = 0
 
 	for modeIndex in ipairs(manageUI.modeTypes) do
