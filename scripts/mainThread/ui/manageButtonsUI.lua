@@ -2,20 +2,19 @@
 --- Used to initialize the 'manageElements' in the UI Manager.
 --- @author SirLich
 
-local mod = { loadOrder = 1 }
+local manageButtonsUI = { loadOrder = 1 }
 
 -- Hammerstone
 local uiManager = mjrequire "hammerstone/ui/uiManager"
+local shadow = mjrequire "hammerstone/utils/shadow"
 
-function mod:onload(manageButtonsUI)
-	local superInit = manageButtonsUI.init
-	manageButtonsUI.init = function(manageButtonsUI_, gameUI, manageUI, hubUI, world)
-		-- Interface with the uiManager
-		uiManager:initManageElementButtons(manageButtonsUI, manageUI)
+-- @shadow
+function manageButtonsUI:init(super, gameUI, manageUI_, hubUI_, world)
+	-- Interface with the uiManager
+	uiManager:initManageElementButtons(self, manageUI_)
 
-		-- Super
-		superInit(manageButtonsUI, gameUI, manageUI, hubUI, world)
-	end
+	-- Super
+	super(self, gameUI, manageUI_, hubUI_, world)
 end
 
-return mod
+return shadow:shadow(manageButtonsUI)

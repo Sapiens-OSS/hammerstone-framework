@@ -79,6 +79,10 @@ do
 	end
 
 	function uiController:newModelTextView(parentView, name, modulePath)
+		mj:log("Liam look here")
+		mj:log(parentView)
+		mj:log(name)
+		mj:log(modulePath)
 		local view = ModelTextView.new(parentView)
 
 		addView(view, parentView, name, modulePath, "ModelTextView")

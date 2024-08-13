@@ -109,7 +109,7 @@ function objectsManager:init(ddapiManager_)
 			"action"
 		},
 		dependencies = {
-			--"gameObject", -> handled through typeIndexMap
+			"gameObject",
 			"skill", 
 			"resource", 
 			"action", 
@@ -138,7 +138,7 @@ function objectsManager:init(ddapiManager_)
 		waitingForStart = true,
 		moduleDependencies = {
 			"gameObject",
-			"resource",			
+			"resource",
 			"tool",
 			"harvestable",
 			"seat",
@@ -146,8 +146,8 @@ function objectsManager:init(ddapiManager_)
 		},
 		dependencies = {
 			"seats", 
-			"buildable",
-			"craftable",
+			-- "buildable",
+			-- "craftable",
 			"harvestable"
 		},
 		loadFunction = objectsManager.generateGameObject
@@ -478,7 +478,7 @@ function objectsManager:generateCraftable(objDef, description, components, ident
 						return hmt(value):selectPairs(mapIndexes, hmtPairsMode.both)
 					end
 				end
-			):getValue()				
+			):getValue()
 		}
 
 		if type(outputObjectInfo.outputArraysByResourceObjectType) == "table" then

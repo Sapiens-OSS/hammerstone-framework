@@ -62,30 +62,28 @@ function uiManager:registerManageElement(element)
 end
 
 function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
-	logger:log("Initializing Manage Elements' buttons...")
-
 	-- Rebuild the modeTypes enum
 	local modeTypes = mj:cloneTable(manageUI.modeTypes)
 	local nextIndex = 0
 
 	for modeIndex in ipairs(manageUI.modeTypes) do
 		nextIndex = math.max(nextIndex, modeIndex)
-	end 
+	end
 
 	for i, element in ipairs(self.manageElements) do
-		logger:log("Adding Manage Element Button: ", element.name)
+		logger:schema("ui", "Adding Manage Element Button: ", element.name)
 		local elementIndex = nextIndex + i
 		local elementModeType = string.format("manageElement_%d", i)
 		modeTypes[elementIndex] = elementModeType
 		modeTypes[elementModeType] = elementIndex
-
 		manageUI.modeInfos[elementIndex] = {
 			title = element.name,
-			icon = element.icon, 
-			onClick = element.onClick
+			icon = element.icon,
+			onClick = element.onClick,
+			disabled = element.disabled,
 		}
 
-		-- Increase the number of buttons to be displayed
+		-- Increase the number of buttons there are (disabled buttons don't count towards padding - check the init patch)
 		manageButtonsUI.menuButtonCount = manageButtonsUI.menuButtonCount + 1
 	end
 
@@ -102,7 +100,7 @@ function uiManager:initManageElements(manageUI)
 	for i, element in ipairs(self.manageElements) do
 		logger:log("Adding Manage Element: ", element.name)
 
-		local elementContentView = View.new(manageUI.mainContentView)
+		local elementContentView = View.new(manageUI.mainContentView) 
 		elementContentView.relativePosition = ViewPosition(MJPositionCenter, MJPositionBottom)
 		elementContentView.size = vec2(manageUI.mainContentView.size.x, manageUI.mainContentView.size.y - belowTopPadding)
 		elementContentView.hidden = true
@@ -159,25 +157,24 @@ function uiManager:initActionView(gameUI, hubUI, world)
 	self.actionContainerView.baseOffset = vec3(500, 0, 0) -- TODO: Try not to hard-code magic numbers!
 end
 
-
 --- This function is called when the Radial Menu is opened, and will be used to render
 --- the action elements, based on their own internal logic and structure.
 --- TODO: Consider adding a priority function.
 --- @param baseObjectInfo table - Object info for single objects.localecategory
 --- @param multiSelectAllObjects table - Object info for multi-select objects
---- @param lookAtPos unknown - 
+--- @param lookAtPos unknown -
 function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain)
 	-- Does this destroy the internal view?
 	-- TODO: No it doesn't, maybe cause refs are still kept in the container view.
-	
+
 	for _, element in ipairs(self.actionElementsRendered) do
 		self.actionContainerView:removeSubview(element)
 	end
 	self.actionElementsRendered = {}
 
-	
+
 	local vertical_offset = 0
-	for i,element in ipairs(self.actionElements) do
+	for i, element in ipairs(self.actionElements) do
 		if element:visibilityFilter(baseObjectInfo, multiSelectAllObjects, lookAtPos, isTerrain) then
 			-- TODO: Consider moving this into it's own function.
 
@@ -188,7 +185,7 @@ function uiManager:renderActionElements(baseObjectInfo, multiSelectAllObjects, l
 			local button = uiStandardButton:create(self.actionContainerView, buttonSize)
 			button.relativePosition = ViewPosition(MJPositionCenter, MJPositionTop)
 			button.baseOffset = vec3(0, vertical_offset, 5)
-			
+
 			-- You have two options for setting the name
 			local elementName = element.name
 			if elementName == nil and element.getName ~= nil then

@@ -26,6 +26,7 @@ local modOptionsUI = {
 	view = nil,
 	parent = nil,
 	icon = "icon_modOptions",
+    disabled = false,
 }
 
 local viewsByEnableCondition = {}
@@ -58,6 +59,7 @@ end
 
 function modOptionsUI:setModOptionsManager(modOptionsManager_)
     modOptionsManager = modOptionsManager_
+    modOptionsUI.disabled = not modOptionsManager:hasOptions()
 end
 
 local function changeActiveSelectedControlView(newControlView)
@@ -121,6 +123,7 @@ function modOptionsUI:init(contentView, manageUI_)
 end
 
 function modOptionsUI:initOptions()
+    log:schema("options", "Initializing UI options...")
     if modOptionsManager:hasOptions() then
         modOptionsUI:initModOptionsViews()
     else

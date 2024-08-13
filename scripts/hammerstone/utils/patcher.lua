@@ -4,7 +4,7 @@
 
 --- Hammerstone
 local logging = mjrequire "hammerstone/logging"
-
+local errbox = mjrequire "hammerstone/utils/errbox"
 local patcher = {}
 
 local fileContent = nil
@@ -359,32 +359,36 @@ end
 --- If endAt is nil, the operation will remove content until end of file
 local function replaceAt(startAt, endAt, repl)
     if not startAt then
-        logging:error("'startAt' is nil")
-        return false
+        return errbox.make_error("startAt is nil")
     end
 
     repl = getStringParameter(repl, "repl")
 
     if not repl then
-        logging:error("'repl' is nil")
-        return false
+        return errbox.make_error("repl is nil")
     end
 
     local removeStart, startEnd = searchNodes(startAt)
 
-    if not removeStart then return false end
+    if not removeStart then
+        mj:log("start at was " .. startAt)
+        return errbox.make_error("removeStart had an issue")
+    end
 
     if endAt then
         local _, removeEnd = searchNodes(endAt, startEnd + 1)
 
-        if not removeEnd then return false end 
+        if not removeEnd 
+        then
+            return errbox.make_error("return end had an issue")
+        end
 
         fileContent = fileContent:sub(1, removeStart - 1) .. repl .. fileContent:sub(removeEnd + 1, fileContent:len())
     else
         fileContent = fileContent:sub(1, removeStart - 1) .. repl
     end
 
-    return true
+    return errbox.make_success()
 end
 
 --- Replaces content between "startAt" and ending before "endAt"
@@ -442,14 +446,15 @@ end
 
 --- Runs operations sequentially. If one fails, it stops the process
 function patcher:runOperations(operations)
-    for key, operation in ipairs(operations) do 
+    for key, operation in ipairs(operations) do
         local success = true
+        local err = nil
 
         if type(operation) == "function" then
             fileContent, success = operation(fileContent)
         else
             local opType = operation.type
-            local canExecute = true 
+            local canExecute = true
 
             if operation.condition then
                 canExecute = operation.condition(fileContent, { path = keywords["#PATH#"], moduleName = keywords["#MODULENAME#"] })
@@ -462,7 +467,7 @@ function patcher:runOperations(operations)
                 elseif opType == "replace" then
                     success = replace(operation.pattern, operation.repl)
                 elseif opType == "replaceAt" then
-                    success = replaceAt(operation.startAt, operation.endAt, operation.repl)
+                    err = replaceAt(operation.startAt, operation.endAt, operation.repl)
                 elseif opType == "replaceBetween" then
                     success = replaceBetween(operation.startAt, operation.endAt, operation.repl)
                 elseif opType == "removeAt" then
@@ -482,6 +487,10 @@ function patcher:runOperations(operations)
             else
                 success = true
             end
+        end
+        
+        if err ~= nil and not err.success then
+            err:panic()
         end
 
         if not success then

@@ -22,9 +22,9 @@ function planManager:addPlans(super, tribeID, userData)
 
         if ddapiManager.addPlansFunctions[planTypeIndex] then
             ddapiManager.addPlansFunctions[planTypeIndex](self, tribeID, userData)
-            self:updatePlansForFollowerOrOrderCountChange(tribeID)
+            return self:updatePlansForFollowerOrOrderCountChange(tribeID)
         else
-            super(self, tribeID, userData)
+            return super(self, tribeID, userData)
         end
     end
 end

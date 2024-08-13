@@ -23,8 +23,21 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
 
         if planTypeIndexToUse == plan.types.manageSapien.index then
             toolTipText = locale:get("ui_action_manageSapien", {name = actionUI.baseObject.sharedState.name})
+        elseif planTypeIndexToUse == plan.types.manageTribeRelations.index then
+            local tribeName = nil
+            if actionUI.baseObject.sharedState and actionUI.baseObject.sharedState.tribeID then
+                local info = mainThreadDestination.destinationInfosByID[actionUI.baseObject.sharedState.tribeID]
+                if info then
+                    tribeName = info.name
+                end
+            end
+            if tribeName then
+                toolTipText = locale:get("plan_manageTribeRelationsWithTribeName", {tribeName = tribeName})
+            else
+                toolTipText = plan.types[planTypeIndexToUse].name
+            end
         else
-            if inProgress then 
+            if inProgress and plan.types[planTypeIndexToUse].inProgress then 
                 toolTipText = plan.types[planTypeIndexToUse].inProgress
             else
                 toolTipText = plan.types[planTypeIndexToUse].name
@@ -33,6 +46,12 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
             local objectTypeIndex = planInfo.objectTypeIndex
             if objectTypeIndex then
                 toolTipText = toolTipText .. " " .. gameObject.types[objectTypeIndex].plural
+            elseif planTypeIndexToUse == plan.types.gather.index then
+                if inProgress then
+                    toolTipText = locale:get("plan_gatherAllInProgress")
+                else
+                    toolTipText = locale:get("plan_gatherAll")
+                end
             elseif fillConstructionTypeIndex then
                 toolTipText = toolTipText .. " " .. constructable.types[fillConstructionTypeIndex].name
             elseif planTypeIndexToUse == plan.types.clone.index then
@@ -67,7 +86,7 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
                 actionUI:wheelButtonClicked(planInfo, objectOrVertIDs)
 
                 if actionUI:shouldAnimateOutOnClick(planInfo) then
-                    animateOutForOptionSelected(buttonIndex, nil)
+                    actionUI:animateOutForOptionSelected()
                 end
 
                 if not tutorialUI:multiSelectComplete() then
@@ -132,7 +151,7 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
 
             if not planInfo.sapienAssignButtonShouldBeHidden then
                 changeAssignedSapienClickFunction = function()
-                    animateOutForOptionSelected(1, nil)
+                    actionUI:animateOutForOptionSelected()
                     changeAssignedSapienUI:show(firstObjectInfo, planInfo)
                 end
             end
@@ -154,6 +173,8 @@ local function getPlanButtonInfos(planInfo, objectOrVertIDs, buttonIndex)
         changeAssignedSapienClickFunction = changeAssignedSapienClickFunction,
         prioritizeFunction = prioritizeFunction,
         planTypeIndex = planInfo.planTypeIndex,
+        objectTypeIndex = planInfo.objectTypeIndex,
+        researchTypeIndex = planInfo.researchTypeIndex,
         fillConstructionTypeIndex = fillConstructionTypeIndex,
         planInfo = planInfo,
         disabled = not planInfo.hasNonQueuedAvailable,
@@ -172,20 +193,25 @@ local function updateButtons(showForPageChange)
 
             local availablePlans = nil
             local objectOrVertIDs = {}
+            local baseObjectOrVertID = nil
+
             if actionUI.selectedObjects then
-                availablePlans = planHelper:availablePlansForObjectInfos(actionUI.selectedObjects, world.tribeID)
+                availablePlans = planHelper:availablePlansForObjectInfos(actionUI.baseObject, actionUI.selectedObjects, world.tribeID)
                 for i,objectInfo in ipairs(actionUI.selectedObjects) do
                     objectOrVertIDs[i] = objectInfo.uniqueID
                 end
+                baseObjectOrVertID = actionUI.baseObject.uniqueID
             else
-                availablePlans = planHelper:availablePlansForVertInfos(actionUI.selectedVertInfos, world.tribeID)
+                availablePlans = planHelper:availablePlansForVertInfos(actionUI.baseVert, actionUI.selectedVertInfos, world.tribeID)
                 for i,vertInfo in ipairs(actionUI.selectedVertInfos) do
                     objectOrVertIDs[i] = vertInfo.uniqueID
                 end
+                baseObjectOrVertID = actionUI.baseVert.uniqueID
             end
 
             local availabilityRequest = {
                 objectOrVertIDs = objectOrVertIDs,
+                baseObjectOrVertID = baseObjectOrVertID,
                 plans = {},
             }
 
@@ -283,6 +309,8 @@ local function updateButtons(showForPageChange)
        segmentTable.toolTipText = buttonInfos[buttonIndex].toolTipText
        segmentTable.cancelToolTipText = buttonInfos[buttonIndex].cancelToolTipText
        segmentTable.planTypeIndex = buttonInfos[buttonIndex].planTypeIndex
+       segmentTable.objectTypeIndex = buttonInfos[buttonIndex].objectTypeIndex
+       segmentTable.researchTypeIndex = buttonInfos[buttonIndex].researchTypeIndex
        segmentTable.fillConstructionTypeIndex = buttonInfos[buttonIndex].fillConstructionTypeIndex
        segmentTable.planInfo = buttonInfos[buttonIndex].planInfo
        segmentTable.disabled = buttonInfos[buttonIndex].disabled
@@ -486,6 +514,8 @@ function actionUI:wheelButtonClicked(planInfo, objectOrVertIDs)
                             
     if planInfo.planTypeIndex == plan.types.moveTo.index then
         sapienMoveUI:show(objectOrVertIDs)
+    elseif planInfo.planTypeIndex == plan.types.haulObject.index then
+        objectMoveUI:show(objectOrVertIDs, inspectUI.baseObjectOrVertInfo)
     elseif planInfo.planTypeIndex == plan.types.stop.index then
         logicInterface:callServerFunction("cancelSapienOrders", {
             sapienIDs = objectOrVertIDs,
@@ -509,6 +539,15 @@ function actionUI:wheelButtonClicked(planInfo, objectOrVertIDs)
             objectIDs = objectOrVertIDs,
             allowItemUse = true,
         })
+    elseif planInfo.planTypeIndex == plan.types.manageTribeRelations.index then
+        tribeRelationsUI:show(mainThreadDestination.destinationInfosByID[actionUI.baseObject.sharedState.tribeID], nil, nil, nil, false)
+    elseif planInfo.planTypeIndex == plan.types.startRoute.index then
+        logicInterface:createLogisticsRoute(objectOrVertIDs[1], function(uiRouteInfo)
+            if uiRouteInfo then
+                gameUI:hideAllUI(false)
+                storageLogisticsDestinationsUI:show(uiRouteInfo)
+            end
+        end)
     else
         logicInterface:callServerFunction("addPlans", actionUI:getAddPlansInfos(planInfo, objectOrVertIDs))
     end

@@ -17,8 +17,8 @@ function planHelper:postload(base)
 	moduleManager:addModule("planHelper", planHelper)
 end
 
-function planHelper:init(super)
-	super(self)
+function planHelper:init(super, world_, serverWorld_)
+	super(self, world_, serverWorld_)
 	ddapiManager:markObjectAsReadyToLoad("planHelper_object")
 	ddapiManager:markObjectAsReadyToLoad("planHelper_behavior")
 end
@@ -44,6 +44,8 @@ function planHelper:addTerrainPlan(terrainPlanSettings)
 	table.insert(self.terrainPlansSettings, terrainPlanSettings)
 end
 
+-- Disabling for now. Fixing later
+--[[
 function planHelper:addObjectPlan(gameObjectIndex, objectPlanSettings)
 	if not self.objectPlansSettings[gameObjectIndex] then
 		self.objectPlansSettings[gameObjectIndex] = {}
@@ -136,36 +138,37 @@ end
 
 
 --- Totally overrides the original function which was deleted by the patch (so no super)
-function planHelper:availablePlansForVertInfos(vertInfos, tribeID)
-    if vertInfos and vertInfos[1] then
-        
-        local queuedPlanInfos = self:getQueuedPlanInfos(vertInfos, tribeID, true)
-        local planCache = {}
-        local availablePlanCounts = {}
-        local plans = {}
-
-        for _, settings in ipairs(self.terrainPlansSettings) do 
-            local planInfo = self:getPlanInfosFromSettings(vertInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
-            if planInfo then
-                table.insert(plans, planInfo)
-            end
-        end
-
-        for _, settings in ipairs(self.terrainPlansSettings) do 
-            local thisPlanHash = planCache[settings.planTypeIndex].planHash
-
-            for _, affectedPlanIndex in ipairs(settings.affectedPlanIndexes) do 
-                local otherPlanHash = planCache[affectedPlanIndex].planHash
-                if availablePlanCounts[otherPlanHash] and queuedPlanInfos[thisPlanHash] then
-                    availablePlanCounts[otherPlanHash] = availablePlanCounts[otherPlanHash] - queuedPlanInfos[thisPlanHash].count
-                end
-            end
-        end
-
-        self:finalizePlanInfos(planCache, vertInfos, tribeID, queuedPlanInfos, availablePlanCounts)
-        
-        return plans
+function planHelper:availablePlansForVertInfos(baseObjectOrVert, vertInfos, tribeID)
+    if not (vertInfos and baseObjectOrVert) then
+        return nil
     end
+
+    local queuedPlanInfos = self:getQueuedPlanInfos(vertInfos, tribeID, true)
+    local planCache = {}
+    local availablePlanCounts = {}
+    local plans = {}
+
+    for _, settings in ipairs(self.terrainPlansSettings) do 
+        local planInfo = self:getPlanInfosFromSettings(vertInfos, tribeID, settings, queuedPlanInfos, availablePlanCounts, planCache)
+        if planInfo then
+            table.insert(plans, planInfo)
+        end
+    end
+
+    for _, settings in ipairs(self.terrainPlansSettings) do 
+        local thisPlanHash = planCache[settings.planTypeIndex].planHash
+
+        for _, affectedPlanIndex in ipairs(settings.affectedPlanIndexes) do 
+            local otherPlanHash = planCache[affectedPlanIndex].planHash
+            if availablePlanCounts[otherPlanHash] and queuedPlanInfos[thisPlanHash] then
+                availablePlanCounts[otherPlanHash] = availablePlanCounts[otherPlanHash] - queuedPlanInfos[thisPlanHash].count
+            end
+        end
+    end
+
+    self:finalizePlanInfos(planCache, vertInfos, tribeID, queuedPlanInfos, availablePlanCounts)
+        
+    return plans
 end
 
 function planHelper:availablePlansForObjectInfos(super, objectInfos, tribeID)
@@ -196,5 +199,6 @@ function planHelper:availablePlansForObjectInfos(super, objectInfos, tribeID)
 	if not next(plans) then return nil end
 	return plans
 end
+]]
 
 return shadow:shadow(planHelper, 0)

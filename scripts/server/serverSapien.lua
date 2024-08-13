@@ -7,15 +7,16 @@ local ddapiManager = mjrequire "hammerstone/ddapi/ddapiManager"
 
 local serverSapien = {}
 
-function serverSapien:init(super, serverGOM_, serverWorld_, serverTribe_, serverStorageArea_)
+function serverSapien:init(super, serverGOM_, serverWorld_, serverTribe_, serverDestination_, serverStorageArea_)
     self.context = {
         serverGOM = serverGOM_, 
         serverWorld = serverWorld_, 
         serverTribe = serverTribe_, 
+        serverDestination = serverDestination_,
         serverStorageArea = serverStorageArea_
     }
 
-    super(self, serverGOM_, serverWorld_, serverTribe_, serverStorageArea_)
+    super(self, serverGOM_, serverWorld_, serverTribe_, serverDestination_, serverStorageArea_)
 end
 
 function serverSapien:actionSequenceTypeIndexForOrder(super, sapien, orderObject, orderState)

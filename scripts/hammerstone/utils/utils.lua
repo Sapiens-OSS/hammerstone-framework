@@ -34,6 +34,7 @@ function utils:capsCase(s)
 	return s:gsub("(%l)(%w*)", function(a,b) return string.upper(a)..b end)
 end
 
+
 -- http://lua-users.org/wiki/CopyTable
 function utils:deepcopy(orig, copies)
 	copies = copies or {}
