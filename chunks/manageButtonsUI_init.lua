@@ -1,3 +1,5 @@
+-- Pending https://github.com/Majic-Jungle/sapiens-mod-creation/issues/40
+
 function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
     manageUI = manageUI_
     hubUI = hubUI_
@@ -6,14 +8,14 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
     local menuButtonPaddingRatio = manageButtonsUI.menuButtonPaddingRatio
 
     local menuButtonPadding = menuButtonSize * menuButtonPaddingRatio
-    
+
+    -- Enabled/disabled checking not strictly necessary, but a nice to have
     local menuButtonsEnabled = 0
     for modeIndex in ipairs(manageUI.modeTypes) do
         if not manageUI.modeInfos[modeIndex].disabled then
-            menuButtonsEnabled  = menuButtonsEnabled + 1
+            menuButtonsEnabled = menuButtonsEnabled + 1
         end
     end
-
 
     local menuButtonsView = View.new(gameUI.view)
     manageButtonsUI.menuButtonsView = menuButtonsView
@@ -34,7 +36,8 @@ function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
         table.insert(manageButtonsUI.orderedModes, modeIndex)
 
         if manageUI.modeInfos[modeIndex].disabled then
-            mj:log("manageButton at modeIndex=", modeIndex, " title=", manageUI.modeInfos[modeIndex].title, " is disabled, skipping button creation")
+            mj:log("manageButton at modeIndex=", modeIndex, " title=", manageUI.modeInfos[modeIndex].title,
+                " is disabled, skipping button creation")
             goto continue
         end
 
