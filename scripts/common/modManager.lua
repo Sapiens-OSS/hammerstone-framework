@@ -141,13 +141,13 @@ local function applyPatch(path)
         -- call the patch module's "applyPatch" function and get the new fileContent
         local newFileContent, success = patcher:applyPatch(patchInfos, fileContent, path)
 
-        if unixStyleLineEndings then
-            newFileContent = newFileContent:gsub("\n", "\r\n")
-        end
-
         if not newFileContent then
             logging:error("Patching resulted in an empty file for patch at ", patchInfos.path)
         else
+            if unixStyleLineEndings then
+                newFileContent = newFileContent:gsub("\n", "\r\n")
+            end
+
             -- if the patch mod requests it, save an "after" copy of the file for debug purposes
             if patchInfos.debugCopyAfter then
                 fileUtils.createDirectoriesIfNeededForDirPath(patchInfos.modDirPath ..
