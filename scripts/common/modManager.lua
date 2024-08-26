@@ -19,6 +19,8 @@ local patchInfosPerPath = {}
 -- path for the hammerstone mod
 local hammerstonePath = nil
 
+local unixStyleLineEndings = package.config:sub(1, 1) == '/'
+
 -- Recursively finds all "lua" scripts within patch mods
 local function recursivelyFindScripts(patchDirPath, requirePath, localPath, modPath, patchFilesPerPath)
     local patchDirContents = fileUtils.getDirectoryContents(patchDirPath)
@@ -119,6 +121,10 @@ local function applyPatch(path)
         return nil
     end
 
+    if unixStyleLineEndings then
+        fileContent = fileContent:gsub("\r\n", "\n")
+    end
+
     local patchedModule = nil
 
     for _, patchInfos in ipairs(orderedPatchInfos) do
@@ -134,6 +140,10 @@ local function applyPatch(path)
 
         -- call the patch module's "applyPatch" function and get the new fileContent
         local newFileContent, success = patcher:applyPatch(patchInfos, fileContent, path)
+
+        if unixStyleLineEndings then
+            newFileContent = newFileContent:gsub("\n", "\r\n")
+        end
 
         if not newFileContent then
             logging:error("Patching resulted in an empty file for patch at ", patchInfos.path)
