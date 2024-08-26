@@ -122,7 +122,8 @@ local function applyPatch(path)
     end
 
     if unixStyleLineEndings then
-        fileContent = fileContent:gsub("\r\n", "\n")
+        logging:log("Converting UNIX-style line ending to Windows-style for patching")
+        fileContent = fileContent:gsub("\n", "\r\n")
     end
 
     local patchedModule = nil
@@ -145,7 +146,8 @@ local function applyPatch(path)
             logging:error("Patching resulted in an empty file for patch at ", patchInfos.path)
         else
             if unixStyleLineEndings then
-                newFileContent = newFileContent:gsub("\n", "\r\n")
+                logging:log("Converting Windows-style line ending to UNIX-style for loading")
+                newFileContent = newFileContent:gsub("\r\n", "\n")
             end
 
             -- if the patch mod requests it, save an "after" copy of the file for debug purposes
