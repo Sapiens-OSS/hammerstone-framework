@@ -81,10 +81,12 @@ function uiManager:initManageElementButtons(manageButtonsUI, manageUI)
 			icon = element.icon,
 			onClick = element.onClick,
 			disabled = element.disabled,
+			keyboardShortcut = element.keyboardShortcut,
 		}
 
+		-- This is now handled in the patch, as they need to be added to an internal list there
 		-- Increase the number of buttons there are (disabled buttons don't count towards padding - check the init patch)
-		manageButtonsUI.menuButtonCount = manageButtonsUI.menuButtonCount + 1
+		-- manageButtonsUI.menuButtonCount = manageButtonsUI.menuButtonCount + 1
 	end
 
 	manageUI.modeTypes = modeTypes
@@ -100,7 +102,7 @@ function uiManager:initManageElements(manageUI)
 	for i, element in ipairs(self.manageElements) do
 		logger:log("Adding Manage Element: ", element.name)
 
-		local elementContentView = View.new(manageUI.mainContentView) 
+		local elementContentView = View.new(manageUI.mainContentView)
 		elementContentView.relativePosition = ViewPosition(MJPositionCenter, MJPositionBottom)
 		elementContentView.size = vec2(manageUI.mainContentView.size.x, manageUI.mainContentView.size.y - belowTopPadding)
 		elementContentView.hidden = true
