@@ -1,4 +1,5 @@
-function manageButtonsUI:init(gameUI, manageUI_, hubUI_, world)
+function manageButtonsUI:init(gameUI_, manageUI_, hubUI_, world)
+    gameUI = gameUI_
     manageUI = manageUI_
     hubUI = hubUI_
 
