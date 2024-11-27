@@ -69,7 +69,7 @@ local function loadChunk(chunkTable)
 end
 
 --- Returns a string from an object
---- The object can be: 
+--- The object can be:
 ---   a string (which will return itself)
 ---   a table containing the parameterName
 ---   a table containing a chunk
@@ -79,24 +79,19 @@ local function getStringParameter(obj, parameterName)
 
     if objType == "string" then
         return replaceKeywords(obj)
-
     elseif objType == "number" then
         return obj
-
     elseif objType == "table" then
         if obj[parameterName] then
             return getStringParameter(obj[parameterName])
-
         elseif obj["chunk"] then
             return loadChunk(obj)
         else
             logging:error("Could not find ", parameterName)
             return nil
         end
-
     elseif objType == "function" then
         return getStringParameter(obj(fileContent), parameterName)
-
     elseif objType == "nil" then
         return nil
     else
@@ -141,7 +136,7 @@ local function searchNodes(nodes, startAt)
         end
 
         if not reps then reps = 1 end
-        local currentRep = 0 
+        local currentRep = 0
 
         while currentRep ~= reps do
             currentRep = currentRep + 1
@@ -172,14 +167,11 @@ local function searchNodes(nodes, startAt)
 
     if nodesType == "string" or nodesType == "number" then
         return fileContent:find(nodes, index, true)
-
     elseif nodesType == "function" then
         return nodes(fileContent, index)
-
     elseif nodesType ~= "table" then
         logging:error("Unrecognized node type")
         return nil
-
     elseif nodes.text then
         searchNode(nodes)
     else
@@ -211,15 +203,15 @@ local function localFunctionToGlobal(functionName, moduleName)
     local count = nil
 
     fileContent, count = fileContent:gsub(
-        "local function " .. functionName .. "%(", 
+        "local function " .. functionName .. "%(",
         "function " .. moduleName .. ":PATCHEDFUNCTIONPLACEHOLDER(")
 
-    if count == 0 then return false end 
+    if count == 0 then return false end
 
     fileContent, count = fileContent:gsub(
-        "([^%a%d]*)" .. functionName .. "%(", 
-        "%1" .. moduleName .. ":" .. functionName .. "(")   
-        
+        "([^%a%d]*)" .. functionName .. "%(",
+        "%1" .. moduleName .. ":" .. functionName .. "(")
+
     if count == 0 then return false end
 
     fileContent, count = fileContent:gsub("PATCHEDFUNCTIONPLACEHOLDER", functionName)
@@ -244,7 +236,7 @@ local function localVariableToModule(variableName, moduleName)
 
     local count = nil
 
-    local lvStart, _, _, lvAssign = 
+    local lvStart, _, _, lvAssign =
         fileContent:find("(local " .. variableName .. ")([^%a%d][^\r\n]*)[\r\n]+")
 
     local mdStart = fileContent:find("local " .. moduleName .. "[%s=]+")
@@ -254,21 +246,22 @@ local function localVariableToModule(variableName, moduleName)
     end
 
     if lvStart < mdStart then
-        fileContent = fileContent:gsub("local " .. variableName .. "[^%a%d][^\r\n]*[\r\n]+", "") 
+        fileContent = fileContent:gsub("local " .. variableName .. "[^%a%d][^\r\n]*[\r\n]+", "")
     else
-        fileContent = fileContent:gsub("local " .. variableName .. "([^%a%d][^\r\n]*[\r\n]+)", moduleName .. ".PATCHVARIABLEPLACEHOLDER%1") 
+        fileContent = fileContent:gsub("local " .. variableName .. "([^%a%d][^\r\n]*[\r\n]+)",
+            moduleName .. ".PATCHVARIABLEPLACEHOLDER%1")
     end
 
     fileContent, count = fileContent:gsub("([^%a%d]*)(" .. variableName .. "[^%a%d]*)", "%1" .. moduleName .. ".%2")
 
     if count == 0 then return false end
-    
+
     if lvStart < mdStart then
         fileContent, count = fileContent:gsub("local " .. moduleName .. "[%s=]+([^\r\n]*[\r\n]+)",
             function(afterModuleName)
-                local replaceString = 
-                "local " .. moduleName .. " = {\r\n" ..
-                "    " .. variableName .. lvAssign .. ",\r\n"
+                local replaceString =
+                    "local " .. moduleName .. " = {\r\n" ..
+                    "    " .. variableName .. lvAssign .. ",\r\n"
 
                 if afterModuleName:find("}") then
                     replaceString = replaceString .. "}\r\n\r\n"
@@ -281,7 +274,7 @@ local function localVariableToModule(variableName, moduleName)
         fileContent, count = fileContent:gsub("PATCHVARIABLEPLACEHOLDER", variableName)
     end
 
-    return count ~=0
+    return count ~= 0
 end
 
 --- Inserts a string after position "after"
@@ -300,7 +293,7 @@ local function insertAfter(after, string)
 
         if not lastEnd then return false end
 
-        fileContent = fileContent:sub(1, lastEnd) .. string ..fileContent:sub(lastEnd + 1)
+        fileContent = fileContent:sub(1, lastEnd) .. string .. fileContent:sub(lastEnd + 1)
     end
 
     return true
@@ -344,7 +337,7 @@ local function removeAt(startAt, endAt)
     if endAt then
         local _, removeEnd = searchNodes(endAt, fileContent, startEnd + 1)
 
-        if not removeEnd then return false end 
+        if not removeEnd then return false end
 
         fileContent = fileContent:sub(1, removeStart - 1) .. fileContent:sub(removeEnd + 1)
     else
@@ -378,7 +371,7 @@ local function replaceAt(startAt, endAt, repl)
     if endAt then
         local _, removeEnd = searchNodes(endAt, startEnd + 1)
 
-        if not removeEnd 
+        if not removeEnd
         then
             return errbox.make_error("return end had an issue")
         end
@@ -418,7 +411,7 @@ local function replaceBetween(startAt, endAt, repl)
     if endAt then
         local replaceEnd = searchNodes(endAt, replaceStart + 1)
 
-        if not replaceEnd then return false end 
+        if not replaceEnd then return false end
 
         fileContent = fileContent:sub(1, replaceStart) .. repl .. fileContent:sub(replaceEnd, fileContent:len())
     else
@@ -437,7 +430,7 @@ local function replace(pattern, repl)
         return false
     end
 
-    local count = nil 
+    local count = nil
 
     fileContent, count = fileContent:gsub(pattern, repl)
 
@@ -457,7 +450,8 @@ function patcher:runOperations(operations)
             local canExecute = true
 
             if operation.condition then
-                canExecute = operation.condition(fileContent, { path = keywords["#PATH#"], moduleName = keywords["#MODULENAME#"] })
+                canExecute = operation.condition(fileContent,
+                    { path = keywords["#PATH#"], moduleName = keywords["#MODULENAME#"] })
             end
 
             if canExecute then
@@ -488,7 +482,7 @@ function patcher:runOperations(operations)
                 success = true
             end
         end
-        
+
         if err ~= nil and not err.success then
             err:panic()
         end
@@ -508,12 +502,12 @@ end
 
 local function getModuleNameFromPath(path)
     local moduleName = nil
-    
+
     for match in path:gmatch("[^/]+") do
         moduleName = match
     end
 
-    return moduleName        
+    return moduleName
 end
 
 --- Applies a patch
