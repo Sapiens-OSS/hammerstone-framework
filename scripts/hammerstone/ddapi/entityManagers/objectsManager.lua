@@ -160,12 +160,11 @@ function objectsManager:init(ddapiManager_)
 		moduleDependencies = {
 			"mob",
 			"gameObject",
-			"animationGroups"
+			-- "animationGroups"
 		},
 		dependencies = {
 			"gameObject",
 		},
-		waitingForStart = true, -- Custom start triggered from animationGroups.lua
 		loadFunction = objectsManager.generateMobObject
 	}
 	objectsManager.loaders.clientMobHandler = {
@@ -774,11 +773,14 @@ function objectsManager:generateMobObject(objDef, description, components, ident
 	local name = description:getStringOrNil("name"):asLocalizedString(utils:getNameLocKey(identifier))
 	local objectComponent = components:getTableOrNil("hs_object")
 
+	-- Hack: Let's make sure the animations are initialized.
+	-- modules["animationGroups"].mjInit()
+
 	local mobObject = {
 		name = name,
 		gameObjectTypeIndex = modules["gameObject"].types[identifier].index,
 		deadObjectTypeIndex = rootComponent:getString("dead_object"):asTypeIndex(modules["gameObject"].types),
-		animationGroupIndex = rootComponent:getString("animation_group"):asTypeIndex(modules["animationGroups"].groups),
+		animationGroup = rootComponent:getString("animation_group"),
 	}
 
 	local defaultProps = hmt{
