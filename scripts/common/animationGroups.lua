@@ -17,5 +17,11 @@ function animationGroups:mjInit(super)
 	super(self)
 end
 
+--- @shadow
+function animationGroups:initMainThread(super)
+	moduleManager:addModule("animationGroups", self)
+	super(self)
+end
+
 
 return shadow:shadow(animationGroups, 0)
