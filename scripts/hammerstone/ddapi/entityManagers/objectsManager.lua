@@ -207,7 +207,7 @@ function objectsManager:init(ddapiManager_)
 		rootComponent = "hs_plans",
 		waitingForStart = true, -- Custom start triggered from planHelper.lua
 		moduleDependencies = {
-			"planHelper", 
+			"planHelper",
 			"gameObject"
 		},
 		dependencies = {
@@ -978,7 +978,7 @@ end
 
 function objectsManager:generatePlanHelperObject(objDef, description, components, identifier, rootComponent)
 	-- Modules
-	local planHelperModule = modules["planHelper"]
+	local planHelperModule = moduleManager:get("planHelper")
 
 	local objectIndex = description:getString("identifier"):asTypeIndex(modules["gameObject"].types)
 	local availablePlansFunction = rootComponent:getStringOrNil("available_plans"):with(
@@ -997,28 +997,10 @@ function objectsManager:generatePlanHelperObject(objDef, description, components
 		-- Nil plans would override desired vanilla plans
 		planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
 		if availablePlansFunction ~= nil then
-			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlansFunction, identifier:getValue()))
+			log:schema("ddapi", string.format("  Assigning plan '%s' to object '%s'", availablePlansFunction, identifier))
 			planHelperModule:setPlansForObject(objectIndex, availablePlansFunction)
 		else
-			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlansFunction, identifier:getValue()))
-		end
-	end
-
-	-- Handle the hunting stuff
-	local huntingPreset = rootComponent:getStringOrNil("hunting_preset")
-	local huntingPresetData = huntingPreset:with(
-		function (value)
-			return planHelperModule[value]
-		end
-	):getValue()
-
-	if huntingPreset:getValue() ~= nil then
-		-- Nil plans would override desired vanilla plans
-		if huntingPresetData ~= nil then
-			log:schema("ddapi", string.format("  Assigning hunting preset '%s' to object '%s'", huntingPreset:getValue(), identifier:getValue()))
-			planHelperModule.huntPlanInfosByObjectType[objectIndex] = huntingPresetData
-		else
-			log:schema("ddapi", string.format("  WARING: Tried to assign hunting preset '%s' to object '%s', but the plan was nil.", huntingPreset:getValue(), identifier:getValue()))
+			log:schema("ddapi", string.format("  WARING: Tried to assign plan '%s' to object '%s', but the plan was nil.", availablePlansFunction, identifier))
 		end
 	end
 end
