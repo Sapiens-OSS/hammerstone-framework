@@ -165,6 +165,7 @@ function objectsManager:init(ddapiManager_)
 		dependencies = {
 			"gameObject",
 		},
+		waitingForStart = true, -- Custom start triggered from animationGroups.lua
 		loadFunction = objectsManager.generateMobObject
 	}
 	objectsManager.loaders.clientMobHandler = {
@@ -777,7 +778,7 @@ function objectsManager:generateMobObject(objDef, description, components, ident
 		name = name,
 		gameObjectTypeIndex = modules["gameObject"].types[identifier].index,
 		deadObjectTypeIndex = rootComponent:getString("dead_object"):asTypeIndex(modules["gameObject"].types),
-		animationGroupIndex = rootComponent:getString("animation_group"):asTypeIndex(modules["animationGroups"]),
+		animationGroupIndex = rootComponent:getString("animation_group"):asTypeIndex(modules["animationGroups"].groups),
 	}
 
 	local defaultProps = hmt{
