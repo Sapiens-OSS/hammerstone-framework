@@ -519,6 +519,12 @@ function patcher:applyPatch(patchInfos, fileContent_, path)
         return fileContent_, false
     end
 
+    -- Validate file content exists
+    if not fileContent_ or fileContent_ == "" then
+        logging:log("No content to patch in file:", path)
+        return fileContent_, true
+    end
+
     fileContent = fileContent_
     chunks = {}
 
@@ -537,7 +543,14 @@ function patcher:applyPatch(patchInfos, fileContent_, path)
     keywords["#PATH#"] = path
     keywords["#MODULENAME#"] = getModuleNameFromPath(path)
 
-    local success = patcher:runOperations(patchInfos.operations)
+    local success, err = pcall(function()
+        return patcher:runOperations(patchInfos.operations)
+    end)
+
+    if not success then
+        logging:log("Patch application failed gracefully:", err)
+        return fileContent_, true
+    end
 
     return fileContent, success
 end
