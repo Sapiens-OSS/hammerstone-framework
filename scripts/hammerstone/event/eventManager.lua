@@ -16,7 +16,14 @@ function eventManager:call(event, ...)
 	if self.events[event] then
 		for i, f in pairs(self.events[event]) do
 			logger:log("Calling event " .. event .. " with " .. #{...})
-			f(...)
+			local status, err = pcall(f, ...)
+			if not status then
+				if string.find(err, "attempt to index local 'gameObject'") then
+					logger:log("Warning: nil gameObject encountered in event " .. event)
+				else
+					logger:log("Error in event " .. event .. ": " .. err)
+				end
+			end
 		end
 	end
 end
