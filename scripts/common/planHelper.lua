@@ -13,8 +13,8 @@ local planHelper = {
 	objectPlansSettings = {}
 }
 
-function planHelper:postload(base)
-	moduleManager:addModule("planHelper", planHelper)
+function planHelper:postload(parent)
+	moduleManager:addModule("planHelper", parent)
 end
 
 function planHelper:init(super, world_, serverWorld_)

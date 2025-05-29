@@ -1,15 +1,12 @@
--- Hammerstone: mob.lua
+local mod = {
+	loadOrder = 0
+}
 
 -- Hammerstone
-local shadow = mjrequire "hammerstone/utils/shadow"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 
-local mob = {}
-
---- @override
-function mob:preload(parent)
-	moduleManager:addModule("mob", parent)
+function mod:onload(mob)
+	moduleManager:addModule("mob", mob)
 end
 
-
-return shadow:shadow(mob, 0)
+return mod
