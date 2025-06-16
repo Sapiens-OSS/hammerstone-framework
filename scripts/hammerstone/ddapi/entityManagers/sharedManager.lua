@@ -40,6 +40,15 @@ function sharedManager:init(ddapiManager_)
 		loadFunction = sharedManager.generateResourceGroup
 	}
 	
+	sharedManager.loaders.rebuildGroups = {
+		shared_unwrap = "hs_rebuild_groups",
+		shared_getter = "getRebuildGroups",
+		moduleDependencies = {
+			"constructable"
+		},
+		loadFunction = sharedManager.generateRebuildGroup
+	}
+
 	sharedManager.loaders.seats = {
 		shared_unwrap = "hs_seat_types",
 		shared_getter = "getSeatTypes",
@@ -145,6 +154,22 @@ function sharedManager:generateSeat(seatType)
 	}
 
 	modules["typeMaps"]:insert("seat", modules["seat"].types, newSeat)
+end
+
+---------------------------------------------------------------------------------
+-- Rebuild Group
+---------------------------------------------------------------------------------
+
+function sharedManager:generateRebuildGroup(key)
+	local value = key:getValue()
+
+	log:schema("ddapi", "  " .. value)
+
+	local newGroup = {
+		key = value
+	}
+
+	modules["typeMaps"]:insert("constructableRebuildGroups", modules["constructable"].rebuildGroups, newGroup)
 end
 
 ---------------------------------------------------------------------------------

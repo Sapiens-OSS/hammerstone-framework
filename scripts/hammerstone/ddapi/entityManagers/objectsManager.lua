@@ -335,7 +335,14 @@ function objectsManager:generateBuildable(objDef, description, components, ident
 	newBuildable.finalGameObjectTypeKey = identifier
 	newBuildable.buildCompletionPlanIndex = rootComponent:getStringOrNil("build_completion_plan"):asTypeIndex(modules["plan"].types)
 
-	ddapiManager:tryAsTypeIndex("research", "buildable", identifier, rootComponent, "research", true, modules["research"].types, "research", 
+	newBuildable.variationGroupName = rootComponent:getStringOrNil("variation_name"):asLocalizedString()
+	newBuildable.variations = rootComponent:getTableOrNil("variations"):asTypeIndex(modules["constructable"].types)
+
+	-- constructable.rebuildGroups.bed.index,
+	
+	newBuildable.rebuildGroupIndex = rootComponent:getStringOrNil("rebuild_group"):asTypeIndex(modules["constructable"].rebuildGroups)
+
+	ddapiManager:tryAsTypeIndex("research", "buildable", identifier, rootComponent, "research", true, modules["research"].types, "research",
 		function(researchTypeIndex)
 			newBuildable.disabledUntilAdditionalResearchDiscovered = researchTypeIndex
 		end
