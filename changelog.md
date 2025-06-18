@@ -99,3 +99,13 @@ The first release of Hammerstone
 # 1.7.1
 
 - Add support for base game version 0.5.1.5
+
+# 1.8.0
+
+- Adds support for Variations
+- Adds support for Rebuild Groups
+
+# 1.8.1
+
+- Fixes variations being registered into the build menu incorrectly
+- Introduced new 'hidden' property (default false) in hs_constructable, allowing for hiding registered buildables. Useful when paired with Variations.

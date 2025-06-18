@@ -1,7 +1,7 @@
 local modInfo = {
     name = "Hammerstone Framework",
     description = "Hammerstone is modding API/Library. It is a required dependency for many mods on the workshop.",
-    version = "1.8.0",
+    version = "1.8.1",
     type = "world",
     preview = "assets/hammerstone.png",
     developer = "SirLich & Sapiens Modding Community",

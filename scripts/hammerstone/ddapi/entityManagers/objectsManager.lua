@@ -335,8 +335,12 @@ function objectsManager:generateBuildable(objDef, description, components, ident
 	newBuildable.finalGameObjectTypeKey = identifier
 	newBuildable.buildCompletionPlanIndex = rootComponent:getStringOrNil("build_completion_plan"):asTypeIndex(modules["plan"].types)
 
-	newBuildable.variationGroupName = rootComponent:getStringOrNil("variation_name"):asLocalizedString()
-	newBuildable.variations = rootComponent:getTableOrNil("variations"):asTypeIndex(modules["constructable"].types)
+	local hasVariations = rootComponent:hasKey("variations")
+
+	if hasVariations then
+		newBuildable.variationGroupName = rootComponent:getStringOrNil("variation_name"):asLocalizedString()
+		newBuildable.variations = rootComponent:getTableOrNil("variations"):asTypeIndex(modules["constructable"].types)
+	end
 
 	-- constructable.rebuildGroups.bed.index,
 	
@@ -361,8 +365,12 @@ function objectsManager:generateBuildable(objDef, description, components, ident
 	utils:debug(identifier, objDef, newBuildable)
 	modules["buildable"]:addBuildable(identifier, newBuildable)
 	
-	-- Cached, and handled later in buildUI.lua
-	table.insert(ddapiManager.constructableIndexes, newBuildable.index)
+	-- Hidden objects don't appear in the UI
+	local hidden = rootComponent:getBooleanValueOrNil("hidden")
+	if not hidden then
+		-- Cached, and handled later in buildUI.lua
+		table.insert(ddapiManager.constructableIndexes, newBuildable.index)
+	end
 end
 
 ---------------------------------------------------------------------------------
