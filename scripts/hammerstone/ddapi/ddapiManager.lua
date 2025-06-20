@@ -17,7 +17,6 @@ local log = mjrequire "hammerstone/logging"
 local utils = mjrequire "hammerstone/ddapi/ddapiUtils"
 local moduleManager = mjrequire "hammerstone/state/moduleManager"
 local configLoader = mjrequire "hammerstone/ddapi/configLoader"
-local hammerAPI = mjrequire "hammerAPI"
 
 local entityManagers = {
 	mjrequire "hammerstone/ddapi/entityManagers/behaviorManager", 
@@ -27,8 +26,6 @@ local entityManagers = {
 	mjrequire "hammerstone/ddapi/entityManagers/sharedManager", 
 	mjrequire "hammerstone/ddapi/entityManagers/storageManager", 
 }
-
-hammerAPI:test()
 
 ---------------------------------------------------------------------------------
 -- Configuation and Loading
