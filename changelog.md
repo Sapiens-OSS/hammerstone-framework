@@ -109,3 +109,7 @@ The first release of Hammerstone
 
 - Fixes variations being registered into the build menu incorrectly
 - Introduced new 'hidden' property (default false) in hs_constructable, allowing for hiding registered buildables. Useful when paired with Variations.
+
+# 1.8.2
+ 
+ - Fixes issue which caused `use_default_model` to crash Buildables.

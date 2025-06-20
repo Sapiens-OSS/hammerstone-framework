@@ -629,7 +629,7 @@ function objectsManager:generateModelPlaceholder(objDef, description, components
 
 					-- TODO
 					additionalIndexCount = data:getNumberValueOrNil("additional_index_count"),
-					defaultModelShouldOverrideResourceObject = data:getNumberValueOrNil("use_default_model"),
+					defaultModelShouldOverrideResourceObject = data:getBooleanOrNil("use_default_model"),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
 				}
 			end
