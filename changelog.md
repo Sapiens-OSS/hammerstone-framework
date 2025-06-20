@@ -113,3 +113,7 @@ The first release of Hammerstone
 # 1.8.2
  
  - Fixes issue which caused `use_default_model` to crash Buildables.
+
+# 1.8.3
+
+ - Adds support for `hide_on_completion`

@@ -627,9 +627,11 @@ function objectsManager:generateModelPlaceholder(objDef, description, components
 					defaultModelName = default_model,
 					resourceTypeIndex = resource_type,
 
+					hiddenOnBuildComplete  = data:getBooleanValueOrNil("hide_on_completion"),
+					
 					-- TODO
 					additionalIndexCount = data:getNumberValueOrNil("additional_index_count"),
-					defaultModelShouldOverrideResourceObject = data:getBooleanOrNil("use_default_model"),
+					defaultModelShouldOverrideResourceObject = data:getBooleanValueOrNil("use_default_model"),
 					placeholderModelIndexForObjectTypeFunction = createIndexFunction(remap_data, default_model)
 				}
 			end
