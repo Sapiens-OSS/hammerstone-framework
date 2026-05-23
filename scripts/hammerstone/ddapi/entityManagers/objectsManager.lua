@@ -567,6 +567,12 @@ end
 --- @param remaps table string->string mapping
 local function createIndexFunction(remaps, default)
 	local function inner(placeholderInfo, objectTypeIndex, placeholderContext)
+		-- If remaps not defined, use default model index
+		-- The rest of this function could prolly be cleaned up
+		if remaps == nil or remaps == {} then
+			return placeholderInfo.defaultModelIndex
+		end
+		
 		local objectKey = modules["typeMaps"]:indexToKey(objectTypeIndex, modules["gameObject"].validTypes)
 
 		local remap = remaps[objectKey]
@@ -617,15 +623,22 @@ function objectsManager:generateModelPlaceholder(objDef, description, components
 				}
 			else
 				local default_model = data:getStringValue("default_model")
-				local resource_type = data:getString("resource"):asTypeIndex(modules["resource"].types)
-				local resource_name = data:getStringValue("resource")
-				local remap_data = data:getTableOrNil("remaps"):default( { [resource_name] = default_model } )
+				local resource_type = data:getStringOrNil("resource"):asTypeIndex(modules["resource"].types)
+				local resource_group_type data:getStringOrNil("resource"):asTypeIndex(modules["resource"].groups)
+
+				if resource_type == nil and resource_group_type == nil then
+					log:schema("ddapi", "  ERROR:  %s (buildable model remap) is defined with neither resource nor resource_group. This is an error.")
+				end
+
+				-- local resource_name = data:getStringValue("resource")
+				local remap_data = data:getTableOrNil("remaps"):clear()
 
 					
 				return {
 					key = data:getStringValue("key"),
 					defaultModelName = default_model,
 					resourceTypeIndex = resource_type,
+					resourceGroupIndex = resource_group_type,
 
 					hiddenOnBuildComplete  = data:getBooleanValueOrNil("hide_on_completion"),
 					
