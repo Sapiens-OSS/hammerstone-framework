@@ -117,3 +117,9 @@ The first release of Hammerstone
 # 1.8.3
 
  - Adds support for `hide_on_completion`
+
+# 1.8.4
+
+ - Fixed "props" in hs_object. This enables defining femaleSnapPoints.
+ - Adds ability to use `resource_group` in model_placeholder (before, it was only possible to use `resource`)
+ - Improves reliability of buildables, by coercing to default model in a simpler way
