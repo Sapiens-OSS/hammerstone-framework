@@ -761,7 +761,7 @@ function objectsManager:generateGameObject(objDef, description, components, iden
 	end
 
 	if rootComponent:hasKey("props") then
-		newGameObject = rootComponent:getTable("props"):mergeWith(newGameObject):clear()
+		newGameObject = hmt(newGameObject):mergeWith(rootComponent:getTable("props")):clear()
 	end
 
 	-- Combine keys
